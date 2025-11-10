@@ -59,6 +59,9 @@ export default function AttendanceCalendar({
     date: number;
     shift: "Day" | "Night";
   } | null>(null);
+  const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("");
+  const [selectedRank, setSelectedRank] = useState<"OIC" | "SSO" | "JSO" | "LSO" | "">("");
 
   const daysInMonth = new Date(
     selectedMonth.getFullYear(),
@@ -182,6 +185,50 @@ export default function AttendanceCalendar({
 
   const totals = calculateTotals();
 
+  // Get unique employees who have attendance in this company/month
+  const activeEmployees = employees.filter((emp) =>
+    attendanceRecords.some((record) => record.employee_id === emp.id)
+  );
+
+  const handleAddEmployeeToCalendar = async () => {
+    if (!selectedEmployee || !selectedRank) {
+      toast.error("Please select both employee and rank");
+      return;
+    }
+
+    // Add a placeholder attendance record for the first day to add employee to calendar
+    const dateStr = `${selectedMonth.getFullYear()}-${String(
+      selectedMonth.getMonth() + 1
+    ).padStart(2, "0")}-01`;
+
+    const { error } = await supabase.from("attendance").insert([
+      {
+        employee_id: selectedEmployee,
+        company_id: selectedCompany.id,
+        attendance_date: dateStr,
+        present: false,
+        shift_type: "Day" as const,
+        rank: selectedRank as "OIC" | "SSO" | "JSO" | "LSO",
+      },
+    ]);
+
+    if (error) {
+      toast.error("Error adding employee");
+      return;
+    }
+
+    setShowAddEmployee(false);
+    setSelectedEmployee("");
+    setSelectedRank("");
+    onRefresh();
+    toast.success("Employee added to calendar");
+  };
+
+  // Get employees not yet in the calendar
+  const availableEmployees = employees.filter(
+    (emp) => !activeEmployees.some((active) => active.id === emp.id)
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -199,6 +246,60 @@ export default function AttendanceCalendar({
           Export
         </Button>
       </div>
+
+      {/* Add Employee Section */}
+      {!showAddEmployee ? (
+        <Button onClick={() => setShowAddEmployee(true)} variant="outline">
+          + Add Employee to Calendar
+        </Button>
+      ) : (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex gap-4 items-end">
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-medium">Select Employee</label>
+                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableEmployees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-medium">Select Rank</label>
+                <Select value={selectedRank} onValueChange={(value) => setSelectedRank(value as "OIC" | "SSO" | "JSO" | "LSO")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose rank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OIC">OIC</SelectItem>
+                    <SelectItem value="SSO">SSO</SelectItem>
+                    <SelectItem value="JSO">JSO</SelectItem>
+                    <SelectItem value="LSO">LSO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleAddEmployeeToCalendar}>Add</Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAddEmployee(false);
+                  setSelectedEmployee("");
+                  setSelectedRank("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -249,7 +350,7 @@ export default function AttendanceCalendar({
                 </tr>
               </thead>
               <tbody>
-                {employees.map((employee) => {
+                {activeEmployees.map((employee) => {
                   const stats = calculateEmployeeStats(employee.id);
                   return (
                     <tr key={employee.id} className="border-b hover:bg-muted/20">
