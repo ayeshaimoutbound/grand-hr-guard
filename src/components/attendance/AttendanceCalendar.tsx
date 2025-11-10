@@ -152,6 +152,11 @@ export default function AttendanceCalendar({
     return { totalShifts };
   };
 
+  const getEmployeeRank = (employeeId: string) => {
+    const record = attendanceRecords.find((r) => r.employee_id === employeeId);
+    return record?.rank || "-";
+  };
+
   const calculateTotals = () => {
     let totalShifts = 0;
 
@@ -289,6 +294,9 @@ export default function AttendanceCalendar({
                   <th className="sticky left-0 z-10 bg-muted/50 p-2 text-left font-medium border-r min-w-[150px]">
                     Employee
                   </th>
+                  <th className="p-2 text-center font-medium border-r bg-muted/50 min-w-[60px]">
+                    Rank
+                  </th>
                   {dates.map((date) => (
                     <th
                       key={date}
@@ -304,6 +312,7 @@ export default function AttendanceCalendar({
                 </tr>
                 <tr className="border-b bg-muted/30">
                   <th className="sticky left-0 z-10 bg-muted/30 p-2 border-r"></th>
+                  <th className="bg-muted/30 p-2 border-r"></th>
                   {dates.map((date) => (
                     <>
                       <th
@@ -328,10 +337,14 @@ export default function AttendanceCalendar({
               <tbody>
                 {activeEmployees.map((employee) => {
                   const stats = calculateEmployeeStats(employee.id);
+                  const employeeRank = getEmployeeRank(employee.id);
                   return (
                     <tr key={employee.id} className="border-b hover:bg-muted/20">
                       <td className="sticky left-0 z-10 bg-background p-2 font-medium border-r">
                         {employee.full_name}
+                      </td>
+                      <td className="bg-background p-2 text-center font-medium border-r">
+                        <Badge variant="secondary">{employeeRank}</Badge>
                       </td>
                       {dates.map((date) =>
                         ["Day", "Night"].map((shift) => {
@@ -392,7 +405,7 @@ export default function AttendanceCalendar({
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-7 w-full text-xs"
+                                  className="h-7 w-full text-xs font-semibold"
                                   onClick={() => {
                                     setEditingCell({
                                       employeeId: employee.id,
@@ -401,7 +414,7 @@ export default function AttendanceCalendar({
                                     });
                                   }}
                                 >
-                                  + {shift === "Day" ? "D" : "N"}
+                                  1
                                 </Button>
                               )}
                             </td>
