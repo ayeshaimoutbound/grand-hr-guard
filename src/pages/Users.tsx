@@ -138,16 +138,22 @@ export default function Users() {
     if (!confirm("Are you sure you want to delete this user?")) return;
 
     try {
-      // Delete user will cascade to profiles and user_roles
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      // Call edge function to securely delete user with proper authorization
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId }
+      });
 
       if (error) throw error;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to delete user');
+      }
 
       toast.success("User deleted successfully");
       fetchUsers();
     } catch (error: any) {
       console.error("Error deleting user:", error);
-      toast.error("Error deleting user. Note: You can only delete users you created.");
+      toast.error(error.message || "Error deleting user");
     }
   };
 
