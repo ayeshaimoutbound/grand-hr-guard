@@ -75,7 +75,10 @@ export default function Salaries() {
 
   const fetchData = async () => {
     const startDate = `${selectedMonth}-01`;
-    const endDate = `${selectedMonth}-31`;
+    // Calculate the last day of the month properly
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${selectedMonth}-${String(lastDay).padStart(2, '0')}`;
 
     const [employeesRes, companiesRes, attendanceRes, salariesRes] = await Promise.all([
       supabase.from("employees").select("*"),
