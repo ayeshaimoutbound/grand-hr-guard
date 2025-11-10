@@ -332,14 +332,16 @@ export default function AttendanceCalendar({
   const updateCompanyInvoice = async () => {
     const salaryMonth = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
     
-    // Calculate total amount based on shift report using charge rates
+    // Build line items for invoice based on attendance
+    const lineItems: any[] = [];
     let totalAmount = 0;
     
     const ranks: Array<"OIC" | "SSO" | "JSO" | "LSO"> = ["OIC", "SSO", "JSO", "LSO"];
     ranks.forEach((rank) => {
-      const totalShifts = shiftReport[rank].total;
-      let chargePerShift = 0;
+      const dayShifts = shiftReport[rank].day;
+      const nightShifts = shiftReport[rank].night;
       
+      let chargePerShift = 0;
       switch (rank) {
         case "OIC": chargePerShift = selectedCompany.charge_oic; break;
         case "SSO": chargePerShift = selectedCompany.charge_sso; break;
@@ -347,44 +349,67 @@ export default function AttendanceCalendar({
         case "LSO": chargePerShift = selectedCompany.charge_lso; break;
       }
       
-      totalAmount += totalShifts * chargePerShift;
+      // Add day shifts line item if exists
+      if (dayShifts > 0) {
+        const dayAmount = dayShifts * chargePerShift;
+        lineItems.push({
+          rank: rank,
+          shift_type: "Day",
+          shifts: dayShifts,
+          rate_per_shift: chargePerShift,
+          amount: dayAmount
+        });
+        totalAmount += dayAmount;
+      }
+      
+      // Add night shifts line item if exists
+      if (nightShifts > 0) {
+        const nightAmount = nightShifts * chargePerShift;
+        lineItems.push({
+          rank: rank,
+          shift_type: "Night",
+          shifts: nightShifts,
+          rate_per_shift: chargePerShift,
+          amount: nightAmount
+        });
+        totalAmount += nightAmount;
+      }
     });
 
-    // Check if invoice exists
+    // Check if invoice exists - use maybeSingle to avoid errors
     const { data: existing } = await supabase
       .from("invoices")
       .select("id, amount_received")
       .eq("company_id", selectedCompany.id)
       .eq("month_period", salaryMonth)
-      .single();
+      .maybeSingle();
 
     const invoiceNumber = `INV-${selectedCompany.company_name.substring(0, 3).toUpperCase()}-${selectedMonth.getFullYear()}${String(selectedMonth.getMonth() + 1).padStart(2, '0')}`;
+
+    const invoiceData = {
+      amount_to_collect: totalAmount,
+      invoice_data: { lineItems }
+    };
 
     if (existing) {
       // Update existing invoice - preserve amount_received
       await supabase
         .from("invoices")
-        .update({ 
-          amount_to_collect: totalAmount,
-          invoice_data: shiftReport
-        })
+        .update(invoiceData)
         .eq("id", existing.id);
     } else {
       // Create new invoice
-      const invoiceData = {
+      await supabase.from("invoices").insert({
         company_id: selectedCompany.id,
         month_period: salaryMonth,
         invoice_date: new Date().toISOString().split("T")[0],
         invoice_number: invoiceNumber,
-        amount_to_collect: totalAmount,
         amount_received: 0,
         invoice_sent: false,
         printed: false,
         emailed: false,
-        invoice_data: shiftReport,
-      };
-
-      await supabase.from("invoices").insert(invoiceData);
+        ...invoiceData
+      });
     }
   };
 
