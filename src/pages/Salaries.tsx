@@ -74,61 +74,130 @@ export default function Salaries() {
   }, [selectedMonth]);
 
   const fetchData = async () => {
-    const [employeesRes, companiesRes, salariesRes] = await Promise.all([
+    const startDate = `${selectedMonth}-01`;
+    const endDate = `${selectedMonth}-31`;
+
+    const [employeesRes, companiesRes, attendanceRes, salariesRes] = await Promise.all([
       supabase.from("employees").select("*"),
-      supabase.from("companies").select("id, company_name"),
-      supabase.from("salaries").select("*").gte("salary_month", `${selectedMonth}-01`).lte("salary_month", `${selectedMonth}-31`),
+      supabase.from("companies").select("*"),
+      supabase.from("attendance").select("*").gte("attendance_date", startDate).lte("attendance_date", endDate).eq("present", true),
+      supabase.from("salaries").select("*").gte("salary_month", startDate).lte("salary_month", endDate),
     ]);
 
-    if (employeesRes.error || companiesRes.error) {
+    if (employeesRes.error || companiesRes.error || attendanceRes.error) {
       toast.error("Error fetching data");
       return;
     }
 
     const employeesList = employeesRes.data || [];
     const companiesList = companiesRes.data || [];
+    const attendanceList = attendanceRes.data || [];
     const salariesList = salariesRes.data || [];
 
-    // Group salaries by company
+    // Calculate attendance stats per employee per company
+    const attendanceStats = new Map<string, { shifts: number; companyId: string; rank: string; payPerShift: number }>();
+    
+    attendanceList.forEach(att => {
+      const key = `${att.employee_id}-${att.company_id}`;
+      const company = companiesList.find(c => c.id === att.company_id);
+      
+      if (!company) return;
+      
+      // Get pay rate based on rank from company
+      let payPerShift = 0;
+      if (att.rank === 'OIC') payPerShift = company.pay_oic || 0;
+      else if (att.rank === 'SSO') payPerShift = company.pay_sso || 0;
+      else if (att.rank === 'JSO') payPerShift = company.pay_jso || 0;
+      else if (att.rank === 'LSO') payPerShift = company.pay_lso || 0;
+
+      if (!attendanceStats.has(key)) {
+        attendanceStats.set(key, { 
+          shifts: 0, 
+          companyId: att.company_id,
+          rank: att.rank,
+          payPerShift 
+        });
+      }
+      
+      const stats = attendanceStats.get(key)!;
+      stats.shifts += 1;
+    });
+
+    // Build company data map with ALL employees
     const companyDataMap = new Map<string, CompanySalaryData>();
 
-    salariesList.forEach(salary => {
-      if (!salary.company_id) return;
+    // Initialize all companies
+    companiesList.forEach(company => {
+      companyDataMap.set(company.id, {
+        company,
+        employees: [],
+        totalShifts: 0,
+        totalGross: 0,
+      });
+    });
 
-      const employee = employeesList.find(e => e.id === salary.employee_id);
-      const company = companiesList.find(c => c.id === salary.company_id);
+    // Process each employee
+    employeesList.forEach(employee => {
+      // Find all companies this employee has attendance for in this month
+      const employeeCompanies = new Set<string>();
       
-      if (!employee || !company) return;
-
-      if (!companyDataMap.has(salary.company_id)) {
-        companyDataMap.set(salary.company_id, {
-          company,
-          employees: [],
-          totalShifts: 0,
-          totalGross: 0,
+      attendanceList
+        .filter(att => att.employee_id === employee.id)
+        .forEach(att => employeeCompanies.add(att.company_id));
+      
+      // If no attendance, show under all companies with 0 shifts
+      if (employeeCompanies.size === 0) {
+        companiesList.forEach(company => {
+          employeeCompanies.add(company.id);
         });
       }
 
-      const companyData = companyDataMap.get(salary.company_id)!;
-      
-      companyData.employees.push({
-        employee,
-        salary_id: salary.id,
-        total_shifts: salary.total_shifts || 0,
-        pay_per_shift: salary.pay_per_shift || 0,
-        gross_shift_total: salary.gross_shift_total || 0,
-        basic_salary: salary.basic_salary || 0,
-        epf: salary.epf || 0,
-        salary_advance: salary.salary_advance || 0,
-        transport: salary.transport || 0,
-        food: salary.food || 0,
-        uniforms: salary.uniforms || 0,
-        other_deductions: salary.other_deductions || 0,
-        final_salary: salary.final_salary || 0,
-      });
+      employeeCompanies.forEach(companyId => {
+        const company = companiesList.find(c => c.id === companyId);
+        if (!company) return;
 
-      companyData.totalShifts += salary.total_shifts || 0;
-      companyData.totalGross += salary.gross_shift_total || 0;
+        const attendanceKey = `${employee.id}-${companyId}`;
+        const attendance = attendanceStats.get(attendanceKey);
+        const totalShifts = attendance?.shifts || 0;
+        const payPerShift = attendance?.payPerShift || 0;
+        const grossShiftTotal = totalShifts * payPerShift;
+
+        // Find existing salary record
+        const existingSalary = salariesList.find(
+          s => s.employee_id === employee.id && s.company_id === companyId
+        );
+
+        // Use existing salary data if available, otherwise use calculated values with defaults
+        const basicSalary = existingSalary?.basic_salary || 0;
+        const epf = existingSalary?.epf || (basicSalary * 0.08);
+        const salaryAdvance = existingSalary?.salary_advance || 0;
+        const transport = existingSalary?.transport || 0;
+        const food = existingSalary?.food || 0;
+        const uniforms = existingSalary?.uniforms || 0;
+        const otherDeductions = existingSalary?.other_deductions || 0;
+
+        const finalSalary = basicSalary + grossShiftTotal - epf - salaryAdvance - transport - food - uniforms - otherDeductions;
+
+        const companyData = companyDataMap.get(companyId)!;
+        companyData.employees.push({
+          employee,
+          salary_id: existingSalary?.id || `temp-${employee.id}-${companyId}`,
+          total_shifts: totalShifts,
+          pay_per_shift: payPerShift,
+          gross_shift_total: grossShiftTotal,
+          basic_salary: basicSalary,
+          epf: epf,
+          salary_advance: salaryAdvance,
+          transport: transport,
+          food: food,
+          uniforms: uniforms,
+          other_deductions: otherDeductions,
+          final_salary: finalSalary,
+        });
+
+        companyData.totalShifts += totalShifts;
+        companyData.totalGross += grossShiftTotal;
+      });
     });
 
     setCompanySalaryData(Array.from(companyDataMap.values()));
@@ -165,41 +234,98 @@ export default function Salaries() {
       newValues.epf - newValues.salary_advance - newValues.transport - 
       newValues.food - newValues.uniforms - newValues.other_deductions;
 
-    // Update local state
-    setCompanySalaryData(prev =>
-      prev.map(companyData => ({
-        ...companyData,
-        employees: companyData.employees.map(emp =>
-          emp.salary_id === salaryId
-            ? { 
-                ...emp, 
-                [field]: value, 
-                epf: field === 'basic_salary' ? newValues.epf : emp.epf,
-                final_salary: newFinalSalary 
-              }
-            : emp
-        ),
-      }))
-    );
-
-    // Update in database
-    const updateData: any = { 
+    // Prepare data for database
+    const dbData: any = { 
       [field]: value,
       final_salary: newFinalSalary 
     };
     
     // If basic salary changed, also update EPF
     if (field === 'basic_salary') {
-      updateData.epf = newValues.epf;
+      dbData.epf = newValues.epf;
     }
-    
-    const { error } = await supabase
-      .from("salaries")
-      .update(updateData)
-      .eq("id", salaryId);
 
-    if (error) {
-      toast.error("Failed to update salary");
+    // Check if this is a new record (temp ID) or existing record
+    const isNewRecord = salaryId.startsWith('temp-');
+    
+    if (isNewRecord) {
+      // Extract employee_id and company_id from temp ID
+      const parts = salaryId.split('-');
+      const employee_id = parts[1];
+      const company_id = parts[2];
+      
+      // Create new salary record
+      const { data, error } = await supabase
+        .from("salaries")
+        .insert({
+          employee_id,
+          company_id,
+          salary_month: `${selectedMonth}-01`,
+          total_shifts: employeeRecord.total_shifts,
+          pay_per_shift: employeeRecord.pay_per_shift,
+          gross_shift_total: employeeRecord.gross_shift_total,
+          basic_salary: field === 'basic_salary' ? value : employeeRecord.basic_salary,
+          epf: field === 'basic_salary' ? newValues.epf : employeeRecord.epf,
+          salary_advance: field === 'salary_advance' ? value : employeeRecord.salary_advance,
+          transport: field === 'transport' ? value : employeeRecord.transport,
+          food: field === 'food' ? value : employeeRecord.food,
+          uniforms: field === 'uniforms' ? value : employeeRecord.uniforms,
+          other_deductions: field === 'other_deductions' ? value : employeeRecord.other_deductions,
+          final_salary: newFinalSalary,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Failed to create salary record");
+        return;
+      }
+
+      // Update local state with new real ID
+      setCompanySalaryData(prev =>
+        prev.map(companyData => ({
+          ...companyData,
+          employees: companyData.employees.map(emp =>
+            emp.salary_id === salaryId
+              ? { 
+                  ...emp, 
+                  salary_id: data.id,
+                  [field]: value, 
+                  epf: field === 'basic_salary' ? newValues.epf : emp.epf,
+                  final_salary: newFinalSalary 
+                }
+              : emp
+          ),
+        }))
+      );
+    } else {
+      // Update existing record
+      const { error } = await supabase
+        .from("salaries")
+        .update(dbData)
+        .eq("id", salaryId);
+
+      if (error) {
+        toast.error("Failed to update salary");
+        return;
+      }
+
+      // Update local state
+      setCompanySalaryData(prev =>
+        prev.map(companyData => ({
+          ...companyData,
+          employees: companyData.employees.map(emp =>
+            emp.salary_id === salaryId
+              ? { 
+                  ...emp, 
+                  [field]: value, 
+                  epf: field === 'basic_salary' ? newValues.epf : emp.epf,
+                  final_salary: newFinalSalary 
+                }
+              : emp
+          ),
+        }))
+      );
     }
 
     setEditingCell(null);
