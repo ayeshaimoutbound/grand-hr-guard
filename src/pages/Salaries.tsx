@@ -57,6 +57,18 @@ interface Employee {
 interface Company {
   id: string;
   company_name: string;
+  pay_oic: number;
+  pay_sso: number;
+  pay_jso: number;
+  pay_lso: number;
+}
+
+interface AttendanceRecord {
+  id: string;
+  employee_id: string;
+  rank: string;
+  present: boolean;
+  shift_type: string;
 }
 
 export default function Salaries() {
@@ -108,7 +120,7 @@ export default function Salaries() {
     const [salariesRes, employeesRes, companiesRes] = await Promise.all([
       supabase.from("salaries").select("*").order("salary_month", { ascending: false }),
       supabase.from("employees").select("id, full_name"),
-      supabase.from("companies").select("id, company_name"),
+      supabase.from("companies").select("id, company_name, pay_oic, pay_sso, pay_jso, pay_lso"),
     ]);
 
     if (salariesRes.error) {
@@ -120,6 +132,73 @@ export default function Salaries() {
 
     if (!employeesRes.error) setEmployees(employeesRes.data || []);
     if (!companiesRes.error) setCompanies(companiesRes.data || []);
+  };
+
+  const handleAutoCalculate = async () => {
+    if (!formData.employee_id || !formData.company_id || !formData.salary_month) {
+      toast.error("Please select employee, company, and month first");
+      return;
+    }
+
+    // Fetch attendance records for the selected employee, company, and month
+    const startDate = `${formData.salary_month}-01`;
+    const endDate = `${formData.salary_month}-31`;
+
+    const { data: attendanceData, error } = await supabase
+      .from("attendance")
+      .select("*")
+      .eq("employee_id", formData.employee_id)
+      .eq("company_id", formData.company_id)
+      .gte("attendance_date", startDate)
+      .lte("attendance_date", endDate)
+      .eq("present", true);
+
+    if (error) {
+      toast.error("Error fetching attendance data");
+      return;
+    }
+
+    if (!attendanceData || attendanceData.length === 0) {
+      toast.error("No attendance records found for this period");
+      return;
+    }
+
+    const totalShifts = attendanceData.length;
+    const employeeRank = attendanceData[0]?.rank as "OIC" | "SSO" | "JSO" | "LSO";
+
+    // Get pay rate from company
+    const company = companies.find((c) => c.id === formData.company_id);
+    if (!company) {
+      toast.error("Company not found");
+      return;
+    }
+
+    let payPerShift = 0;
+    switch (employeeRank) {
+      case "OIC":
+        payPerShift = company.pay_oic;
+        break;
+      case "SSO":
+        payPerShift = company.pay_sso;
+        break;
+      case "JSO":
+        payPerShift = company.pay_jso;
+        break;
+      case "LSO":
+        payPerShift = company.pay_lso;
+        break;
+    }
+
+    const grossShiftTotal = totalShifts * payPerShift;
+
+    setFormData({
+      ...formData,
+      total_shifts: totalShifts.toString(),
+      pay_per_shift: payPerShift.toString(),
+      gross_shift_total: grossShiftTotal.toString(),
+    });
+
+    toast.success(`Auto-calculated: ${totalShifts} shifts × Rs. ${payPerShift} = Rs. ${grossShiftTotal}`);
   };
 
   const calculateFinalSalary = () => {
@@ -312,9 +391,10 @@ export default function Salaries() {
                     onValueChange={(value) =>
                       setFormData({ ...formData, company_id: value })
                     }
+                    required
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select company (optional)" />
+                      <SelectValue placeholder="Select company" />
                     </SelectTrigger>
                     <SelectContent>
                       {companies.map((comp) => (
@@ -336,6 +416,17 @@ export default function Salaries() {
                     }
                     required
                   />
+                </div>
+                <div className="space-y-2 flex items-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={handleAutoCalculate}
+                  >
+                    <Calculator className="h-4 w-4 mr-2" />
+                    Auto-Calculate from Attendance
+                  </Button>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="basic_salary">Basic Salary (Rs.)</Label>
