@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, Edit, Trash2, FileDown, DollarSign, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Search, Edit, Trash2, FileDown, DollarSign, AlertCircle, CheckCircle2, Plus, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -49,6 +50,16 @@ interface Invoice {
   };
 }
 
+interface Payment {
+  id: string;
+  invoice_id: string;
+  payment_date: string;
+  amount: number;
+  payment_method: 'Cash' | 'Cheque' | 'Bank Transfer';
+  reference_number: string | null;
+  notes: string | null;
+}
+
 type PaymentStatus = "all" | "unpaid" | "partial" | "paid";
 
 export default function Finance() {
@@ -57,15 +68,24 @@ export default function Finance() {
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatus>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [currentInvoice, setCurrentInvoice] = useState<Invoice | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const { isSuperAdmin } = useAuth();
 
   const [formData, setFormData] = useState({
     invoice_number: "",
-    amount_received: "",
     invoice_sent: false,
     printed: false,
     emailed: false,
+  });
+
+  const [paymentFormData, setPaymentFormData] = useState({
+    payment_date: new Date().toISOString().split('T')[0],
+    amount: "",
+    payment_method: "Cash" as 'Cash' | 'Cheque' | 'Bank Transfer',
+    reference_number: "",
+    notes: "",
   });
 
   useEffect(() => {
@@ -135,6 +155,21 @@ export default function Finance() {
     setFilteredInvoices(data || []);
   };
 
+  const fetchPayments = async (invoiceId: string) => {
+    const { data, error } = await supabase
+      .from("invoice_payments")
+      .select("*")
+      .eq("invoice_id", invoiceId)
+      .order("payment_date", { ascending: false });
+
+    if (error) {
+      toast.error("Error fetching payments");
+      return;
+    }
+
+    setPayments((data || []) as Payment[]);
+  };
+
   const handleEdit = (invoice: Invoice) => {
     if (!isSuperAdmin) {
       toast.error("Only Super Admin can edit invoices");
@@ -144,12 +179,18 @@ export default function Finance() {
     setCurrentInvoice(invoice);
     setFormData({
       invoice_number: invoice.invoice_number,
-      amount_received: invoice.amount_received.toString(),
       invoice_sent: invoice.invoice_sent,
       printed: invoice.printed,
       emailed: invoice.emailed,
     });
+    fetchPayments(invoice.id);
     setIsDialogOpen(true);
+  };
+
+  const handleAddPayment = (invoice: Invoice) => {
+    setCurrentInvoice(invoice);
+    fetchPayments(invoice.id);
+    setIsPaymentDialogOpen(true);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -163,22 +204,10 @@ export default function Finance() {
       return;
     }
 
-    // Validate amount_received
-    const amountReceived = parseFloat(formData.amount_received);
-    if (isNaN(amountReceived) || amountReceived < 0) {
-      toast.error("Amount received must be a valid positive number");
-      return;
-    }
-    if (amountReceived > 100000000) {
-      toast.error("Amount received exceeds maximum allowed value");
-      return;
-    }
-
     const { error } = await supabase
       .from("invoices")
       .update({
         invoice_number: formData.invoice_number,
-        amount_received: amountReceived,
         invoice_sent: formData.invoice_sent,
         printed: formData.printed,
         emailed: formData.emailed,
@@ -194,6 +223,73 @@ export default function Finance() {
     setIsDialogOpen(false);
     fetchInvoices();
     resetForm();
+  };
+
+  const handleAddNewPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!currentInvoice) return;
+
+    // Validate amount
+    const amount = parseFloat(paymentFormData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Amount must be a valid positive number");
+      return;
+    }
+
+    // Validate reference for cheque and bank transfer
+    if ((paymentFormData.payment_method === "Cheque" || paymentFormData.payment_method === "Bank Transfer") 
+        && !paymentFormData.reference_number.trim()) {
+      toast.error(`Reference number is required for ${paymentFormData.payment_method} payments`);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("invoice_payments")
+      .insert({
+        invoice_id: currentInvoice.id,
+        payment_date: paymentFormData.payment_date,
+        amount: amount,
+        payment_method: paymentFormData.payment_method,
+        reference_number: paymentFormData.reference_number.trim() || null,
+        notes: paymentFormData.notes.trim() || null,
+      });
+
+    if (error) {
+      toast.error("Error recording payment");
+      return;
+    }
+
+    toast.success("Payment recorded successfully");
+    setIsPaymentDialogOpen(false);
+    fetchInvoices();
+    fetchPayments(currentInvoice.id);
+    resetPaymentForm();
+  };
+
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!isSuperAdmin) {
+      toast.error("Only Super Admin can delete payments");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete this payment?")) return;
+
+    const { error } = await supabase
+      .from("invoice_payments")
+      .delete()
+      .eq("id", paymentId);
+
+    if (error) {
+      toast.error("Error deleting payment");
+      return;
+    }
+
+    toast.success("Payment deleted successfully");
+    if (currentInvoice) {
+      fetchPayments(currentInvoice.id);
+    }
+    fetchInvoices();
   };
 
   const handleDelete = async (id: string) => {
@@ -218,12 +314,22 @@ export default function Finance() {
   const resetForm = () => {
     setFormData({
       invoice_number: "",
-      amount_received: "",
       invoice_sent: false,
       printed: false,
       emailed: false,
     });
     setCurrentInvoice(null);
+    setPayments([]);
+  };
+
+  const resetPaymentForm = () => {
+    setPaymentFormData({
+      payment_date: new Date().toISOString().split('T')[0],
+      amount: "",
+      payment_method: "Cash",
+      reference_number: "",
+      notes: "",
+    });
   };
 
   const calculateTotals = () => {
@@ -393,7 +499,16 @@ export default function Finance() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => handleAddPayment(invoice)}
+                            title="Add Payment"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => handleEdit(invoice)}
+                            title="Edit Invoice"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -401,6 +516,7 @@ export default function Finance() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(invoice.id)}
+                            title="Delete Invoice"
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -419,11 +535,11 @@ export default function Finance() {
         setIsDialogOpen(open);
         if (!open) resetForm();
       }}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Update Invoice</DialogTitle>
             <DialogDescription>
-              Update payment and status information
+              Update invoice status and view payment history
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdate} className="space-y-4">
@@ -437,19 +553,70 @@ export default function Finance() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="amount_received">Amount Received (Rs.)</Label>
-              <Input
-                id="amount_received"
-                type="number"
-                step="0.01"
-                value={formData.amount_received}
-                onChange={(e) => setFormData({ ...formData, amount_received: e.target.value })}
-                required
-              />
-            </div>
+            
+            {currentInvoice && (
+              <div className="border rounded-lg p-4 space-y-2 bg-muted/50">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Amount to Collect:</span>
+                  <span className="font-semibold">Rs. {currentInvoice.amount_to_collect.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Amount Received:</span>
+                  <span className="font-semibold text-green-600">Rs. {currentInvoice.amount_received.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-sm text-muted-foreground">Outstanding:</span>
+                  <span className="font-semibold text-destructive">
+                    Rs. {(currentInvoice.amount_to_collect - currentInvoice.amount_received).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {payments.length > 0 && (
+              <div className="space-y-2">
+                <Label>Payment History</Label>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Reference</TableHead>
+                        {isSuperAdmin && <TableHead className="w-[50px]"></TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payments.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell>{new Date(payment.payment_date).toLocaleDateString()}</TableCell>
+                          <TableCell>Rs. {payment.amount.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{payment.payment_method}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">{payment.reference_number || "-"}</TableCell>
+                          {isSuperAdmin && (
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeletePayment(payment.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
-              <Label>Status</Label>
+              <Label>Delivery Status</Label>
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="invoice_sent"
@@ -487,6 +654,160 @@ export default function Finance() {
                 Cancel
               </Button>
               <Button type="submit">Update Invoice</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
+        setIsPaymentDialogOpen(open);
+        if (!open) {
+          resetPaymentForm();
+          setCurrentInvoice(null);
+        }
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription>
+              Add a new payment for {currentInvoice?.companies.company_name} - Invoice #{currentInvoice?.invoice_number}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {currentInvoice && (
+            <div className="border rounded-lg p-4 space-y-2 bg-muted/50 mb-4">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Amount to Collect:</span>
+                <span className="font-semibold">Rs. {currentInvoice.amount_to_collect.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Amount Received:</span>
+                <span className="font-semibold text-green-600">Rs. {currentInvoice.amount_received.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-sm text-muted-foreground">Outstanding:</span>
+                <span className="font-semibold text-destructive">
+                  Rs. {(currentInvoice.amount_to_collect - currentInvoice.amount_received).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleAddNewPayment} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="payment_date">Payment Date</Label>
+                <Input
+                  id="payment_date"
+                  type="date"
+                  value={paymentFormData.payment_date}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount (Rs.)</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  value={paymentFormData.amount}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, amount: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="payment_method">Payment Method</Label>
+              <Select 
+                value={paymentFormData.payment_method} 
+                onValueChange={(value: 'Cash' | 'Cheque' | 'Bank Transfer') => 
+                  setPaymentFormData({ ...paymentFormData, payment_method: value, reference_number: "" })
+                }
+              >
+                <SelectTrigger id="payment_method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Cheque">Cheque</SelectItem>
+                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(paymentFormData.payment_method === "Cheque" || paymentFormData.payment_method === "Bank Transfer") && (
+              <div className="space-y-2">
+                <Label htmlFor="reference_number">
+                  {paymentFormData.payment_method === "Cheque" ? "Cheque Number" : "Transaction Reference"}
+                  <span className="text-destructive ml-1">*</span>
+                </Label>
+                <Input
+                  id="reference_number"
+                  type="text"
+                  value={paymentFormData.reference_number}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, reference_number: e.target.value })}
+                  placeholder={paymentFormData.payment_method === "Cheque" ? "Enter cheque number" : "Enter transaction reference"}
+                  required
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                value={paymentFormData.notes}
+                onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
+                placeholder="Add any additional notes about this payment"
+                rows={3}
+              />
+            </div>
+
+            {payments.length > 0 && (
+              <div className="space-y-2">
+                <Label>Recent Payments</Label>
+                <div className="border rounded-lg overflow-hidden max-h-[200px] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Reference</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payments.slice(0, 3).map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="text-sm">{new Date(payment.payment_date).toLocaleDateString()}</TableCell>
+                          <TableCell className="text-sm">Rs. {payment.amount.toLocaleString()}</TableCell>
+                          <TableCell><Badge variant="secondary" className="text-xs">{payment.payment_method}</Badge></TableCell>
+                          <TableCell className="text-sm">{payment.reference_number || "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsPaymentDialogOpen(false);
+                  resetPaymentForm();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">
+                <CreditCard className="h-4 w-4 mr-2" />
+                Record Payment
+              </Button>
             </div>
           </form>
         </DialogContent>
