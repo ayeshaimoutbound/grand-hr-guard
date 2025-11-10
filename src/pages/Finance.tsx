@@ -61,6 +61,7 @@ export default function Finance() {
   const { isSuperAdmin } = useAuth();
 
   const [formData, setFormData] = useState({
+    invoice_number: "",
     amount_received: "",
     invoice_sent: false,
     printed: false,
@@ -142,6 +143,7 @@ export default function Finance() {
 
     setCurrentInvoice(invoice);
     setFormData({
+      invoice_number: invoice.invoice_number,
       amount_received: invoice.amount_received.toString(),
       invoice_sent: invoice.invoice_sent,
       printed: invoice.printed,
@@ -154,6 +156,12 @@ export default function Finance() {
     e.preventDefault();
 
     if (!currentInvoice) return;
+
+    // Validate invoice number
+    if (!formData.invoice_number.trim()) {
+      toast.error("Invoice number cannot be empty");
+      return;
+    }
 
     // Validate amount_received
     const amountReceived = parseFloat(formData.amount_received);
@@ -169,6 +177,7 @@ export default function Finance() {
     const { error } = await supabase
       .from("invoices")
       .update({
+        invoice_number: formData.invoice_number,
         amount_received: amountReceived,
         invoice_sent: formData.invoice_sent,
         printed: formData.printed,
@@ -208,6 +217,7 @@ export default function Finance() {
 
   const resetForm = () => {
     setFormData({
+      invoice_number: "",
       amount_received: "",
       invoice_sent: false,
       printed: false,
@@ -417,6 +427,16 @@ export default function Finance() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdate} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="invoice_number">Invoice Number</Label>
+              <Input
+                id="invoice_number"
+                type="text"
+                value={formData.invoice_number}
+                onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                required
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="amount_received">Amount Received (Rs.)</Label>
               <Input

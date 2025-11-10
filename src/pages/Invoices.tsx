@@ -66,6 +66,7 @@ export default function Invoices() {
   const [invoiceMonth, setInvoiceMonth] = useState(format(new Date(), "yyyy-MM"));
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
+  const [editableInvoiceNumber, setEditableInvoiceNumber] = useState("");
 
   useEffect(() => {
     fetchCompanies();
@@ -215,13 +216,19 @@ export default function Invoices() {
       totalAmount,
       existingInvoiceId: existingInvoice?.id,
     });
+    setEditableInvoiceNumber(invoiceNumber);
     setIsPreviewMode(true);
   };
 
   const confirmAndDownload = async () => {
     if (!previewData) return;
 
-    const { company, invoiceNumber, monthStart, lineItems, totalAmount, existingInvoiceId } = previewData;
+    if (!editableInvoiceNumber.trim()) {
+      toast.error("Invoice number cannot be empty");
+      return;
+    }
+
+    const { company, monthStart, lineItems, totalAmount, existingInvoiceId } = previewData;
 
     let invoiceError;
 
@@ -230,6 +237,7 @@ export default function Invoices() {
       const { error } = await supabase
         .from("invoices")
         .update({
+          invoice_number: editableInvoiceNumber,
           invoice_date: format(new Date(), "yyyy-MM-dd"),
           amount_to_collect: totalAmount,
           invoice_data: { lineItems },
@@ -247,7 +255,7 @@ export default function Invoices() {
         .from("invoices")
         .insert({
           company_id: company.id,
-          invoice_number: invoiceNumber,
+          invoice_number: editableInvoiceNumber,
           invoice_date: format(new Date(), "yyyy-MM-dd"),
           month_period: format(monthStart, "yyyy-MM-dd"),
           amount_to_collect: totalAmount,
@@ -269,7 +277,7 @@ export default function Invoices() {
 
     // Generate PDF
     generateInvoicePDF({
-      invoiceNumber: invoiceNumber,
+      invoiceNumber: editableInvoiceNumber,
       invoiceDate: format(new Date(), "MMMM d, yyyy"),
       duration: previewData.periodStr,
       companyName: company.company_name,
@@ -444,10 +452,14 @@ export default function Invoices() {
                     <p className="text-muted-foreground">Location</p>
                     <p className="font-semibold">{previewData.company.location}</p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Invoice Number</p>
-                    <p className="font-semibold">{previewData.invoiceNumber}</p>
-                  </div>
+                   <div>
+                     <p className="text-muted-foreground">Invoice Number</p>
+                     <Input
+                       value={editableInvoiceNumber}
+                       onChange={(e) => setEditableInvoiceNumber(e.target.value)}
+                       className="mt-1 font-semibold"
+                     />
+                   </div>
                   <div>
                     <p className="text-muted-foreground">Period</p>
                     <p className="font-semibold">{previewData.periodStr}</p>
