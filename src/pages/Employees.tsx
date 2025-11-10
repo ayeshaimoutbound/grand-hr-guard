@@ -30,11 +30,11 @@ interface Employee {
   id: string;
   employee_id: string;
   full_name: string;
-  nic: string;
-  bank_name: string;
-  branch: string;
-  account_number: string;
-  phone_number: string;
+  nic?: string;
+  bank_name?: string;
+  branch?: string;
+  account_number?: string;
+  phone_number?: string;
 }
 
 export default function Employees() {
@@ -58,7 +58,7 @@ export default function Employees() {
 
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     const filtered = employees.filter(
@@ -70,18 +70,25 @@ export default function Employees() {
   }, [searchTerm, employees]);
 
   const fetchEmployees = async () => {
-    const { data, error } = await supabase
-      .from("employees")
-      .select("*")
-      .order("created_at", { ascending: false });
+    // Super admins query the full employees table with all sensitive data
+    // Regular admins query the limited view with only non-sensitive fields
+    const { data, error } = isSuperAdmin
+      ? await supabase
+          .from("employees")
+          .select("*")
+          .order("created_at", { ascending: false })
+      : await supabase
+          .from("employees_limited" as any)
+          .select("*")
+          .order("created_at", { ascending: false });
 
     if (error) {
       toast.error("Error fetching employees");
       return;
     }
 
-    setEmployees(data || []);
-    setFilteredEmployees(data || []);
+    setEmployees((data || []) as Employee[]);
+    setFilteredEmployees((data || []) as Employee[]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
