@@ -7,7 +7,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     totalEmployees: 0,
     totalCompanies: 0,
-    monthlyShifts: 0,
+    monthlyRevenue: 0,
     totalSalary: 0,
   });
 
@@ -17,26 +17,32 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const [employeesRes, companiesRes, attendanceRes, salariesRes] = await Promise.all([
+      const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0, 7);
+      
+      const [employeesRes, companiesRes, invoicesRes, salariesRes] = await Promise.all([
         supabase.from("employees").select("id", { count: "exact", head: true }),
         supabase.from("companies").select("id", { count: "exact", head: true }),
         supabase
-          .from("attendance")
-          .select("id", { count: "exact", head: true })
-          .gte("attendance_date", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
-          .eq("present", true),
+          .from("invoices")
+          .select("amount_to_collect")
+          .gte("month_period", `${currentMonth}-01`)
+          .lte("month_period", `${currentMonth}-31`),
         supabase
           .from("salaries")
-          .select("final_salary")
-          .gte("salary_month", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
+          .select("gross_shift_total, final_salary")
+          .gte("salary_month", `${currentMonth}-01`)
+          .lte("salary_month", `${currentMonth}-31`),
       ]);
 
+      const totalCharged = invoicesRes.data?.reduce((sum, inv) => sum + (Number(inv.amount_to_collect) || 0), 0) || 0;
+      const totalPaidToEmployees = salariesRes.data?.reduce((sum, s) => sum + (Number(s.gross_shift_total) || 0), 0) || 0;
       const totalSalary = salariesRes.data?.reduce((sum, s) => sum + (Number(s.final_salary) || 0), 0) || 0;
+      const monthlyRevenue = totalCharged - totalPaidToEmployees;
 
       setStats({
         totalEmployees: employeesRes.count || 0,
         totalCompanies: companiesRes.count || 0,
-        monthlyShifts: attendanceRes.count || 0,
+        monthlyRevenue: monthlyRevenue,
         totalSalary: totalSalary,
       });
     } catch (error) {
@@ -58,15 +64,15 @@ export default function Dashboard() {
       gradient: "from-secondary to-secondary-hover",
     },
     {
-      title: "Shifts This Month",
-      value: stats.monthlyShifts,
-      icon: Calendar,
+      title: "Revenue This Month",
+      value: `Rs. ${stats.monthlyRevenue.toLocaleString()}`,
+      icon: DollarSign,
       gradient: "from-accent to-accent",
     },
     {
       title: "Total Salary Processed",
       value: `Rs. ${stats.totalSalary.toLocaleString()}`,
-      icon: DollarSign,
+      icon: Calendar,
       gradient: "from-primary to-secondary",
     },
   ];
