@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Shield } from "lucide-react";
+
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -48,11 +48,15 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
       <Card className="w-full max-w-md shadow-elevated">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center">
-            <Shield className="h-8 w-8 text-primary-foreground" />
+          <div className="mx-auto">
+            <img 
+              src="/logo.png" 
+              alt="Grand Senaro Security Logo" 
+              className="w-24 h-24 mx-auto"
+            />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">Grand Senaro</CardTitle>
+            <CardTitle className="text-2xl font-bold">Grand Senaro Security</CardTitle>
             <CardDescription className="text-base">Human Resources Management System</CardDescription>
           </div>
         </CardHeader>
