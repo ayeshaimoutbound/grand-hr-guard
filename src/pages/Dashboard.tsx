@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Building2, Calendar, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Dashboard() {
+  const { isSuperAdmin } = useAuth();
   const [stats, setStats] = useState({
     totalEmployees: 0,
     totalCompanies: 0,
@@ -46,7 +48,9 @@ export default function Dashboard() {
         totalSalary: totalSalary,
       });
     } catch (error) {
-      console.error("Error fetching stats:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error fetching stats:", error);
+      }
     }
   };
 
@@ -85,19 +89,26 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat, index) => (
-          <Card key={index} className="shadow-card hover:shadow-elevated transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <div className={`p-2 rounded-lg bg-gradient-to-br ${stat.gradient}`}>
-                <stat.icon className="h-4 w-4 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
-        ))}
+        {statCards.map((stat, index) => {
+          // Hide revenue metrics from regular admins for security
+          if (stat.title === "Revenue This Month" && !isSuperAdmin) {
+            return null;
+          }
+          
+          return (
+            <Card key={index} className="shadow-card hover:shadow-elevated transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                <div className={`p-2 rounded-lg bg-gradient-to-br ${stat.gradient}`}>
+                  <stat.icon className="h-4 w-4 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <Card className="shadow-card">

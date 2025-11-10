@@ -72,7 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       setRole(data?.role as UserRole);
     } catch (error) {
-      console.error("Error fetching user role:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error fetching user role:", error);
+      }
       setRole(null);
     } finally {
       setLoading(false);
@@ -155,7 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.success("Logged out successfully");
       navigate("/login");
     } catch (error: any) {
-      console.error("Sign out error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Sign out error:", error);
+      }
       toast.error("Error logging out");
     }
   };
@@ -180,7 +184,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       toast.success("Password reset email sent! Check your inbox.");
     } catch (error: any) {
-      console.error("Password reset request error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Password reset request error:", error);
+      }
       throw error;
     }
   };

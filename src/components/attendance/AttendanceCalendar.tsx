@@ -261,7 +261,9 @@ export default function AttendanceCalendar({
       onRefresh();
     } catch (error) {
       toast.dismiss();
-      console.error("Error saving attendance:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error saving attendance:", error);
+      }
       toast.error("Failed to save attendance");
     }
   };

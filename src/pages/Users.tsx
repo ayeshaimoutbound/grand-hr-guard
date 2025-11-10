@@ -129,7 +129,9 @@ export default function Users() {
       fetchUsers();
       setIsDialogOpen(false);
     } catch (error: any) {
-      console.error("Error creating user:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error creating user:", error);
+      }
       toast.error(error.message || "Error creating user");
     }
   };
@@ -152,7 +154,9 @@ export default function Users() {
       toast.success("User deleted successfully");
       fetchUsers();
     } catch (error: any) {
-      console.error("Error deleting user:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error deleting user:", error);
+      }
       toast.error(error.message || "Error deleting user");
     }
   };

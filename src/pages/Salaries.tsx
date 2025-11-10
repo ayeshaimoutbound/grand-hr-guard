@@ -7,6 +7,7 @@ import { Printer, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { z } from "zod";
 import {
   Table,
   TableBody,
@@ -135,6 +136,20 @@ export default function Salaries() {
   };
 
   const handleCellEdit = async (salaryId: string, field: string, value: number, employeeRecord: EmployeeSalaryRecord) => {
+    // Validate input
+    const salaryFieldSchema = z.number()
+      .min(0, 'Value cannot be negative')
+      .max(10000000, 'Value exceeds maximum allowed');
+    
+    try {
+      salaryFieldSchema.parse(value);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+        return;
+      }
+    }
+
     // Calculate new final salary
     const newValues = { ...employeeRecord, [field]: value };
     const newFinalSalary = newValues.basic_salary + newValues.gross_shift_total - 
@@ -170,6 +185,12 @@ export default function Salaries() {
   };
 
   const handlePrintSalarySlip = (employeeRecord: EmployeeSalaryRecord, companyName: string) => {
+    // Security: Restrict salary slip printing to super admins only
+    if (!isSuperAdmin) {
+      toast.error("Only super admins can print salary slips");
+      return;
+    }
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
