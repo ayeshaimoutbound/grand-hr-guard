@@ -4,13 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Shield } from "lucide-react";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const [resetUsername, setResetUsername] = useState("");
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isResetLoading, setIsResetLoading] = useState(false);
+  const { signIn, requestPasswordReset } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +26,21 @@ export default function Login() {
       // Error is already handled in signIn function
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsResetLoading(true);
+
+    try {
+      await requestPasswordReset(resetUsername);
+      setIsResetDialogOpen(false);
+      setResetUsername("");
+    } catch (error) {
+      // Error is already handled in requestPasswordReset function
+    } finally {
+      setIsResetLoading(false);
     }
   };
 
@@ -71,6 +90,45 @@ export default function Login() {
               {isLoading ? "Logging in..." : "Login"}
             </Button>
           </form>
+
+          <div className="mt-4 text-center">
+            <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="link" className="text-sm text-muted-foreground hover:text-primary">
+                  Forgot your password?
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Reset Password</DialogTitle>
+                  <DialogDescription>
+                    Enter your username and we'll send you a password reset link to your email.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handlePasswordReset} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-username">Username</Label>
+                    <Input
+                      id="reset-username"
+                      type="text"
+                      placeholder="Enter your username"
+                      value={resetUsername}
+                      onChange={(e) => setResetUsername(e.target.value)}
+                      required
+                      disabled={isResetLoading}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isResetLoading}
+                  >
+                    {isResetLoading ? "Sending..." : "Send Reset Link"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -13,6 +13,8 @@ interface AuthContextType {
   loading: boolean;
   signIn: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  requestPasswordReset: (username: string) => Promise<void>;
+  resetPassword: (newPassword: string) => Promise<void>;
   isSuperAdmin: boolean;
   isAdmin: boolean;
 }
@@ -160,6 +162,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const requestPasswordReset = async (username: string) => {
+    try {
+      // Look up email from profiles table based on username
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("username", username)
+        .single();
+
+      if (profileError || !profile?.email) {
+        toast.error("Username not found");
+        throw new Error("Username not found");
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+
+      toast.success("Password reset email sent! Check your inbox.");
+    } catch (error: any) {
+      console.error("Password reset request error:", error);
+      throw error;
+    }
+  };
+
+  const resetPassword = async (newPassword: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast.success("Password updated successfully!");
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast.error("Failed to update password");
+      throw error;
+    }
+  };
+
   const isSuperAdmin = role === "super_admin";
   const isAdmin = role === "admin" || role === "super_admin";
 
@@ -172,6 +217,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         signIn,
         signOut,
+        requestPasswordReset,
+        resetPassword,
         isSuperAdmin,
         isAdmin,
       }}
