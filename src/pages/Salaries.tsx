@@ -516,6 +516,7 @@ export default function Salaries() {
         <style>
           body { font-family: Arial, sans-serif; padding: 40px; }
           .header { text-align: center; margin-bottom: 30px; }
+          .logo { width: 80px; height: 80px; margin: 0 auto 15px; display: block; }
           .header h1 { margin: 0; font-size: 24px; }
           .header p { margin: 5px 0; color: #666; }
           .info-section { margin-bottom: 20px; }
@@ -534,6 +535,7 @@ export default function Salaries() {
       </head>
       <body>
         <div class="header">
+          <img src="/logo.png" alt="Company Logo" class="logo">
           <h1>SALARY SLIP</h1>
           <p>Month: ${new Date(selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
           <p>Company: ${companyName}</p>

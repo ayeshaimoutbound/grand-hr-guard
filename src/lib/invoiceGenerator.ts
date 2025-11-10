@@ -37,6 +37,11 @@ export const generateInvoicePDF = (invoiceData: InvoiceData) => {
           text-align: center;
           margin-bottom: 30px;
         }
+        .logo {
+          width: 80px;
+          height: 80px;
+          margin: 0 auto 10px;
+        }
         .header h1 {
           margin: 5px 0;
           font-size: 16px;
@@ -100,6 +105,7 @@ export const generateInvoicePDF = (invoiceData: InvoiceData) => {
     </head>
     <body>
       <div class="header">
+        <img src="/logo.png" alt="Company Logo" class="logo">
         <h1>GRAND SENARO SECURITY (PVT) LTD</h1>
         <p>232/1/1B LAKSIRI BUILDING, WATTEGEDARA, MAHARAGAMA</p>
         <p>REAR ADMIN AND LOGISTICS DEPARTMENT</p>
