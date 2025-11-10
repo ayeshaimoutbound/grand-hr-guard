@@ -193,6 +193,47 @@ export default function Finance() {
     setIsPaymentDialogOpen(true);
   };
 
+  const handleSubmitPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!currentInvoice) return;
+
+    const amount = parseFloat(paymentFormData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Amount must be a valid positive number");
+      return;
+    }
+
+    // Validate reference number for Cheque and Bank Transfer
+    if ((paymentFormData.payment_method === "Cheque" || paymentFormData.payment_method === "Bank Transfer") && 
+        !paymentFormData.reference_number.trim()) {
+      toast.error(`Reference number is required for ${paymentFormData.payment_method}`);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("invoice_payments")
+      .insert({
+        invoice_id: currentInvoice.id,
+        payment_date: paymentFormData.payment_date,
+        amount: amount,
+        payment_method: paymentFormData.payment_method,
+        reference_number: paymentFormData.reference_number.trim() || null,
+        notes: paymentFormData.notes.trim() || null,
+      });
+
+    if (error) {
+      toast.error("Error recording payment");
+      return;
+    }
+
+    toast.success("Payment recorded successfully");
+    setIsPaymentDialogOpen(false);
+    fetchInvoices();
+    fetchPayments(currentInvoice.id);
+    resetPaymentForm();
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -326,7 +367,7 @@ export default function Finance() {
     setPaymentFormData({
       payment_date: new Date().toISOString().split('T')[0],
       amount: "",
-      payment_method: "Cash",
+      payment_method: "Cash" as 'Cash' | 'Cheque' | 'Bank Transfer',
       reference_number: "",
       notes: "",
     });
@@ -806,6 +847,138 @@ export default function Finance() {
               </Button>
               <Button type="submit">
                 <CreditCard className="h-4 w-4 mr-2" />
+                Record Payment
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription>
+              Record a new payment for invoice {currentInvoice?.invoice_number}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitPayment} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="payment_date">Payment Date</Label>
+              <Input
+                id="payment_date"
+                type="date"
+                value={paymentFormData.payment_date}
+                onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_date: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount (Rs.)</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                value={paymentFormData.amount}
+                onChange={(e) => setPaymentFormData({ ...paymentFormData, amount: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="payment_method">Payment Method</Label>
+              <Select 
+                value={paymentFormData.payment_method} 
+                onValueChange={(value) => setPaymentFormData({ ...paymentFormData, payment_method: value as 'Cash' | 'Cheque' | 'Bank Transfer', reference_number: "" })}
+              >
+                <SelectTrigger id="payment_method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Cheque">Cheque</SelectItem>
+                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(paymentFormData.payment_method === "Cheque" || paymentFormData.payment_method === "Bank Transfer") && (
+              <div className="space-y-2">
+                <Label htmlFor="reference_number">
+                  {paymentFormData.payment_method === "Cheque" ? "Cheque Number" : "Transaction Reference"}
+                </Label>
+                <Input
+                  id="reference_number"
+                  type="text"
+                  value={paymentFormData.reference_number}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, reference_number: e.target.value })}
+                  placeholder={paymentFormData.payment_method === "Cheque" ? "Enter cheque number" : "Enter transaction reference"}
+                  required
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Input
+                id="notes"
+                type="text"
+                value={paymentFormData.notes}
+                onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
+                placeholder="Additional notes about this payment"
+              />
+            </div>
+            
+            {currentInvoice && (
+              <div className="p-3 bg-muted rounded-lg text-sm">
+                <div className="flex justify-between mb-1">
+                  <span>Total Amount:</span>
+                  <span className="font-semibold">Rs. {currentInvoice.amount_to_collect.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between mb-1">
+                  <span>Already Received:</span>
+                  <span className="font-semibold text-green-600">Rs. {currentInvoice.amount_received.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between border-t pt-1 mt-1">
+                  <span className="font-semibold">Outstanding:</span>
+                  <span className="font-semibold text-destructive">
+                    Rs. {(currentInvoice.amount_to_collect - currentInvoice.amount_received).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Payment History</Label>
+              <div className="border rounded-lg max-h-48 overflow-y-auto">
+                {payments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground p-4 text-center">No payments recorded yet</p>
+                ) : (
+                  <div className="p-2 space-y-2">
+                    {payments.map((payment) => (
+                      <div key={payment.id} className="flex justify-between items-center p-2 bg-muted rounded text-sm">
+                        <div>
+                          <div className="font-semibold">{new Date(payment.payment_date).toLocaleDateString()}</div>
+                          <div className="text-muted-foreground">
+                            {payment.payment_method}
+                            {payment.reference_number && ` - ${payment.reference_number}`}
+                          </div>
+                        </div>
+                        <div className="font-semibold">Rs. {payment.amount.toLocaleString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsPaymentDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">
+                <DollarSign className="h-4 w-4 mr-2" />
                 Record Payment
               </Button>
             </div>
