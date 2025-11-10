@@ -62,7 +62,9 @@ interface ConsolidatedEmployeeSalary {
   total_shifts_all: number;
   gross_shift_total_all: number;
   basic_salary: number;
-  epf: number;
+  epf_employee: number;
+  epf_employer: number;
+  etf_employer: number;
   salary_advance: number;
   transport: number;
   food: number;
@@ -194,8 +196,10 @@ export default function Salaries() {
         primarySalaryId = `temp-${employee.id}`;
       }
 
-      const epf = basicSalary * 0.08;
-      const finalSalary = grossShiftTotalAll - epf - salaryAdvance - transport - food - uniforms - otherDeductions;
+      const epfEmployee = basicSalary * 0.08;
+      const epfEmployer = basicSalary * 0.12;
+      const etfEmployer = basicSalary * 0.03;
+      const finalSalary = grossShiftTotalAll - epfEmployee - salaryAdvance - transport - food - uniforms - otherDeductions;
 
       if (totalShiftsAll > 0) {
         consolidatedMap.set(employee.id, {
@@ -204,7 +208,9 @@ export default function Salaries() {
           total_shifts_all: totalShiftsAll,
           gross_shift_total_all: grossShiftTotalAll,
           basic_salary: basicSalary,
-          epf: epf,
+          epf_employee: epfEmployee,
+          epf_employer: epfEmployer,
+          etf_employer: etfEmployer,
           salary_advance: salaryAdvance,
           transport: transport,
           food: food,
@@ -264,8 +270,10 @@ export default function Salaries() {
       }
     }
 
-    const epf = values.basic_salary * 0.08;
-    const finalSalary = editingRecord.gross_shift_total_all - epf - values.salary_advance - values.transport - values.food - values.uniforms - values.other_deductions;
+    const epfEmployee = values.basic_salary * 0.08;
+    const epfEmployer = values.basic_salary * 0.12;
+    const etfEmployer = values.basic_salary * 0.03;
+    const finalSalary = editingRecord.gross_shift_total_all - epfEmployee - values.salary_advance - values.transport - values.food - values.uniforms - values.other_deductions;
 
     // Update the primary salary record
     const isNewRecord = editingRecord.primary_salary_id.startsWith('temp-');
@@ -283,7 +291,7 @@ export default function Salaries() {
           pay_per_shift: 0,
           gross_shift_total: editingRecord.gross_shift_total_all,
           ...values,
-          epf: epf,
+          epf: epfEmployee,
           final_salary: finalSalary,
         });
 
@@ -297,7 +305,7 @@ export default function Salaries() {
         .from("salaries")
         .update({
           ...values,
-          epf: epf,
+          epf: epfEmployee,
           final_salary: finalSalary,
         })
         .eq("id", editingRecord.primary_salary_id);
@@ -405,12 +413,20 @@ export default function Salaries() {
               <td></td>
             </tr>
             <tr>
-              <td>Basic Salary (for EPF calculation)</td>
+              <td>Basic Salary</td>
               <td style="text-align: right;">${employeeRecord.basic_salary.toFixed(2)}</td>
             </tr>
             <tr>
-              <td>EPF (8%)</td>
-              <td style="text-align: right;">${employeeRecord.epf.toFixed(2)}</td>
+              <td>EPF - Employee (8%)</td>
+              <td style="text-align: right;">${employeeRecord.epf_employee.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>EPF - Employer (12%)</td>
+              <td style="text-align: right;">${employeeRecord.epf_employer.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>ETF - Employer (3%)</td>
+              <td style="text-align: right;">${employeeRecord.etf_employer.toFixed(2)}</td>
             </tr>
             <tr>
               <td>Salary Advance</td>
@@ -434,7 +450,7 @@ export default function Salaries() {
             </tr>
             <tr class="total-row">
               <td>Total Deductions</td>
-              <td style="text-align: right;">${(employeeRecord.epf + employeeRecord.salary_advance + employeeRecord.transport + employeeRecord.food + employeeRecord.uniforms + employeeRecord.other_deductions).toFixed(2)}</td>
+              <td style="text-align: right;">${(employeeRecord.epf_employee + employeeRecord.salary_advance + employeeRecord.transport + employeeRecord.food + employeeRecord.uniforms + employeeRecord.other_deductions).toFixed(2)}</td>
             </tr>
             <tr class="final-row">
               <td>NET SALARY</td>
@@ -492,7 +508,9 @@ export default function Salaries() {
       'Ranks': emp.companyWork.map(w => w.rank).join(', '),
       'Gross Total': `Rs. ${emp.gross_shift_total_all.toFixed(2)}`,
       'Basic Salary': `Rs. ${emp.basic_salary.toFixed(2)}`,
-      'EPF (8%)': `Rs. ${emp.epf.toFixed(2)}`,
+      'EPF Employee (8%)': `Rs. ${emp.epf_employee.toFixed(2)}`,
+      'EPF Employer (12%)': `Rs. ${emp.epf_employer.toFixed(2)}`,
+      'ETF Employer (3%)': `Rs. ${emp.etf_employer.toFixed(2)}`,
       'Salary Advance': `Rs. ${emp.salary_advance.toFixed(2)}`,
       'Transport': `Rs. ${emp.transport.toFixed(2)}`,
       'Food': `Rs. ${emp.food.toFixed(2)}`,
@@ -510,7 +528,9 @@ export default function Salaries() {
       'Ranks': '',
       'Gross Total': `Rs. ${consolidatedSalaries.reduce((sum, emp) => sum + emp.gross_shift_total_all, 0).toFixed(2)}`,
       'Basic Salary': '',
-      'EPF (8%)': '',
+      'EPF Employee (8%)': '',
+      'EPF Employer (12%)': '',
+      'ETF Employer (3%)': '',
       'Salary Advance': '',
       'Transport': '',
       'Food': '',
@@ -523,8 +543,8 @@ export default function Salaries() {
     
     ws['!cols'] = [
       { wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 30 }, { wch: 15 },
-      { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 12 },
-      { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 15 }
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 15 }
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Consolidated Salaries');
@@ -631,7 +651,7 @@ export default function Salaries() {
                         <TableCell className="text-right">{empSalary.total_shifts_all}</TableCell>
                         <TableCell className="text-right">Rs. {empSalary.gross_shift_total_all.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
-                          Rs. {(empSalary.epf + empSalary.salary_advance + empSalary.transport + empSalary.food + empSalary.uniforms + empSalary.other_deductions).toFixed(2)}
+                          Rs. {(empSalary.epf_employee + empSalary.salary_advance + empSalary.transport + empSalary.food + empSalary.uniforms + empSalary.other_deductions).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right font-semibold">Rs. {empSalary.final_salary.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
@@ -696,7 +716,7 @@ export default function Salaries() {
           </DialogHeader>
           <form onSubmit={handleSubmitEdit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="basic_salary">Basic Salary (for EPF)</Label>
+              <Label htmlFor="basic_salary">Basic Salary</Label>
               <Input
                 id="basic_salary"
                 type="number"
