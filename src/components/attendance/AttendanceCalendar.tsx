@@ -419,7 +419,7 @@ export default function AttendanceCalendar({
           <CardTitle className="text-base">Attendance Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Day vs Night Shifts Chart */}
             <div>
               <h4 className="text-sm font-medium mb-4 text-center">Day vs Night Shifts</h4>
@@ -477,51 +477,6 @@ export default function AttendanceCalendar({
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2 font-medium">Rank</th>
-                  <th className="text-center p-2 font-medium">Day Shifts</th>
-                  <th className="text-center p-2 font-medium">Night Shifts</th>
-                  <th className="text-center p-2 font-medium">Total Shifts</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b hover:bg-muted/20">
-                  <td className="p-2 font-medium">OIC</td>
-                  <td className="text-center p-2">{shiftReport.OIC.day}</td>
-                  <td className="text-center p-2">{shiftReport.OIC.night}</td>
-                  <td className="text-center p-2 font-medium">{shiftReport.OIC.total}</td>
-                </tr>
-                <tr className="border-b hover:bg-muted/20">
-                  <td className="p-2 font-medium">SSO</td>
-                  <td className="text-center p-2">{shiftReport.SSO.day}</td>
-                  <td className="text-center p-2">{shiftReport.SSO.night}</td>
-                  <td className="text-center p-2 font-medium">{shiftReport.SSO.total}</td>
-                </tr>
-                <tr className="border-b hover:bg-muted/20">
-                  <td className="p-2 font-medium">JSO</td>
-                  <td className="text-center p-2">{shiftReport.JSO.day}</td>
-                  <td className="text-center p-2">{shiftReport.JSO.night}</td>
-                  <td className="text-center p-2 font-medium">{shiftReport.JSO.total}</td>
-                </tr>
-                <tr className="border-b hover:bg-muted/20">
-                  <td className="p-2 font-medium">LSO</td>
-                  <td className="text-center p-2">{shiftReport.LSO.day}</td>
-                  <td className="text-center p-2">{shiftReport.LSO.night}</td>
-                  <td className="text-center p-2 font-medium">{shiftReport.LSO.total}</td>
-                </tr>
-                <tr className="bg-muted/50 font-semibold">
-                  <td className="p-2">TOTAL</td>
-                  <td className="text-center p-2">{shiftReport.totals.day}</td>
-                  <td className="text-center p-2">{shiftReport.totals.night}</td>
-                  <td className="text-center p-2">{shiftReport.totals.total}</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         </CardContent>
       </Card>
