@@ -294,8 +294,10 @@ export default function AttendanceCalendar({
 
     if (existing) {
       // Update existing record - preserve deductions
+      // Auto-calculate EPF as 8% of Basic Salary
+      const epf = (existing.basic_salary || 0) * 0.08;
       const finalSalary = (existing.basic_salary || 0) + grossShiftTotal - 
-        (existing.epf || 0) - (existing.salary_advance || 0) - 
+        epf - (existing.salary_advance || 0) - 
         (existing.transport || 0) - (existing.food || 0) - 
         (existing.uniforms || 0) - (existing.other_deductions || 0);
 
@@ -305,6 +307,7 @@ export default function AttendanceCalendar({
           total_shifts: stats.totalShifts, 
           pay_per_shift: payPerShift, 
           gross_shift_total: grossShiftTotal,
+          epf: epf,
           final_salary: finalSalary
         })
         .eq("id", existing.id);

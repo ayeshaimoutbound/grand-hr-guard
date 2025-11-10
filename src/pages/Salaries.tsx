@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Printer, ChevronDown, ChevronUp } from "lucide-react";
+import { Printer, ChevronDown, ChevronUp, FileDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { z } from "zod";
+import * as XLSX from "xlsx";
 import {
   Table,
   TableBody,
@@ -150,8 +151,16 @@ export default function Salaries() {
       }
     }
 
-    // Calculate new final salary
+    // Update values
     const newValues = { ...employeeRecord, [field]: value };
+    
+    // Auto-calculate EPF as 8% of Basic Salary
+    if (field === 'basic_salary') {
+      newValues.epf = value * 0.08;
+    }
+    
+    // Calculate final salary
+    // Final Salary = (Basic Salary + Gross Shift Total) - (EPF + All Deductions)
     const newFinalSalary = newValues.basic_salary + newValues.gross_shift_total - 
       newValues.epf - newValues.salary_advance - newValues.transport - 
       newValues.food - newValues.uniforms - newValues.other_deductions;
@@ -162,19 +171,31 @@ export default function Salaries() {
         ...companyData,
         employees: companyData.employees.map(emp =>
           emp.salary_id === salaryId
-            ? { ...emp, [field]: value, final_salary: newFinalSalary }
+            ? { 
+                ...emp, 
+                [field]: value, 
+                epf: field === 'basic_salary' ? newValues.epf : emp.epf,
+                final_salary: newFinalSalary 
+              }
             : emp
         ),
       }))
     );
 
     // Update in database
+    const updateData: any = { 
+      [field]: value,
+      final_salary: newFinalSalary 
+    };
+    
+    // If basic salary changed, also update EPF
+    if (field === 'basic_salary') {
+      updateData.epf = newValues.epf;
+    }
+    
     const { error } = await supabase
       .from("salaries")
-      .update({ 
-        [field]: value,
-        final_salary: newFinalSalary 
-      })
+      .update(updateData)
       .eq("id", salaryId);
 
     if (error) {
@@ -343,6 +364,79 @@ export default function Salaries() {
     });
   };
 
+  const handleExportToExcel = (companyData?: CompanySalaryData) => {
+    // Export either specific company or all companies
+    const dataToExport = companyData ? [companyData] : companySalaryData;
+    
+    if (dataToExport.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+
+    dataToExport.forEach(company => {
+      // Prepare data for this company
+      const excelData = company.employees.map(emp => ({
+        'Employee ID': emp.employee.employee_id,
+        'Full Name': emp.employee.full_name,
+        'Total Shifts': emp.total_shifts,
+        'Pay per Shift': `Rs. ${emp.pay_per_shift.toFixed(2)}`,
+        'Gross Shift Total': `Rs. ${emp.gross_shift_total.toFixed(2)}`,
+        'Basic Salary': `Rs. ${emp.basic_salary.toFixed(2)}`,
+        'EPF (8%)': `Rs. ${emp.epf.toFixed(2)}`,
+        'Salary Advance': `Rs. ${emp.salary_advance.toFixed(2)}`,
+        'Transport': `Rs. ${emp.transport.toFixed(2)}`,
+        'Food': `Rs. ${emp.food.toFixed(2)}`,
+        'Uniforms': `Rs. ${emp.uniforms.toFixed(2)}`,
+        'Other Deductions': `Rs. ${emp.other_deductions.toFixed(2)}`,
+        'Final Salary': `Rs. ${emp.final_salary.toFixed(2)}`
+      }));
+
+      // Add totals row
+      excelData.push({
+        'Employee ID': 'TOTAL',
+        'Full Name': '',
+        'Total Shifts': company.totalShifts,
+        'Pay per Shift': '',
+        'Gross Shift Total': `Rs. ${company.totalGross.toFixed(2)}`,
+        'Basic Salary': '',
+        'EPF (8%)': '',
+        'Salary Advance': '',
+        'Transport': '',
+        'Food': '',
+        'Uniforms': '',
+        'Other Deductions': '',
+        'Final Salary': `Rs. ${company.employees.reduce((sum, emp) => sum + emp.final_salary, 0).toFixed(2)}`
+      });
+
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 15 },
+        { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 15 },
+        { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 15 }
+      ];
+
+      // Add worksheet to workbook (limit sheet name to 31 chars)
+      const sheetName = company.company.company_name.substring(0, 31);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    // Generate filename
+    const monthYear = new Date(selectedMonth).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const filename = companyData 
+      ? `Salary_${companyData.company.company_name}_${monthYear}.xlsx`
+      : `Salary_Report_${monthYear}.xlsx`;
+
+    // Save file
+    XLSX.writeFile(wb, filename);
+    toast.success(`Exported to ${filename}`);
+  };
+
   const renderEditableCell = (
     salaryId: string,
     field: string,
@@ -398,6 +492,16 @@ export default function Salaries() {
                 className="max-w-xs"
               />
             </div>
+            {companySalaryData.length > 0 && (
+              <Button 
+                onClick={() => handleExportToExcel()}
+                variant="default"
+                className="mt-6"
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                Export All to Excel
+              </Button>
+            )}
           </div>
         </CardHeader>
       </Card>
@@ -428,11 +532,24 @@ export default function Salaries() {
                           Rs. {companyData.totalGross.toFixed(2)} total gross
                         </p>
                       </div>
-                      {expandedCompanies.has(companyData.company.id) ? (
-                        <ChevronUp className="h-5 w-5" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5" />
-                      )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportToExcel(companyData);
+                          }}
+                        >
+                          <FileDown className="h-4 w-4 mr-2" />
+                          Export
+                        </Button>
+                        {expandedCompanies.has(companyData.company.id) ? (
+                          <ChevronUp className="h-5 w-5" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5" />
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -448,7 +565,7 @@ export default function Salaries() {
                             <TableHead className="text-right">Rate</TableHead>
                             <TableHead className="text-right">Gross</TableHead>
                             <TableHead className="text-right">Basic</TableHead>
-                            <TableHead className="text-right">EPF</TableHead>
+                            <TableHead className="text-right">EPF (8%)</TableHead>
                             <TableHead className="text-right">Advance</TableHead>
                             <TableHead className="text-right">Transport</TableHead>
                             <TableHead className="text-right">Food</TableHead>
@@ -470,7 +587,10 @@ export default function Salaries() {
                                 {renderEditableCell(empRecord.salary_id, 'basic_salary', empRecord.basic_salary, empRecord)}
                               </TableCell>
                               <TableCell className="text-right">
-                                {renderEditableCell(empRecord.salary_id, 'epf', empRecord.epf, empRecord)}
+                                {/* EPF is auto-calculated as 8% of Basic Salary - read-only */}
+                                <span className="text-sm text-muted-foreground">
+                                  Rs. {empRecord.epf.toFixed(2)}
+                                </span>
                               </TableCell>
                               <TableCell className="text-right">
                                 {renderEditableCell(empRecord.salary_id, 'salary_advance', empRecord.salary_advance, empRecord)}
