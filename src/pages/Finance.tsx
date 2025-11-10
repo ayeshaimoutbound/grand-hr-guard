@@ -155,10 +155,21 @@ export default function Finance() {
 
     if (!currentInvoice) return;
 
+    // Validate amount_received
+    const amountReceived = parseFloat(formData.amount_received);
+    if (isNaN(amountReceived) || amountReceived < 0) {
+      toast.error("Amount received must be a valid positive number");
+      return;
+    }
+    if (amountReceived > 100000000) {
+      toast.error("Amount received exceeds maximum allowed value");
+      return;
+    }
+
     const { error } = await supabase
       .from("invoices")
       .update({
-        amount_received: parseFloat(formData.amount_received),
+        amount_received: amountReceived,
         invoice_sent: formData.invoice_sent,
         printed: formData.printed,
         emailed: formData.emailed,

@@ -171,23 +171,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         p_username: username,
       });
 
-      if (rpcError || !email) {
-        toast.error("Username not found");
-        throw new Error("Username not found");
+      // Always show the same message to prevent user enumeration
+      if (!rpcError && email) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+
+        if (error && import.meta.env.DEV) {
+          console.error("Password reset email error:", error);
+        }
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
-
-      toast.success("Password reset email sent! Check your inbox.");
+      // Generic success message regardless of whether username exists
+      toast.success("If the username exists, a password reset email has been sent.");
     } catch (error: any) {
       if (import.meta.env.DEV) {
         console.error("Password reset request error:", error);
       }
-      throw error;
+      // Generic message even on error
+      toast.success("If the username exists, a password reset email has been sent.");
     }
   };
 
