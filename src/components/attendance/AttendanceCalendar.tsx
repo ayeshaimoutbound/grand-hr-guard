@@ -344,16 +344,7 @@ export default function AttendanceCalendar({
                           return (
                             <td
                               key={`${date}-${shift}`}
-                              className="p-1 text-center border-r cursor-pointer hover:bg-muted/30"
-                              onClick={() => {
-                                if (!attendance) {
-                                  setEditingCell({
-                                    employeeId: employee.id,
-                                    date,
-                                    shift: shift as "Day" | "Night",
-                                  });
-                                }
-                              }}
+                              className="p-1 text-center border-r"
                             >
                               {attendance?.present ? (
                                 <div className="flex flex-col items-center gap-1">
@@ -362,7 +353,7 @@ export default function AttendanceCalendar({
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-4 w-4 p-0"
+                                      className="h-4 w-4 p-0 text-destructive hover:text-destructive"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleRemoveAttendance(attendance.id);
@@ -398,7 +389,20 @@ export default function AttendanceCalendar({
                                   </SelectContent>
                                 </Select>
                               ) : (
-                                <span className="text-muted-foreground">-</span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 w-full text-xs"
+                                  onClick={() => {
+                                    setEditingCell({
+                                      employeeId: employee.id,
+                                      date,
+                                      shift: shift as "Day" | "Night",
+                                    });
+                                  }}
+                                >
+                                  + {shift === "Day" ? "D" : "N"}
+                                </Button>
                               )}
                             </td>
                           );
