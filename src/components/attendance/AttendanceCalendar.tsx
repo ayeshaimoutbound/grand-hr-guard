@@ -162,7 +162,38 @@ export default function AttendanceCalendar({
     return { totalShifts };
   };
 
+  const calculateShiftReport = () => {
+    const report = {
+      OIC: { day: 0, night: 0, total: 0 },
+      SSO: { day: 0, night: 0, total: 0 },
+      JSO: { day: 0, night: 0, total: 0 },
+      LSO: { day: 0, night: 0, total: 0 },
+      totals: { day: 0, night: 0, total: 0 },
+    };
+
+    attendanceRecords
+      .filter((record) => record.present)
+      .forEach((record) => {
+        const rank = record.rank as "OIC" | "SSO" | "JSO" | "LSO";
+        const isDay = record.shift_type === "Day";
+
+        if (isDay) {
+          report[rank].day += 1;
+          report.totals.day += 1;
+        } else {
+          report[rank].night += 1;
+          report.totals.night += 1;
+        }
+
+        report[rank].total += 1;
+        report.totals.total += 1;
+      });
+
+    return report;
+  };
+
   const totals = calculateTotals();
+  const shiftReport = calculateShiftReport();
 
   // Get unique employees who have attendance in this company/month
   const activeEmployees = employees.filter((emp) =>
@@ -224,6 +255,59 @@ export default function AttendanceCalendar({
           Export
         </Button>
       </div>
+
+      {/* Shift Report Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Attendance Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-2 font-medium">Rank</th>
+                  <th className="text-center p-2 font-medium">Day Shifts</th>
+                  <th className="text-center p-2 font-medium">Night Shifts</th>
+                  <th className="text-center p-2 font-medium">Total Shifts</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b hover:bg-muted/20">
+                  <td className="p-2 font-medium">OIC</td>
+                  <td className="text-center p-2">{shiftReport.OIC.day}</td>
+                  <td className="text-center p-2">{shiftReport.OIC.night}</td>
+                  <td className="text-center p-2 font-medium">{shiftReport.OIC.total}</td>
+                </tr>
+                <tr className="border-b hover:bg-muted/20">
+                  <td className="p-2 font-medium">SSO</td>
+                  <td className="text-center p-2">{shiftReport.SSO.day}</td>
+                  <td className="text-center p-2">{shiftReport.SSO.night}</td>
+                  <td className="text-center p-2 font-medium">{shiftReport.SSO.total}</td>
+                </tr>
+                <tr className="border-b hover:bg-muted/20">
+                  <td className="p-2 font-medium">JSO</td>
+                  <td className="text-center p-2">{shiftReport.JSO.day}</td>
+                  <td className="text-center p-2">{shiftReport.JSO.night}</td>
+                  <td className="text-center p-2 font-medium">{shiftReport.JSO.total}</td>
+                </tr>
+                <tr className="border-b hover:bg-muted/20">
+                  <td className="p-2 font-medium">LSO</td>
+                  <td className="text-center p-2">{shiftReport.LSO.day}</td>
+                  <td className="text-center p-2">{shiftReport.LSO.night}</td>
+                  <td className="text-center p-2 font-medium">{shiftReport.LSO.total}</td>
+                </tr>
+                <tr className="bg-muted/50 font-semibold">
+                  <td className="p-2">TOTAL</td>
+                  <td className="text-center p-2">{shiftReport.totals.day}</td>
+                  <td className="text-center p-2">{shiftReport.totals.night}</td>
+                  <td className="text-center p-2">{shiftReport.totals.total}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Add Employee Section */}
       {!showAddEmployee ? (
