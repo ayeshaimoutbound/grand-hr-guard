@@ -54,11 +54,6 @@ export default function AttendanceCalendar({
   onRefresh,
   isSuperAdmin,
 }: AttendanceCalendarProps) {
-  const [editingCell, setEditingCell] = useState<{
-    employeeId: string;
-    date: number;
-    shift: "Day" | "Night";
-  } | null>(null);
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedRank, setSelectedRank] = useState<"OIC" | "SSO" | "JSO" | "LSO" | "">("");
@@ -87,19 +82,19 @@ export default function AttendanceCalendar({
   const handleMarkAttendance = async (
     employeeId: string,
     date: number,
-    shift: "Day" | "Night",
-    rank: "OIC" | "SSO" | "JSO" | "LSO"
+    shift: "Day" | "Night"
   ) => {
     const dateStr = `${selectedMonth.getFullYear()}-${String(
       selectedMonth.getMonth() + 1
     ).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
 
     const existing = getAttendance(employeeId, date, shift);
+    const employeeRank = getEmployeeRank(employeeId) as "OIC" | "SSO" | "JSO" | "LSO";
 
     if (existing) {
       const { error } = await supabase
         .from("attendance")
-        .update({ present: true, rank })
+        .update({ present: true })
         .eq("id", existing.id);
 
       if (error) {
@@ -114,7 +109,7 @@ export default function AttendanceCalendar({
           attendance_date: dateStr,
           present: true,
           shift_type: shift,
-          rank,
+          rank: employeeRank,
         },
       ]);
 
@@ -124,7 +119,6 @@ export default function AttendanceCalendar({
       }
     }
 
-    setEditingCell(null);
     onRefresh();
   };
 
@@ -349,10 +343,6 @@ export default function AttendanceCalendar({
                       {dates.map((date) =>
                         ["Day", "Night"].map((shift) => {
                           const attendance = getAttendance(employee.id, date, shift as "Day" | "Night");
-                          const isEditing =
-                            editingCell?.employeeId === employee.id &&
-                            editingCell?.date === date &&
-                            editingCell?.shift === shift;
 
                           return (
                             <td
@@ -376,45 +366,20 @@ export default function AttendanceCalendar({
                                     </Button>
                                   )}
                                 </div>
-                              ) : isEditing ? (
-                                <Select
-                                  onValueChange={(rank) =>
-                                    handleMarkAttendance(
-                                      employee.id,
-                                      date,
-                                      shift as "Day" | "Night",
-                                      rank as "OIC" | "SSO" | "JSO" | "LSO"
-                                    )
-                                  }
-                                  onOpenChange={(open) => {
-                                    if (!open) setEditingCell(null);
-                                  }}
-                                  defaultOpen
-                                >
-                                  <SelectTrigger className="h-6 w-16 text-xs">
-                                    <SelectValue placeholder="Rank" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="OIC">OIC</SelectItem>
-                                    <SelectItem value="SSO">SSO</SelectItem>
-                                    <SelectItem value="JSO">JSO</SelectItem>
-                                    <SelectItem value="LSO">LSO</SelectItem>
-                                  </SelectContent>
-                                </Select>
                               ) : (
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="h-7 w-full text-xs font-semibold"
                                   onClick={() => {
-                                    setEditingCell({
-                                      employeeId: employee.id,
+                                    handleMarkAttendance(
+                                      employee.id,
                                       date,
-                                      shift: shift as "Day" | "Night",
-                                    });
+                                      shift as "Day" | "Night"
+                                    );
                                   }}
                                 >
-                                  1
+                                  0
                                 </Button>
                               )}
                             </td>
