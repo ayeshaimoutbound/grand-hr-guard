@@ -10,7 +10,7 @@ export default function Dashboard() {
     totalEmployees: 0,
     totalCompanies: 0,
     monthlyRevenue: 0,
-    totalSalary: 0,
+    monthlySalary: 0,
   });
 
   useEffect(() => {
@@ -26,22 +26,26 @@ export default function Dashboard() {
         supabase.from("companies").select("id", { count: "exact", head: true }),
         supabase
           .from("invoices")
-          .select("amount_to_collect"),
+          .select("amount_to_collect")
+          .gte("month_period", `${currentMonth}-01`)
+          .lte("month_period", `${currentMonth}-31`),
         supabase
           .from("salaries")
-          .select("gross_shift_total, final_salary"),
+          .select("gross_shift_total, final_salary")
+          .gte("salary_month", `${currentMonth}-01`)
+          .lte("salary_month", `${currentMonth}-31`),
       ]);
 
       const totalCharged = invoicesRes.data?.reduce((sum, inv) => sum + (Number(inv.amount_to_collect) || 0), 0) || 0;
       const totalPaidToEmployees = salariesRes.data?.reduce((sum, s) => sum + (Number(s.gross_shift_total) || 0), 0) || 0;
-      const totalSalary = salariesRes.data?.reduce((sum, s) => sum + (Number(s.final_salary) || 0), 0) || 0;
-      const revenueToDate = totalCharged - totalPaidToEmployees;
+      const monthlySalary = salariesRes.data?.reduce((sum, s) => sum + (Number(s.final_salary) || 0), 0) || 0;
+      const monthlyRevenue = totalCharged - totalPaidToEmployees;
 
       setStats({
         totalEmployees: employeesRes.count || 0,
         totalCompanies: companiesRes.count || 0,
-        monthlyRevenue: revenueToDate,
-        totalSalary: totalSalary,
+        monthlyRevenue: monthlyRevenue,
+        monthlySalary: monthlySalary,
       });
     } catch (error) {
       if (import.meta.env.DEV) {
@@ -64,14 +68,14 @@ export default function Dashboard() {
       gradient: "from-secondary to-secondary-hover",
     },
     {
-      title: "Revenue Up to Date",
+      title: "Total Monthly Revenue",
       value: `Rs. ${stats.monthlyRevenue.toLocaleString()}`,
       icon: DollarSign,
       gradient: "from-accent to-accent",
     },
     {
-      title: "Total Salaries",
-      value: `Rs. ${stats.totalSalary.toLocaleString()}`,
+      title: "Total Monthly Salary",
+      value: `Rs. ${stats.monthlySalary.toLocaleString()}`,
       icon: Calendar,
       gradient: "from-primary to-secondary",
     },
@@ -87,7 +91,7 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat, index) => {
           // Hide revenue metrics from regular admins for security
-          if (stat.title === "Revenue Up to Date" && !isSuperAdmin) {
+          if (stat.title === "Total Monthly Revenue" && !isSuperAdmin) {
             return null;
           }
           
