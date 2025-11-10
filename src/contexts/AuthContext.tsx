@@ -78,6 +78,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (username: string, password: string) => {
+    // Rate limiting check
+    const rateLimitKey = 'login_attempts';
+    const rateLimitData = localStorage.getItem(rateLimitKey);
+    let attempts = 0;
+    let lastAttempt = 0;
+
+    if (rateLimitData) {
+      const parsed = JSON.parse(rateLimitData);
+      attempts = parsed.attempts || 0;
+      lastAttempt = parsed.lastAttempt || 0;
+    }
+
+    const now = Date.now();
+    const timeSinceLastAttempt = now - lastAttempt;
+    const backoffTime = Math.min(Math.pow(2, attempts) * 1000, 60000); // Max 60 seconds
+
+    if (attempts >= 3 && timeSinceLastAttempt < backoffTime) {
+      const waitTime = Math.ceil((backoffTime - timeSinceLastAttempt) / 1000);
+      toast.error(`Too many failed attempts. Please wait ${waitTime} seconds.`);
+      throw new Error("Rate limited");
+    }
+
     try {
       // Look up email from profiles table based on username
       const { data: profile, error: profileError } = await supabase
@@ -86,21 +108,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq("username", username)
         .single();
 
-      if (profileError || !profile?.email) {
+      // Always attempt sign-in even if profile lookup fails to prevent timing attacks
+      let signInError = null;
+      if (profile?.email) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: profile.email,
+          password: password,
+        });
+        signInError = error;
+      }
+
+      // Check for any errors (profile lookup or sign-in)
+      if (profileError || !profile?.email || signInError) {
+        // Increment failed attempts
+        attempts++;
+        localStorage.setItem(rateLimitKey, JSON.stringify({
+          attempts,
+          lastAttempt: now
+        }));
+        
+        // Always return the same generic error to prevent user enumeration
+        toast.error("Invalid username or password");
         throw new Error("Invalid username or password");
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: profile.email,
-        password: password,
-      });
-
-      if (error) throw error;
-
+      // Clear rate limiting on successful login
+      localStorage.removeItem(rateLimitKey);
+      
       toast.success("Logged in successfully");
       navigate("/dashboard");
     } catch (error: any) {
-      toast.error("Invalid username or password");
+      // Ensure consistent error message
+      if (error.message !== "Rate limited") {
+        toast.error("Invalid username or password");
+      }
       throw error;
     }
   };
