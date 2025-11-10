@@ -181,22 +181,24 @@ export default function Invoices() {
       return;
     }
 
-    // Check for existing invoices with same pattern and find next available number
-    const { data: existingInvoices } = await supabase
+    // Check if invoice already exists for this company and month
+    const { data: existingInvoice } = await supabase
       .from("invoices")
-      .select("invoice_number")
+      .select("*")
       .eq("company_id", company.id)
-      .ilike("invoice_number", `%-${selectedDate.getFullYear().toString().slice(-2)}-${(selectedDate.getMonth() + 1).toString().padStart(2, '0')}%`);
+      .eq("month_period", format(monthStart, "yyyy-MM-dd"))
+      .maybeSingle();
 
     let invoiceNumber: string;
-    let suffix = 1;
     
-    do {
+    if (existingInvoice) {
+      // Use existing invoice number
+      invoiceNumber = existingInvoice.invoice_number;
+    } else {
+      // Generate new invoice number
       const companyIndex = companies.findIndex(c => c.id === company.id) + 1;
-      const baseNumber = generateInvoiceNumber(companyIndex, selectedDate.getFullYear(), selectedDate.getMonth() + 1);
-      invoiceNumber = suffix === 1 ? baseNumber : `${baseNumber}-${suffix}`;
-      suffix++;
-    } while (existingInvoices?.some(inv => inv.invoice_number === invoiceNumber));
+      invoiceNumber = generateInvoiceNumber(companyIndex, selectedDate.getFullYear(), selectedDate.getMonth() + 1);
+    }
 
     setPreviewData({
       company,
@@ -207,6 +209,7 @@ export default function Invoices() {
       periodStr,
       lineItems,
       totalAmount,
+      existingInvoiceId: existingInvoice?.id,
     });
     setIsPreviewMode(true);
   };
@@ -214,20 +217,46 @@ export default function Invoices() {
   const confirmAndDownload = async () => {
     if (!previewData) return;
 
-    const { company, invoiceNumber, monthStart, lineItems, totalAmount } = previewData;
+    const { company, invoiceNumber, monthStart, lineItems, totalAmount, existingInvoiceId } = previewData;
 
-    // Save invoice to database
-    const { error: invoiceError } = await supabase
-      .from("invoices")
-      .insert({
-        company_id: company.id,
-        invoice_number: invoiceNumber,
-        invoice_date: format(new Date(), "yyyy-MM-dd"),
-        month_period: format(monthStart, "yyyy-MM-dd"),
-        amount_to_collect: totalAmount,
-        amount_received: 0,
-        invoice_data: { lineItems },
-      });
+    let invoiceError;
+
+    if (existingInvoiceId) {
+      // Update existing invoice
+      const { error } = await supabase
+        .from("invoices")
+        .update({
+          invoice_date: format(new Date(), "yyyy-MM-dd"),
+          amount_to_collect: totalAmount,
+          invoice_data: { lineItems },
+        })
+        .eq("id", existingInvoiceId);
+      
+      invoiceError = error;
+      
+      if (!error) {
+        toast.success("Invoice updated successfully");
+      }
+    } else {
+      // Create new invoice
+      const { error } = await supabase
+        .from("invoices")
+        .insert({
+          company_id: company.id,
+          invoice_number: invoiceNumber,
+          invoice_date: format(new Date(), "yyyy-MM-dd"),
+          month_period: format(monthStart, "yyyy-MM-dd"),
+          amount_to_collect: totalAmount,
+          amount_received: 0,
+          invoice_data: { lineItems },
+        });
+      
+      invoiceError = error;
+      
+      if (!error) {
+        toast.success("Invoice generated successfully");
+      }
+    }
 
     if (invoiceError) {
       toast.error("Error saving invoice: " + invoiceError.message);
@@ -245,7 +274,6 @@ export default function Invoices() {
       total: totalAmount,
     });
 
-    toast.success("Invoice generated successfully");
     setIsDialogOpen(false);
     setIsPreviewMode(false);
     setSelectedCompany("");
@@ -350,7 +378,9 @@ export default function Invoices() {
             <DialogTitle>{isPreviewMode ? "Invoice Preview" : "Generate Invoice"}</DialogTitle>
             <DialogDescription>
               {isPreviewMode 
-                ? "Review the invoice details before generating" 
+                ? previewData?.existingInvoiceId 
+                  ? "This invoice already exists and will be updated with the new data" 
+                  : "Review the invoice details before generating"
                 : "Select a company and month to generate an invoice based on attendance records"}
             </DialogDescription>
           </DialogHeader>
@@ -460,7 +490,7 @@ export default function Invoices() {
                 </Button>
                 <Button onClick={confirmAndDownload}>
                   <FileText className="h-4 w-4 mr-2" />
-                  Generate & Download
+                  {previewData?.existingInvoiceId ? "Update & Download" : "Generate & Download"}
                 </Button>
               </div>
             </div>
