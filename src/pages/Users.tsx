@@ -46,7 +46,7 @@ export default function Users() {
     username: "",
     password: "",
     full_name: "",
-    role: "admin",
+    role: "user",
   });
 
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function Users() {
       const { error: roleError } = await supabase.from("user_roles").insert([
         {
           user_id: authData.user.id,
-          role: formData.role as "admin" | "super_admin",
+          role: formData.role as "admin" | "super_admin" | "user" | "moderator" | "viewer",
         },
       ]);
 
@@ -166,7 +166,7 @@ export default function Users() {
       username: "",
       password: "",
       full_name: "",
-      role: "admin",
+      role: "user",
     });
   };
 
@@ -191,7 +191,7 @@ export default function Users() {
             <DialogHeader>
               <DialogTitle>Add New User</DialogTitle>
               <DialogDescription>
-                Create a new admin or super admin account
+                Create a new user account with appropriate role
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -232,8 +232,11 @@ export default function Users() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="moderator">Moderator</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="super_admin">Super Admin</SelectItem>
+                    <SelectItem value="viewer">Viewer</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -280,8 +283,18 @@ export default function Users() {
                     <TableCell className="font-medium">{user.username}</TableCell>
                     <TableCell>{user.full_name || "-"}</TableCell>
                     <TableCell>
-                      <Badge variant={user.role === "super_admin" ? "default" : "secondary"}>
-                        {user.role === "super_admin" ? "Super Admin" : "Admin"}
+                      <Badge 
+                        variant={
+                          user.role === "super_admin" ? "default" : 
+                          user.role === "admin" ? "secondary" : 
+                          "outline"
+                        }
+                      >
+                        {user.role === "super_admin" ? "Super Admin" : 
+                         user.role === "admin" ? "Admin" :
+                         user.role === "moderator" ? "Moderator" :
+                         user.role === "viewer" ? "Viewer" :
+                         user.role === "user" ? "User" : user.role}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
