@@ -148,39 +148,19 @@ export default function AttendanceCalendar({
     );
     
     const totalShifts = records.length;
-    let totalPay = 0;
 
-    records.forEach((record) => {
-      switch (record.rank) {
-        case "OIC":
-          totalPay += selectedCompany.pay_oic;
-          break;
-        case "SSO":
-          totalPay += selectedCompany.pay_sso;
-          break;
-        case "JSO":
-          totalPay += selectedCompany.pay_jso;
-          break;
-        case "LSO":
-          totalPay += selectedCompany.pay_lso;
-          break;
-      }
-    });
-
-    return { totalShifts, totalPay };
+    return { totalShifts };
   };
 
   const calculateTotals = () => {
     let totalShifts = 0;
-    let totalPayable = 0;
 
     employees.forEach((emp) => {
       const stats = calculateEmployeeStats(emp.id);
       totalShifts += stats.totalShifts;
-      totalPayable += stats.totalPay;
     });
 
-    return { totalShifts, totalPayable };
+    return { totalShifts };
   };
 
   const totals = calculateTotals();
@@ -238,7 +218,6 @@ export default function AttendanceCalendar({
           </h3>
           <div className="flex gap-4 mt-2">
             <Badge variant="secondary">Total Shifts: {totals.totalShifts}</Badge>
-            <Badge variant="secondary">Total Payable: Rs. {totals.totalPayable.toLocaleString()}</Badge>
           </div>
         </div>
         <Button variant="outline" size="sm">
@@ -319,8 +298,8 @@ export default function AttendanceCalendar({
                       {date}
                     </th>
                   ))}
-                  <th className="p-2 text-center font-medium border-l bg-muted/50" colSpan={2}>
-                    Total
+                  <th className="p-2 text-center font-medium border-l bg-muted/50">
+                    Total Shifts
                   </th>
                 </tr>
                 <tr className="border-b bg-muted/30">
@@ -343,9 +322,6 @@ export default function AttendanceCalendar({
                   ))}
                   <th className="p-2 text-xs text-center font-normal border-l bg-muted/30">
                     Shifts
-                  </th>
-                  <th className="p-2 text-xs text-center font-normal bg-muted/30">
-                    Pay
                   </th>
                 </tr>
               </thead>
@@ -381,9 +357,7 @@ export default function AttendanceCalendar({
                             >
                               {attendance?.present ? (
                                 <div className="flex flex-col items-center gap-1">
-                                  <Badge variant="default" className="text-xs px-1">
-                                    {attendance.rank}
-                                  </Badge>
+                                  <span className="text-lg font-semibold">1</span>
                                   {isSuperAdmin && (
                                     <Button
                                       variant="ghost"
@@ -432,9 +406,6 @@ export default function AttendanceCalendar({
                       )}
                       <td className="p-2 text-center font-medium border-l bg-muted/20">
                         {stats.totalShifts}
-                      </td>
-                      <td className="p-2 text-center font-medium bg-muted/20">
-                        Rs. {stats.totalPay.toLocaleString()}
                       </td>
                     </tr>
                   );
