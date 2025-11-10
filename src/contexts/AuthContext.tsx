@@ -103,25 +103,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Look up email from profiles table based on username
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("username", username)
-        .single();
+      // Look up email using secure backend function
+      const { data: email, error: rpcError } = await supabase.rpc("get_email_by_username", {
+        p_username: username,
+      });
 
-      // Always attempt sign-in even if profile lookup fails to prevent timing attacks
+      // Always attempt sign-in even if email lookup fails to prevent timing attacks
       let signInError = null;
-      if (profile?.email) {
+      if (email && !rpcError) {
         const { error } = await supabase.auth.signInWithPassword({
-          email: profile.email,
+          email,
           password: password,
         });
         signInError = error;
       }
 
-      // Check for any errors (profile lookup or sign-in)
-      if (profileError || !profile?.email || signInError) {
+      // Check for any errors (email lookup or sign-in)
+      if (rpcError || !email || signInError) {
         // Increment failed attempts
         attempts++;
         localStorage.setItem(rateLimitKey, JSON.stringify({
@@ -164,19 +162,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const requestPasswordReset = async (username: string) => {
     try {
-      // Look up email from profiles table based on username
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("username", username)
-        .single();
+      // Look up email using secure backend function
+      const { data: email, error: rpcError } = await supabase.rpc("get_email_by_username", {
+        p_username: username,
+      });
 
-      if (profileError || !profile?.email) {
+      if (rpcError || !email) {
         toast.error("Username not found");
         throw new Error("Username not found");
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
