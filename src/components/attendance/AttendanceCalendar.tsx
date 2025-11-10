@@ -285,7 +285,10 @@ export default function AttendanceCalendar({
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="sticky left-0 z-10 bg-muted/50 p-2 text-left font-medium border-r min-w-[150px]">
+                  <th className="sticky left-0 z-10 bg-muted/50 p-2 text-left font-medium border-r min-w-[100px]">
+                    Employee ID
+                  </th>
+                  <th className="p-2 text-left font-medium border-r bg-muted/50 min-w-[150px]">
                     Employee
                   </th>
                   <th className="p-2 text-center font-medium border-r bg-muted/50 min-w-[60px]">
@@ -306,6 +309,7 @@ export default function AttendanceCalendar({
                 </tr>
                 <tr className="border-b bg-muted/30">
                   <th className="sticky left-0 z-10 bg-muted/30 p-2 border-r"></th>
+                  <th className="bg-muted/30 p-2 border-r"></th>
                   <th className="bg-muted/30 p-2 border-r"></th>
                   {dates.map((date) => (
                     <>
@@ -334,7 +338,10 @@ export default function AttendanceCalendar({
                   const employeeRank = getEmployeeRank(employee.id);
                   return (
                     <tr key={employee.id} className="border-b hover:bg-muted/20">
-                      <td className="sticky left-0 z-10 bg-background p-2 font-medium border-r">
+                      <td className="sticky left-0 z-10 bg-background p-2 border-r text-sm">
+                        {employee.employee_id}
+                      </td>
+                      <td className="bg-background p-2 font-medium border-r">
                         {employee.full_name}
                       </td>
                       <td className="bg-background p-2 text-center font-medium border-r">
