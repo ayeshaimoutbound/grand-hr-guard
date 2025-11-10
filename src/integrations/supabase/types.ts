@@ -70,6 +70,10 @@ export type Database = {
       }
       companies: {
         Row: {
+          charge_jso: number
+          charge_lso: number
+          charge_oic: number
+          charge_sso: number
           company_name: string
           created_at: string | null
           created_by: string | null
@@ -82,6 +86,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          charge_jso?: number
+          charge_lso?: number
+          charge_oic?: number
+          charge_sso?: number
           company_name: string
           created_at?: string | null
           created_by?: string | null
@@ -94,6 +102,10 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          charge_jso?: number
+          charge_lso?: number
+          charge_oic?: number
+          charge_sso?: number
           company_name?: string
           created_at?: string | null
           created_by?: string | null
@@ -148,6 +160,65 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      invoices: {
+        Row: {
+          amount_received: number
+          amount_to_collect: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          emailed: boolean
+          id: string
+          invoice_data: Json | null
+          invoice_date: string
+          invoice_number: string
+          invoice_sent: boolean
+          month_period: string
+          printed: boolean
+          updated_at: string
+        }
+        Insert: {
+          amount_received?: number
+          amount_to_collect?: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          emailed?: boolean
+          id?: string
+          invoice_data?: Json | null
+          invoice_date?: string
+          invoice_number: string
+          invoice_sent?: boolean
+          month_period: string
+          printed?: boolean
+          updated_at?: string
+        }
+        Update: {
+          amount_received?: number
+          amount_to_collect?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          emailed?: boolean
+          id?: string
+          invoice_data?: Json | null
+          invoice_date?: string
+          invoice_number?: string
+          invoice_sent?: boolean
+          month_period?: string
+          printed?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

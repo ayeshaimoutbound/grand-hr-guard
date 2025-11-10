@@ -6,6 +6,7 @@ import {
   Building2,
   Calendar,
   DollarSign,
+  Receipt,
   Shield,
   LogOut,
 } from "lucide-react";
@@ -30,6 +31,7 @@ const menuItems = [
   { title: "Companies", url: "/companies", icon: Building2, roles: ["admin", "super_admin"] },
   { title: "Attendance", url: "/attendance", icon: Calendar, roles: ["admin", "super_admin"] },
   { title: "Salaries", url: "/salaries", icon: DollarSign, roles: ["admin", "super_admin"] },
+  { title: "Finance", url: "/finance", icon: Receipt, roles: ["admin", "super_admin"] },
   { title: "User Management", url: "/users", icon: Shield, roles: ["super_admin"] },
 ];
 

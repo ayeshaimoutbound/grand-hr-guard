@@ -3,12 +3,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { companySchema } from "@/lib/validationSchemas";
 import { z } from "zod";
+import { generateInvoicePDF, generateInvoiceNumber } from "@/lib/invoiceGenerator";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +36,10 @@ interface Company {
   pay_sso: number;
   pay_jso: number;
   pay_lso: number;
+  charge_oic: number;
+  charge_sso: number;
+  charge_jso: number;
+  charge_lso: number;
 }
 
 export default function Companies() {
@@ -52,7 +58,15 @@ export default function Companies() {
     pay_sso: "",
     pay_jso: "",
     pay_lso: "",
+    charge_oic: "",
+    charge_sso: "",
+    charge_jso: "",
+    charge_lso: "",
   });
+
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [selectedCompanyForInvoice, setSelectedCompanyForInvoice] = useState<Company | null>(null);
+  const [invoiceMonth, setInvoiceMonth] = useState(format(new Date(), "yyyy-MM"));
 
   useEffect(() => {
     fetchCompanies();
@@ -91,6 +105,10 @@ export default function Companies() {
       pay_sso: parseFloat(formData.pay_sso),
       pay_jso: parseFloat(formData.pay_jso),
       pay_lso: parseFloat(formData.pay_lso),
+      charge_oic: parseFloat(formData.charge_oic),
+      charge_sso: parseFloat(formData.charge_sso),
+      charge_jso: parseFloat(formData.charge_jso),
+      charge_lso: parseFloat(formData.charge_lso),
     };
 
     // Validate input
@@ -140,6 +158,10 @@ export default function Companies() {
       pay_sso: company.pay_sso.toString(),
       pay_jso: company.pay_jso.toString(),
       pay_lso: company.pay_lso.toString(),
+      charge_oic: company.charge_oic.toString(),
+      charge_sso: company.charge_sso.toString(),
+      charge_jso: company.charge_jso.toString(),
+      charge_lso: company.charge_lso.toString(),
     });
     setIsEditMode(true);
     setIsDialogOpen(true);
@@ -172,9 +194,125 @@ export default function Companies() {
       pay_sso: "",
       pay_jso: "",
       pay_lso: "",
+      charge_oic: "",
+      charge_sso: "",
+      charge_jso: "",
+      charge_lso: "",
     });
     setIsEditMode(false);
     setCurrentCompany(null);
+  };
+
+  const handleGenerateInvoice = (company: Company) => {
+    setSelectedCompanyForInvoice(company);
+    setInvoiceDialogOpen(true);
+  };
+
+  const generateInvoice = async () => {
+    if (!selectedCompanyForInvoice) return;
+
+    const selectedDate = new Date(invoiceMonth + "-01");
+    const monthStart = startOfMonth(selectedDate);
+    const monthEnd = endOfMonth(selectedDate);
+
+    // Fetch attendance data for the selected month
+    const { data: attendanceData, error: attendanceError } = await supabase
+      .from("attendance")
+      .select("*, employees(full_name)")
+      .eq("company_id", selectedCompanyForInvoice.id)
+      .gte("attendance_date", format(monthStart, "yyyy-MM-dd"))
+      .lte("attendance_date", format(monthEnd, "yyyy-MM-dd"))
+      .eq("present", true);
+
+    if (attendanceError) {
+      toast.error("Error fetching attendance data");
+      return;
+    }
+
+    // Group by rank and count shifts
+    const rankCounts: Record<string, { day: number; night: number }> = {
+      OIC: { day: 0, night: 0 },
+      SSO: { day: 0, night: 0 },
+      JSO: { day: 0, night: 0 },
+      LSO: { day: 0, night: 0 },
+    };
+
+    attendanceData?.forEach((record) => {
+      const rank = record.rank as keyof typeof rankCounts;
+      const shift = record.shift_type === "Day" ? "day" : "night";
+      rankCounts[rank][shift]++;
+    });
+
+    // Generate line items
+    const lineItems = [];
+    let totalAmount = 0;
+    const periodStr = format(monthStart, "dd") + "-" + format(monthEnd, "dd MMM yy").toUpperCase();
+
+    Object.entries(rankCounts).forEach(([rank, counts]) => {
+      const rate = selectedCompanyForInvoice[`charge_${rank.toLowerCase()}` as keyof Company] as number;
+      
+      if (counts.day > 0) {
+        const amount = counts.day * rate;
+        lineItems.push({
+          period: periodStr,
+          rank: rank,
+          officers: "1 X DAY",
+          shifts: counts.day,
+          rate: rate,
+          amount: amount,
+        });
+        totalAmount += amount;
+      }
+
+      if (counts.night > 0) {
+        const amount = counts.night * rate;
+        lineItems.push({
+          period: periodStr,
+          rank: rank,
+          officers: "1 X NIGHT",
+          shifts: counts.night,
+          rate: rate,
+          amount: amount,
+        });
+        totalAmount += amount;
+      }
+    });
+
+    // Generate invoice number
+    const companyIndex = companies.findIndex(c => c.id === selectedCompanyForInvoice.id) + 1;
+    const invoiceNumber = generateInvoiceNumber(companyIndex, selectedDate.getFullYear(), selectedDate.getMonth() + 1);
+
+    // Save invoice to database
+    const { error: invoiceError } = await supabase
+      .from("invoices")
+      .insert({
+        company_id: selectedCompanyForInvoice.id,
+        invoice_number: invoiceNumber,
+        invoice_date: format(new Date(), "yyyy-MM-dd"),
+        month_period: format(monthStart, "yyyy-MM-dd"),
+        amount_to_collect: totalAmount,
+        amount_received: 0,
+        invoice_data: { lineItems },
+      });
+
+    if (invoiceError) {
+      toast.error("Error saving invoice");
+      return;
+    }
+
+    // Generate PDF
+    generateInvoicePDF({
+      invoiceNumber: invoiceNumber,
+      invoiceDate: format(new Date(), "MMMM d, yyyy"),
+      duration: periodStr,
+      companyName: selectedCompanyForInvoice.company_name,
+      companyAddress: selectedCompanyForInvoice.location,
+      lineItems: lineItems,
+      total: totalAmount,
+    });
+
+    toast.success("Invoice generated successfully");
+    setInvoiceDialogOpen(false);
   };
 
   return (
@@ -225,7 +363,7 @@ export default function Companies() {
                 </div>
               </div>
               <div>
-                <h3 className="text-sm font-semibold mb-3">Pay Rates per Shift (Rs.)</h3>
+                <h3 className="text-sm font-semibold mb-3">Amount Given to Employee per Shift (Rs.)</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="pay_oic">OIC Pay</Label>
@@ -273,6 +411,55 @@ export default function Companies() {
                   </div>
                 </div>
               </div>
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Amount Charged to Company per Shift (Rs.)</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="charge_oic">OIC Charge</Label>
+                    <Input
+                      id="charge_oic"
+                      type="number"
+                      step="0.01"
+                      value={formData.charge_oic}
+                      onChange={(e) => setFormData({ ...formData, charge_oic: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="charge_sso">SSO Charge</Label>
+                    <Input
+                      id="charge_sso"
+                      type="number"
+                      step="0.01"
+                      value={formData.charge_sso}
+                      onChange={(e) => setFormData({ ...formData, charge_sso: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="charge_jso">JSO Charge</Label>
+                    <Input
+                      id="charge_jso"
+                      type="number"
+                      step="0.01"
+                      value={formData.charge_jso}
+                      onChange={(e) => setFormData({ ...formData, charge_jso: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="charge_lso">LSO Charge</Label>
+                    <Input
+                      id="charge_lso"
+                      type="number"
+                      step="0.01"
+                      value={formData.charge_lso}
+                      onChange={(e) => setFormData({ ...formData, charge_lso: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -315,7 +502,7 @@ export default function Companies() {
                 <TableHead>SSO Pay</TableHead>
                 <TableHead>JSO Pay</TableHead>
                 <TableHead>LSO Pay</TableHead>
-                {isSuperAdmin && <TableHead className="text-right">Actions</TableHead>}
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -334,26 +521,36 @@ export default function Companies() {
                     <TableCell>Rs. {company.pay_sso.toFixed(2)}</TableCell>
                     <TableCell>Rs. {company.pay_jso.toFixed(2)}</TableCell>
                     <TableCell>Rs. {company.pay_lso.toFixed(2)}</TableCell>
-                    {isSuperAdmin && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(company)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(company.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    )}
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleGenerateInvoice(company)}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Generate Invoice
+                        </Button>
+                        {isSuperAdmin && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(company)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(company.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -361,6 +558,42 @@ export default function Companies() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Invoice</DialogTitle>
+            <DialogDescription>
+              Select the month for which you want to generate an invoice for {selectedCompanyForInvoice?.company_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="invoice_month">Invoice Month</Label>
+              <Input
+                id="invoice_month"
+                type="month"
+                value={invoiceMonth}
+                onChange={(e) => setInvoiceMonth(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setInvoiceDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={generateInvoice}>
+                <FileText className="h-4 w-4 mr-2" />
+                Generate & Download
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

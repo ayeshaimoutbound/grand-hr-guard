@@ -13,6 +13,7 @@ import Employees from "./pages/Employees";
 import Companies from "./pages/Companies";
 import Attendance from "./pages/Attendance";
 import Salaries from "./pages/Salaries";
+import Finance from "./pages/Finance";
 import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
 
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/companies" element={<Companies />} />
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/salaries" element={<Salaries />} />
+              <Route path="/finance" element={<Finance />} />
               <Route
                 path="/users"
                 element={

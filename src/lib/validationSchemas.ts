@@ -70,6 +70,26 @@ export const companySchema = z.object({
     .positive("LSO pay must be a positive number")
     .max(1000000, "LSO pay must be less than 1,000,000")
     .refine((val) => !isNaN(val), "LSO pay must be a valid number"),
+  charge_oic: z
+    .number()
+    .positive("OIC charge must be a positive number")
+    .max(1000000, "OIC charge must be less than 1,000,000")
+    .refine((val) => !isNaN(val), "OIC charge must be a valid number"),
+  charge_sso: z
+    .number()
+    .positive("SSO charge must be a positive number")
+    .max(1000000, "SSO charge must be less than 1,000,000")
+    .refine((val) => !isNaN(val), "SSO charge must be a valid number"),
+  charge_jso: z
+    .number()
+    .positive("JSO charge must be a positive number")
+    .max(1000000, "JSO charge must be less than 1,000,000")
+    .refine((val) => !isNaN(val), "JSO charge must be a valid number"),
+  charge_lso: z
+    .number()
+    .positive("LSO charge must be a positive number")
+    .max(1000000, "LSO charge must be less than 1,000,000")
+    .refine((val) => !isNaN(val), "LSO charge must be a valid number"),
 });
 
 // User validation schema
