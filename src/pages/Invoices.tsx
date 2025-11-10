@@ -63,6 +63,8 @@ export default function Invoices() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<string>("");
   const [invoiceMonth, setInvoiceMonth] = useState(format(new Date(), "yyyy-MM"));
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [previewData, setPreviewData] = useState<any>(null);
 
   useEffect(() => {
     fetchCompanies();
@@ -98,7 +100,7 @@ export default function Invoices() {
     setRecentInvoices(data || []);
   };
 
-  const generateInvoice = async () => {
+  const generatePreview = async () => {
     if (!selectedCompany) {
       toast.error("Please select a company");
       return;
@@ -179,9 +181,40 @@ export default function Invoices() {
       return;
     }
 
-    // Generate invoice number
-    const companyIndex = companies.findIndex(c => c.id === company.id) + 1;
-    const invoiceNumber = generateInvoiceNumber(companyIndex, selectedDate.getFullYear(), selectedDate.getMonth() + 1);
+    // Check for existing invoices with same pattern and find next available number
+    const { data: existingInvoices } = await supabase
+      .from("invoices")
+      .select("invoice_number")
+      .eq("company_id", company.id)
+      .ilike("invoice_number", `%-${selectedDate.getFullYear().toString().slice(-2)}-${(selectedDate.getMonth() + 1).toString().padStart(2, '0')}%`);
+
+    let invoiceNumber: string;
+    let suffix = 1;
+    
+    do {
+      const companyIndex = companies.findIndex(c => c.id === company.id) + 1;
+      const baseNumber = generateInvoiceNumber(companyIndex, selectedDate.getFullYear(), selectedDate.getMonth() + 1);
+      invoiceNumber = suffix === 1 ? baseNumber : `${baseNumber}-${suffix}`;
+      suffix++;
+    } while (existingInvoices?.some(inv => inv.invoice_number === invoiceNumber));
+
+    setPreviewData({
+      company,
+      invoiceNumber,
+      selectedDate,
+      monthStart,
+      monthEnd,
+      periodStr,
+      lineItems,
+      totalAmount,
+    });
+    setIsPreviewMode(true);
+  };
+
+  const confirmAndDownload = async () => {
+    if (!previewData) return;
+
+    const { company, invoiceNumber, monthStart, lineItems, totalAmount } = previewData;
 
     // Save invoice to database
     const { error: invoiceError } = await supabase
@@ -197,7 +230,7 @@ export default function Invoices() {
       });
 
     if (invoiceError) {
-      toast.error("Error saving invoice");
+      toast.error("Error saving invoice: " + invoiceError.message);
       return;
     }
 
@@ -205,7 +238,7 @@ export default function Invoices() {
     generateInvoicePDF({
       invoiceNumber: invoiceNumber,
       invoiceDate: format(new Date(), "MMMM d, yyyy"),
-      duration: periodStr,
+      duration: previewData.periodStr,
       companyName: company.company_name,
       companyAddress: company.location,
       lineItems: lineItems,
@@ -214,7 +247,9 @@ export default function Invoices() {
 
     toast.success("Invoice generated successfully");
     setIsDialogOpen(false);
+    setIsPreviewMode(false);
     setSelectedCompany("");
+    setPreviewData(null);
     fetchRecentInvoices();
   };
 
@@ -302,57 +337,134 @@ export default function Invoices() {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) {
+          setIsPreviewMode(false);
+          setPreviewData(null);
+          setSelectedCompany("");
+        }
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Generate Invoice</DialogTitle>
+            <DialogTitle>{isPreviewMode ? "Invoice Preview" : "Generate Invoice"}</DialogTitle>
             <DialogDescription>
-              Select a company and month to generate an invoice based on attendance records
+              {isPreviewMode 
+                ? "Review the invoice details before generating" 
+                : "Select a company and month to generate an invoice based on attendance records"}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="company_select">Company</Label>
-              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                <SelectTrigger id="company_select">
-                  <SelectValue placeholder="Select a company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.company_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          
+          {!isPreviewMode ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="company_select">Company</Label>
+                <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                  <SelectTrigger id="company_select">
+                    <SelectValue placeholder="Select a company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.company_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="invoice_month">Invoice Month</Label>
+                <Input
+                  id="invoice_month"
+                  type="month"
+                  value={invoiceMonth}
+                  onChange={(e) => setInvoiceMonth(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsDialogOpen(false);
+                    setSelectedCompany("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={generatePreview}>
+                  Preview Invoice
+                </Button>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="invoice_month">Invoice Month</Label>
-              <Input
-                id="invoice_month"
-                type="month"
-                value={invoiceMonth}
-                onChange={(e) => setInvoiceMonth(e.target.value)}
-                required
-              />
+          ) : previewData && (
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Company</p>
+                    <p className="font-semibold">{previewData.company.company_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Location</p>
+                    <p className="font-semibold">{previewData.company.location}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Invoice Number</p>
+                    <p className="font-semibold">{previewData.invoiceNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Period</p>
+                    <p className="font-semibold">{previewData.periodStr}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Rank</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Shifts</TableHead>
+                      <TableHead className="text-right">Rate</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewData.lineItems.map((item: any, idx: number) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{item.rank}</TableCell>
+                        <TableCell>{item.officers}</TableCell>
+                        <TableCell className="text-right">{item.shifts}</TableCell>
+                        <TableCell className="text-right">Rs. {item.rate.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">Rs. {item.amount.toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="font-bold bg-muted/50">
+                      <TableCell colSpan={4} className="text-right">Total Amount</TableCell>
+                      <TableCell className="text-right">Rs. {previewData.totalAmount.toLocaleString()}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsPreviewMode(false)}
+                >
+                  Back
+                </Button>
+                <Button onClick={confirmAndDownload}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate & Download
+                </Button>
+              </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsDialogOpen(false);
-                  setSelectedCompany("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button onClick={generateInvoice}>
-                <FileText className="h-4 w-4 mr-2" />
-                Generate & Download
-              </Button>
-            </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
