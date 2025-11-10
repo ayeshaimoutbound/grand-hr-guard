@@ -36,6 +36,10 @@ interface Company {
   pay_sso: number;
   pay_jso: number;
   pay_lso: number;
+  charge_oic: number;
+  charge_sso: number;
+  charge_jso: number;
+  charge_lso: number;
 }
 
 interface AttendanceCalendarProps {
@@ -328,7 +332,7 @@ export default function AttendanceCalendar({
   const updateCompanyInvoice = async () => {
     const salaryMonth = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
     
-    // Calculate total amount based on shift report
+    // Calculate total amount based on shift report using charge rates
     let totalAmount = 0;
     
     const ranks: Array<"OIC" | "SSO" | "JSO" | "LSO"> = ["OIC", "SSO", "JSO", "LSO"];
@@ -337,10 +341,10 @@ export default function AttendanceCalendar({
       let chargePerShift = 0;
       
       switch (rank) {
-        case "OIC": chargePerShift = selectedCompany.pay_oic; break;
-        case "SSO": chargePerShift = selectedCompany.pay_sso; break;
-        case "JSO": chargePerShift = selectedCompany.pay_jso; break;
-        case "LSO": chargePerShift = selectedCompany.pay_lso; break;
+        case "OIC": chargePerShift = selectedCompany.charge_oic; break;
+        case "SSO": chargePerShift = selectedCompany.charge_sso; break;
+        case "JSO": chargePerShift = selectedCompany.charge_jso; break;
+        case "LSO": chargePerShift = selectedCompany.charge_lso; break;
       }
       
       totalAmount += totalShifts * chargePerShift;

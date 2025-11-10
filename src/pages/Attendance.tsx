@@ -37,6 +37,10 @@ interface Company {
   pay_sso: number;
   pay_jso: number;
   pay_lso: number;
+  charge_oic: number;
+  charge_sso: number;
+  charge_jso: number;
+  charge_lso: number;
 }
 
 export default function Attendance() {
