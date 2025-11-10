@@ -196,7 +196,10 @@ export default function Salaries() {
         const uniforms = existingSalary?.uniforms || 0;
         const otherDeductions = existingSalary?.other_deductions || 0;
 
-        const finalSalary = basicSalary + grossShiftTotal - epf - salaryAdvance - transport - food - uniforms - otherDeductions;
+        // Calculate final salary
+        // Final Salary = Gross Shift Total - (EPF + All Deductions)
+        // Basic Salary is used only for EPF calculation
+        const finalSalary = grossShiftTotal - epf - salaryAdvance - transport - food - uniforms - otherDeductions;
 
         const companyData = companyDataMap.get(companyId)!;
         companyData.employees.push({
@@ -275,7 +278,9 @@ export default function Salaries() {
     const epf = values.basic_salary * 0.08;
     
     // Calculate final salary
-    const finalSalary = values.basic_salary + editingRecord.gross_shift_total - 
+    // Final Salary = Gross Shift Total - (EPF + All Deductions)
+    // Basic Salary is used only for EPF calculation, not added to final amount
+    const finalSalary = editingRecord.gross_shift_total - 
       epf - values.salary_advance - values.transport - 
       values.food - values.uniforms - values.other_deductions;
 
@@ -390,8 +395,9 @@ export default function Salaries() {
     }
     
     // Calculate final salary
-    // Final Salary = (Basic Salary + Gross Shift Total) - (EPF + All Deductions)
-    const newFinalSalary = newValues.basic_salary + newValues.gross_shift_total - 
+    // Final Salary = Gross Shift Total - (EPF + All Deductions)
+    // Basic Salary is used only for EPF calculation, not added to final amount
+    const newFinalSalary = newValues.gross_shift_total - 
       newValues.epf - newValues.salary_advance - newValues.transport - 
       newValues.food - newValues.uniforms - newValues.other_deductions;
 
@@ -569,7 +575,7 @@ export default function Salaries() {
           </thead>
           <tbody>
             <tr>
-              <td>Basic Salary</td>
+              <td>Basic Salary (for EPF calculation)</td>
               <td style="text-align: right;">${employeeRecord.basic_salary.toFixed(2)}</td>
             </tr>
             <tr>
@@ -578,13 +584,13 @@ export default function Salaries() {
             </tr>
             <tr class="total-row">
               <td>Gross Salary</td>
-              <td style="text-align: right;">${(employeeRecord.basic_salary + employeeRecord.gross_shift_total).toFixed(2)}</td>
+              <td style="text-align: right;">${employeeRecord.gross_shift_total.toFixed(2)}</td>
             </tr>
             <tr>
               <td colspan="2" style="background-color: #f5f5f5; font-weight: bold;">Deductions</td>
             </tr>
             <tr>
-              <td>EPF</td>
+              <td>EPF (8% of Basic Salary)</td>
               <td style="text-align: right;">${employeeRecord.epf.toFixed(2)}</td>
             </tr>
             <tr>
@@ -1043,7 +1049,6 @@ export default function Salaries() {
                   <span>Final Salary:</span>
                   <span className="text-green-600">
                     Rs. {(
-                      (parseFloat(editFormData.basic_salary) || 0) +
                       editingRecord.gross_shift_total -
                       ((parseFloat(editFormData.basic_salary) || 0) * 0.08) -
                       (parseFloat(editFormData.salary_advance) || 0) -
