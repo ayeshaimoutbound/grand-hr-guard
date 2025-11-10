@@ -46,12 +46,21 @@ interface Company {
   company_name: string;
 }
 
-interface EmployeeSalaryRecord {
-  employee: Employee;
-  salary_id: string;
+interface CompanyWorkDetail {
+  company: Company;
+  company_id: string;
+  rank: string;
   total_shifts: number;
   pay_per_shift: number;
   gross_shift_total: number;
+  salary_id: string;
+}
+
+interface ConsolidatedEmployeeSalary {
+  employee: Employee;
+  companyWork: CompanyWorkDetail[];
+  total_shifts_all: number;
+  gross_shift_total_all: number;
   basic_salary: number;
   epf: number;
   salary_advance: number;
@@ -60,22 +69,15 @@ interface EmployeeSalaryRecord {
   uniforms: number;
   other_deductions: number;
   final_salary: number;
-}
-
-interface CompanySalaryData {
-  company: Company;
-  employees: EmployeeSalaryRecord[];
-  totalShifts: number;
-  totalGross: number;
+  primary_salary_id: string;
 }
 
 export default function Salaries() {
-  const [companySalaryData, setCompanySalaryData] = useState<CompanySalaryData[]>([]);
+  const [consolidatedSalaries, setConsolidatedSalaries] = useState<ConsolidatedEmployeeSalary[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
-  const [editingCell, setEditingCell] = useState<{ salaryId: string; field: string } | null>(null);
-  const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
+  const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<EmployeeSalaryRecord | null>(null);
+  const [editingRecord, setEditingRecord] = useState<ConsolidatedEmployeeSalary | null>(null);
   const [editFormData, setEditFormData] = useState({
     basic_salary: "",
     salary_advance: "",
@@ -92,7 +94,6 @@ export default function Salaries() {
 
   const fetchData = async () => {
     const startDate = `${selectedMonth}-01`;
-    // Calculate the last day of the month properly
     const [year, month] = selectedMonth.split('-').map(Number);
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${selectedMonth}-${String(lastDay).padStart(2, '0')}`;
@@ -114,100 +115,94 @@ export default function Salaries() {
     const attendanceList = attendanceRes.data || [];
     const salariesList = salariesRes.data || [];
 
-    // Calculate attendance stats per employee per company
-    const attendanceStats = new Map<string, { shifts: number; companyId: string; rank: string; payPerShift: number }>();
-    
-    attendanceList.forEach(att => {
-      const key = `${att.employee_id}-${att.company_id}`;
-      const company = companiesList.find(c => c.id === att.company_id);
-      
-      if (!company) return;
-      
-      // Get pay rate based on rank from company
-      let payPerShift = 0;
-      if (att.rank === 'OIC') payPerShift = company.pay_oic || 0;
-      else if (att.rank === 'SSO') payPerShift = company.pay_sso || 0;
-      else if (att.rank === 'JSO') payPerShift = company.pay_jso || 0;
-      else if (att.rank === 'LSO') payPerShift = company.pay_lso || 0;
+    // Build consolidated employee data
+    const consolidatedMap = new Map<string, ConsolidatedEmployeeSalary>();
 
-      if (!attendanceStats.has(key)) {
-        attendanceStats.set(key, { 
-          shifts: 0, 
-          companyId: att.company_id,
-          rank: att.rank,
-          payPerShift 
-        });
-      }
-      
-      const stats = attendanceStats.get(key)!;
-      stats.shifts += 1;
-    });
-
-    // Build company data map with ALL employees
-    const companyDataMap = new Map<string, CompanySalaryData>();
-
-    // Initialize all companies
-    companiesList.forEach(company => {
-      companyDataMap.set(company.id, {
-        company,
-        employees: [],
-        totalShifts: 0,
-        totalGross: 0,
-      });
-    });
-
-    // Process each employee
     employeesList.forEach(employee => {
-      // Find all companies this employee has attendance for in this month
-      const employeeCompanies = new Set<string>();
+      // Get all companies where this employee worked
+      const employeeAttendance = attendanceList.filter(att => att.employee_id === employee.id);
       
-      attendanceList
-        .filter(att => att.employee_id === employee.id)
-        .forEach(att => employeeCompanies.add(att.company_id));
+      // Group attendance by company
+      const companyWorkMap = new Map<string, { shifts: number; rank: string; payPerShift: number }>();
       
-      // If no attendance, show under all companies with 0 shifts
-      if (employeeCompanies.size === 0) {
-        companiesList.forEach(company => {
-          employeeCompanies.add(company.id);
-        });
-      }
+      employeeAttendance.forEach(att => {
+        const company = companiesList.find(c => c.id === att.company_id);
+        if (!company) return;
 
-      employeeCompanies.forEach(companyId => {
+        // Get pay rate based on rank
+        let payPerShift = 0;
+        if (att.rank === 'OIC') payPerShift = company.pay_oic || 0;
+        else if (att.rank === 'SSO') payPerShift = company.pay_sso || 0;
+        else if (att.rank === 'JSO') payPerShift = company.pay_jso || 0;
+        else if (att.rank === 'LSO') payPerShift = company.pay_lso || 0;
+
+        if (!companyWorkMap.has(att.company_id)) {
+          companyWorkMap.set(att.company_id, { shifts: 0, rank: att.rank, payPerShift });
+        }
+        
+        const workData = companyWorkMap.get(att.company_id)!;
+        workData.shifts += 1;
+      });
+
+      // Build company work details
+      const companyWork: CompanyWorkDetail[] = [];
+      let totalShiftsAll = 0;
+      let grossShiftTotalAll = 0;
+
+      companyWorkMap.forEach((workData, companyId) => {
         const company = companiesList.find(c => c.id === companyId);
         if (!company) return;
 
-        const attendanceKey = `${employee.id}-${companyId}`;
-        const attendance = attendanceStats.get(attendanceKey);
-        const totalShifts = attendance?.shifts || 0;
-        const payPerShift = attendance?.payPerShift || 0;
-        const grossShiftTotal = totalShifts * payPerShift;
+        const grossForCompany = workData.shifts * workData.payPerShift;
+        const salaryRecord = salariesList.find(s => s.employee_id === employee.id && s.company_id === companyId);
 
-        // Find existing salary record
-        const existingSalary = salariesList.find(
-          s => s.employee_id === employee.id && s.company_id === companyId
-        );
+        companyWork.push({
+          company: company,
+          company_id: companyId,
+          rank: workData.rank,
+          total_shifts: workData.shifts,
+          pay_per_shift: workData.payPerShift,
+          gross_shift_total: grossForCompany,
+          salary_id: salaryRecord?.id || `temp-${employee.id}-${companyId}`,
+        });
 
-        // Use existing salary data if available, otherwise use calculated values with defaults
-        const basicSalary = existingSalary?.basic_salary || 0;
-        const epf = existingSalary?.epf || (basicSalary * 0.08);
-        const salaryAdvance = existingSalary?.salary_advance || 0;
-        const transport = existingSalary?.transport || 0;
-        const food = existingSalary?.food || 0;
-        const uniforms = existingSalary?.uniforms || 0;
-        const otherDeductions = existingSalary?.other_deductions || 0;
+        totalShiftsAll += workData.shifts;
+        grossShiftTotalAll += grossForCompany;
+      });
 
-        // Calculate final salary
-        // Final Salary = Gross Shift Total - (EPF + All Deductions)
-        // Basic Salary is used only for EPF calculation
-        const finalSalary = grossShiftTotal - epf - salaryAdvance - transport - food - uniforms - otherDeductions;
+      // Get consolidated salary data
+      const employeeSalaries = salariesList.filter(s => s.employee_id === employee.id);
+      
+      let basicSalary = 0;
+      let salaryAdvance = 0;
+      let transport = 0;
+      let food = 0;
+      let uniforms = 0;
+      let otherDeductions = 0;
+      let primarySalaryId = '';
 
-        const companyData = companyDataMap.get(companyId)!;
-        companyData.employees.push({
+      if (employeeSalaries.length > 0) {
+        const primarySalary = employeeSalaries[0];
+        primarySalaryId = primarySalary.id;
+        basicSalary = primarySalary.basic_salary || 0;
+        salaryAdvance = primarySalary.salary_advance || 0;
+        transport = primarySalary.transport || 0;
+        food = primarySalary.food || 0;
+        uniforms = primarySalary.uniforms || 0;
+        otherDeductions = primarySalary.other_deductions || 0;
+      } else {
+        primarySalaryId = `temp-${employee.id}`;
+      }
+
+      const epf = basicSalary * 0.08;
+      const finalSalary = grossShiftTotalAll - epf - salaryAdvance - transport - food - uniforms - otherDeductions;
+
+      if (totalShiftsAll > 0) {
+        consolidatedMap.set(employee.id, {
           employee,
-          salary_id: existingSalary?.id || `temp-${employee.id}-${companyId}`,
-          total_shifts: totalShifts,
-          pay_per_shift: payPerShift,
-          gross_shift_total: grossShiftTotal,
+          companyWork,
+          total_shifts_all: totalShiftsAll,
+          gross_shift_total_all: grossShiftTotalAll,
           basic_salary: basicSalary,
           epf: epf,
           salary_advance: salaryAdvance,
@@ -216,19 +211,15 @@ export default function Salaries() {
           uniforms: uniforms,
           other_deductions: otherDeductions,
           final_salary: finalSalary,
+          primary_salary_id: primarySalaryId,
         });
-
-        companyData.totalShifts += totalShifts;
-        companyData.totalGross += grossShiftTotal;
-      });
+      }
     });
 
-    setCompanySalaryData(Array.from(companyDataMap.values()));
-    // Expand all companies by default
-    setExpandedCompanies(new Set(Array.from(companyDataMap.keys())));
+    setConsolidatedSalaries(Array.from(consolidatedMap.values()));
   };
 
-  const handleOpenEditDialog = (record: EmployeeSalaryRecord) => {
+  const handleOpenEditDialog = (record: ConsolidatedEmployeeSalary) => {
     if (!isSuperAdmin) {
       toast.error("Only Super Admin can edit salaries");
       return;
@@ -251,7 +242,6 @@ export default function Salaries() {
     
     if (!editingRecord) return;
 
-    // Validate inputs
     const salaryFieldSchema = z.number()
       .min(0, 'Value cannot be negative')
       .max(10000000, 'Value exceeds maximum allowed');
@@ -274,64 +264,33 @@ export default function Salaries() {
       }
     }
 
-    // Auto-calculate EPF as 8% of Basic Salary
     const epf = values.basic_salary * 0.08;
-    
-    // Calculate final salary
-    // Final Salary = Gross Shift Total - (EPF + All Deductions)
-    // Basic Salary is used only for EPF calculation, not added to final amount
-    const finalSalary = editingRecord.gross_shift_total - 
-      epf - values.salary_advance - values.transport - 
-      values.food - values.uniforms - values.other_deductions;
+    const finalSalary = editingRecord.gross_shift_total_all - epf - values.salary_advance - values.transport - values.food - values.uniforms - values.other_deductions;
 
-    // Check if this is a new record (temp ID) or existing record
-    const isNewRecord = editingRecord.salary_id.startsWith('temp-');
+    // Update the primary salary record
+    const isNewRecord = editingRecord.primary_salary_id.startsWith('temp-');
     
     if (isNewRecord) {
-      // Extract employee_id and company_id from temp ID
-      const parts = editingRecord.salary_id.split('-');
-      const employee_id = parts[1];
-      const company_id = parts[2];
-      
-      // Create new salary record
-      const { data, error } = await supabase
+      // Create salary record for first company
+      const firstCompany = editingRecord.companyWork[0];
+      const { error } = await supabase
         .from("salaries")
         .insert({
-          employee_id,
-          company_id,
+          employee_id: editingRecord.employee.id,
+          company_id: firstCompany.company_id,
           salary_month: `${selectedMonth}-01`,
-          total_shifts: editingRecord.total_shifts,
-          pay_per_shift: editingRecord.pay_per_shift,
-          gross_shift_total: editingRecord.gross_shift_total,
+          total_shifts: editingRecord.total_shifts_all,
+          pay_per_shift: 0,
+          gross_shift_total: editingRecord.gross_shift_total_all,
           ...values,
           epf: epf,
           final_salary: finalSalary,
-        })
-        .select()
-        .single();
+        });
 
       if (error) {
         toast.error("Failed to create salary record");
         return;
       }
-
-      // Update local state with new real ID
-      setCompanySalaryData(prev =>
-        prev.map(companyData => ({
-          ...companyData,
-          employees: companyData.employees.map(emp =>
-            emp.salary_id === editingRecord.salary_id
-              ? { 
-                  ...emp, 
-                  salary_id: data.id,
-                  ...values,
-                  epf: epf,
-                  final_salary: finalSalary 
-                }
-              : emp
-          ),
-        }))
-      );
     } else {
       // Update existing record
       const { error } = await supabase
@@ -341,165 +300,21 @@ export default function Salaries() {
           epf: epf,
           final_salary: finalSalary,
         })
-        .eq("id", editingRecord.salary_id);
+        .eq("id", editingRecord.primary_salary_id);
 
       if (error) {
         toast.error("Failed to update salary");
         return;
       }
-
-      // Update local state
-      setCompanySalaryData(prev =>
-        prev.map(companyData => ({
-          ...companyData,
-          employees: companyData.employees.map(emp =>
-            emp.salary_id === editingRecord.salary_id
-              ? { 
-                  ...emp, 
-                  ...values,
-                  epf: epf,
-                  final_salary: finalSalary 
-                }
-              : emp
-          ),
-        }))
-      );
     }
 
     toast.success("Salary updated successfully");
     setIsEditDialogOpen(false);
     setEditingRecord(null);
+    fetchData();
   };
 
-  const handleCellEdit = async (salaryId: string, field: string, value: number, employeeRecord: EmployeeSalaryRecord) => {
-    // Validate input
-    const salaryFieldSchema = z.number()
-      .min(0, 'Value cannot be negative')
-      .max(10000000, 'Value exceeds maximum allowed');
-    
-    try {
-      salaryFieldSchema.parse(value);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        toast.error(error.errors[0].message);
-        return;
-      }
-    }
-
-    // Update values
-    const newValues = { ...employeeRecord, [field]: value };
-    
-    // Auto-calculate EPF as 8% of Basic Salary
-    if (field === 'basic_salary') {
-      newValues.epf = value * 0.08;
-    }
-    
-    // Calculate final salary
-    // Final Salary = Gross Shift Total - (EPF + All Deductions)
-    // Basic Salary is used only for EPF calculation, not added to final amount
-    const newFinalSalary = newValues.gross_shift_total - 
-      newValues.epf - newValues.salary_advance - newValues.transport - 
-      newValues.food - newValues.uniforms - newValues.other_deductions;
-
-    // Prepare data for database
-    const dbData: any = { 
-      [field]: value,
-      final_salary: newFinalSalary 
-    };
-    
-    // If basic salary changed, also update EPF
-    if (field === 'basic_salary') {
-      dbData.epf = newValues.epf;
-    }
-
-    // Check if this is a new record (temp ID) or existing record
-    const isNewRecord = salaryId.startsWith('temp-');
-    
-    if (isNewRecord) {
-      // Extract employee_id and company_id from temp ID
-      const parts = salaryId.split('-');
-      const employee_id = parts[1];
-      const company_id = parts[2];
-      
-      // Create new salary record
-      const { data, error } = await supabase
-        .from("salaries")
-        .insert({
-          employee_id,
-          company_id,
-          salary_month: `${selectedMonth}-01`,
-          total_shifts: employeeRecord.total_shifts,
-          pay_per_shift: employeeRecord.pay_per_shift,
-          gross_shift_total: employeeRecord.gross_shift_total,
-          basic_salary: field === 'basic_salary' ? value : employeeRecord.basic_salary,
-          epf: field === 'basic_salary' ? newValues.epf : employeeRecord.epf,
-          salary_advance: field === 'salary_advance' ? value : employeeRecord.salary_advance,
-          transport: field === 'transport' ? value : employeeRecord.transport,
-          food: field === 'food' ? value : employeeRecord.food,
-          uniforms: field === 'uniforms' ? value : employeeRecord.uniforms,
-          other_deductions: field === 'other_deductions' ? value : employeeRecord.other_deductions,
-          final_salary: newFinalSalary,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        toast.error("Failed to create salary record");
-        return;
-      }
-
-      // Update local state with new real ID
-      setCompanySalaryData(prev =>
-        prev.map(companyData => ({
-          ...companyData,
-          employees: companyData.employees.map(emp =>
-            emp.salary_id === salaryId
-              ? { 
-                  ...emp, 
-                  salary_id: data.id,
-                  [field]: value, 
-                  epf: field === 'basic_salary' ? newValues.epf : emp.epf,
-                  final_salary: newFinalSalary 
-                }
-              : emp
-          ),
-        }))
-      );
-    } else {
-      // Update existing record
-      const { error } = await supabase
-        .from("salaries")
-        .update(dbData)
-        .eq("id", salaryId);
-
-      if (error) {
-        toast.error("Failed to update salary");
-        return;
-      }
-
-      // Update local state
-      setCompanySalaryData(prev =>
-        prev.map(companyData => ({
-          ...companyData,
-          employees: companyData.employees.map(emp =>
-            emp.salary_id === salaryId
-              ? { 
-                  ...emp, 
-                  [field]: value, 
-                  epf: field === 'basic_salary' ? newValues.epf : emp.epf,
-                  final_salary: newFinalSalary 
-                }
-              : emp
-          ),
-        }))
-      );
-    }
-
-    setEditingCell(null);
-  };
-
-  const handlePrintSalarySlip = (employeeRecord: EmployeeSalaryRecord, companyName: string) => {
-    // Security: Restrict salary slip printing to super admins only
+  const handlePrintSalarySlip = (employeeRecord: ConsolidatedEmployeeSalary) => {
     if (!isSuperAdmin) {
       toast.error("Only super admins can print salary slips");
       return;
@@ -526,6 +341,7 @@ export default function Salaries() {
           table { width: 100%; border-collapse: collapse; margin: 20px 0; }
           th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
           th { background-color: #f5f5f5; }
+          .company-detail { background-color: #f9f9f9; font-weight: bold; }
           .total-row { font-weight: bold; background-color: #f9f9f9; }
           .final-row { font-weight: bold; background-color: #e8f5e9; font-size: 16px; }
           @media print {
@@ -538,7 +354,6 @@ export default function Salaries() {
           <img src="/logo.png" alt="Company Logo" class="logo">
           <h1>SALARY SLIP</h1>
           <p>Month: ${new Date(selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
-          <p>Company: ${companyName}</p>
         </div>
 
         <div class="info-section">
@@ -551,19 +366,11 @@ export default function Salaries() {
             <span class="info-value">${employeeRecord.employee.full_name}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">NIC:</span>
-            <span class="info-value">${employeeRecord.employee.nic}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Phone:</span>
-            <span class="info-value">${employeeRecord.employee.phone_number}</span>
-          </div>
-          <div class="info-row">
             <span class="info-label">Bank:</span>
             <span class="info-value">${employeeRecord.employee.bank_name} - ${employeeRecord.employee.branch}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Account Number:</span>
+            <span class="info-label">Account No:</span>
             <span class="info-value">${employeeRecord.employee.account_number}</span>
           </div>
         </div>
@@ -576,23 +383,33 @@ export default function Salaries() {
             </tr>
           </thead>
           <tbody>
+            ${employeeRecord.companyWork.map(work => `
+              <tr class="company-detail">
+                <td colspan="2">${work.company.company_name} - ${work.rank} (${work.total_shifts} shifts)</td>
+              </tr>
+              <tr>
+                <td style="padding-left: 30px;">Gross Earnings</td>
+                <td style="text-align: right;">${work.gross_shift_total.toFixed(2)}</td>
+              </tr>
+            `).join('')}
+            <tr class="total-row">
+              <td>Total Shifts</td>
+              <td style="text-align: right;">${employeeRecord.total_shifts_all}</td>
+            </tr>
+            <tr class="total-row">
+              <td>Gross Shift Total</td>
+              <td style="text-align: right;">${employeeRecord.gross_shift_total_all.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td><strong>Deductions:</strong></td>
+              <td></td>
+            </tr>
             <tr>
               <td>Basic Salary (for EPF calculation)</td>
               <td style="text-align: right;">${employeeRecord.basic_salary.toFixed(2)}</td>
             </tr>
             <tr>
-              <td>Shift Earnings (${employeeRecord.total_shifts} shifts × Rs. ${employeeRecord.pay_per_shift})</td>
-              <td style="text-align: right;">${employeeRecord.gross_shift_total.toFixed(2)}</td>
-            </tr>
-            <tr class="total-row">
-              <td>Gross Salary</td>
-              <td style="text-align: right;">${employeeRecord.gross_shift_total.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td colspan="2" style="background-color: #f5f5f5; font-weight: bold;">Deductions</td>
-            </tr>
-            <tr>
-              <td>EPF (8% of Basic Salary)</td>
+              <td>EPF (8%)</td>
               <td style="text-align: right;">${employeeRecord.epf.toFixed(2)}</td>
             </tr>
             <tr>
@@ -647,130 +464,93 @@ export default function Salaries() {
     printWindow.print();
   };
 
-  const toggleCompany = (companyId: string) => {
-    setExpandedCompanies(prev => {
+  const toggleEmployee = (employeeId: string) => {
+    setExpandedEmployees(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(companyId)) {
-        newSet.delete(companyId);
+      if (newSet.has(employeeId)) {
+        newSet.delete(employeeId);
       } else {
-        newSet.add(companyId);
+        newSet.add(employeeId);
       }
       return newSet;
     });
   };
 
-  const handleExportToExcel = (companyData?: CompanySalaryData) => {
-    // Export either specific company or all companies
-    const dataToExport = companyData ? [companyData] : companySalaryData;
-    
-    if (dataToExport.length === 0) {
+  const handleExportToExcel = () => {
+    if (consolidatedSalaries.length === 0) {
       toast.error("No data to export");
       return;
     }
 
-    // Create workbook
     const wb = XLSX.utils.book_new();
 
-    dataToExport.forEach(company => {
-      // Prepare data for this company
-      const excelData = company.employees.map(emp => ({
-        'Employee ID': emp.employee.employee_id,
-        'Full Name': emp.employee.full_name,
-        'Total Shifts': emp.total_shifts,
-        'Pay per Shift': `Rs. ${emp.pay_per_shift.toFixed(2)}`,
-        'Gross Shift Total': `Rs. ${emp.gross_shift_total.toFixed(2)}`,
-        'Basic Salary': `Rs. ${emp.basic_salary.toFixed(2)}`,
-        'EPF (8%)': `Rs. ${emp.epf.toFixed(2)}`,
-        'Salary Advance': `Rs. ${emp.salary_advance.toFixed(2)}`,
-        'Transport': `Rs. ${emp.transport.toFixed(2)}`,
-        'Food': `Rs. ${emp.food.toFixed(2)}`,
-        'Uniforms': `Rs. ${emp.uniforms.toFixed(2)}`,
-        'Other Deductions': `Rs. ${emp.other_deductions.toFixed(2)}`,
-        'Final Salary': `Rs. ${emp.final_salary.toFixed(2)}`
-      }));
+    const excelData = consolidatedSalaries.map(emp => ({
+      'Employee ID': emp.employee.employee_id,
+      'Full Name': emp.employee.full_name,
+      'Total Shifts': emp.total_shifts_all,
+      'Companies': emp.companyWork.map(w => w.company.company_name).join(', '),
+      'Ranks': emp.companyWork.map(w => w.rank).join(', '),
+      'Gross Total': `Rs. ${emp.gross_shift_total_all.toFixed(2)}`,
+      'Basic Salary': `Rs. ${emp.basic_salary.toFixed(2)}`,
+      'EPF (8%)': `Rs. ${emp.epf.toFixed(2)}`,
+      'Salary Advance': `Rs. ${emp.salary_advance.toFixed(2)}`,
+      'Transport': `Rs. ${emp.transport.toFixed(2)}`,
+      'Food': `Rs. ${emp.food.toFixed(2)}`,
+      'Uniforms': `Rs. ${emp.uniforms.toFixed(2)}`,
+      'Other Deductions': `Rs. ${emp.other_deductions.toFixed(2)}`,
+      'Final Salary': `Rs. ${emp.final_salary.toFixed(2)}`
+    }));
 
-      // Add totals row
-      excelData.push({
-        'Employee ID': 'TOTAL',
-        'Full Name': '',
-        'Total Shifts': company.totalShifts,
-        'Pay per Shift': '',
-        'Gross Shift Total': `Rs. ${company.totalGross.toFixed(2)}`,
-        'Basic Salary': '',
-        'EPF (8%)': '',
-        'Salary Advance': '',
-        'Transport': '',
-        'Food': '',
-        'Uniforms': '',
-        'Other Deductions': '',
-        'Final Salary': `Rs. ${company.employees.reduce((sum, emp) => sum + emp.final_salary, 0).toFixed(2)}`
-      });
-
-      // Create worksheet
-      const ws = XLSX.utils.json_to_sheet(excelData);
-      
-      // Set column widths
-      ws['!cols'] = [
-        { wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 15 },
-        { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 15 },
-        { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 15 }
-      ];
-
-      // Add worksheet to workbook (limit sheet name to 31 chars)
-      const sheetName = company.company.company_name.substring(0, 31);
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    // Add totals row
+    excelData.push({
+      'Employee ID': 'TOTAL',
+      'Full Name': '',
+      'Total Shifts': consolidatedSalaries.reduce((sum, emp) => sum + emp.total_shifts_all, 0),
+      'Companies': '',
+      'Ranks': '',
+      'Gross Total': `Rs. ${consolidatedSalaries.reduce((sum, emp) => sum + emp.gross_shift_total_all, 0).toFixed(2)}`,
+      'Basic Salary': '',
+      'EPF (8%)': '',
+      'Salary Advance': '',
+      'Transport': '',
+      'Food': '',
+      'Uniforms': '',
+      'Other Deductions': '',
+      'Final Salary': `Rs. ${consolidatedSalaries.reduce((sum, emp) => sum + emp.final_salary, 0).toFixed(2)}`
     });
 
-    // Generate filename
-    const monthYear = new Date(selectedMonth).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    const filename = companyData 
-      ? `Salary_${companyData.company.company_name}_${monthYear}.xlsx`
-      : `Salary_Report_${monthYear}.xlsx`;
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 30 }, { wch: 15 },
+      { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 12 },
+      { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 15 }
+    ];
 
-    // Save file
+    XLSX.utils.book_append_sheet(wb, ws, 'Consolidated Salaries');
+
+    const monthYear = new Date(selectedMonth).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const filename = `Consolidated_Salary_Report_${monthYear}.xlsx`;
+
     XLSX.writeFile(wb, filename);
     toast.success(`Exported to ${filename}`);
   };
 
-  const renderEditableCell = (
-    salaryId: string,
-    field: string,
-    value: number,
-    employeeRecord: EmployeeSalaryRecord
-  ) => {
-    if (editingCell?.salaryId === salaryId && editingCell?.field === field) {
-      return (
-        <Input
-          type="number"
-          defaultValue={value}
-          onBlur={(e) => handleCellEdit(salaryId, field, parseFloat(e.target.value) || 0, employeeRecord)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              handleCellEdit(salaryId, field, parseFloat(e.currentTarget.value) || 0, employeeRecord);
-            }
-          }}
-          autoFocus
-          className="w-24 h-8"
-        />
-      );
-    }
-
-    return (
-      <span 
-        onClick={() => isSuperAdmin && setEditingCell({ salaryId, field })} 
-        className={isSuperAdmin ? "cursor-pointer hover:bg-muted px-2 py-1 rounded" : ""}
-      >
-        Rs. {value.toFixed(2)}
-      </span>
-    );
-  };
+  const totalGross = consolidatedSalaries.reduce((sum, emp) => sum + emp.gross_shift_total_all, 0);
+  const totalFinal = consolidatedSalaries.reduce((sum, emp) => sum + emp.final_salary, 0);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Salary Management</h1>
-          <p className="text-muted-foreground">Manage employee salaries by company</p>
+          <h1 className="text-3xl font-bold">Salaries</h1>
+          <p className="text-muted-foreground">Manage employee salaries</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportToExcel}>
+            <FileDown className="h-4 w-4 mr-2" />
+            Export to Excel
+          </Button>
         </div>
       </div>
 
@@ -778,301 +558,205 @@ export default function Salaries() {
         <CardHeader>
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <Label htmlFor="salary_month">Select Month</Label>
+              <Label htmlFor="month-select">Select Month</Label>
               <Input
-                id="salary_month"
+                id="month-select"
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="max-w-xs"
+                className="mt-1"
               />
             </div>
-            {companySalaryData.length > 0 && (
-              <Button 
-                onClick={() => handleExportToExcel()}
-                variant="default"
-                className="mt-6"
-              >
-                <FileDown className="h-4 w-4 mr-2" />
-                Export All to Excel
-              </Button>
-            )}
+            <div className="flex gap-4 items-end">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Gross</p>
+                <p className="text-2xl font-bold">Rs. {totalGross.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Final</p>
+                <p className="text-2xl font-bold text-green-600">Rs. {totalFinal.toFixed(2)}</p>
+              </div>
+            </div>
           </div>
         </CardHeader>
       </Card>
 
-      {companySalaryData.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            No salary data found for selected month
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {companySalaryData.map((companyData) => (
-            <Collapsible
-              key={companyData.company.id}
-              open={expandedCompanies.has(companyData.company.id)}
-              onOpenChange={() => toggleCompany(companyData.company.id)}
-            >
-              <Card>
-                <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-xl">{companyData.company.company_name}</CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {companyData.employees.length} employee{companyData.employees.length !== 1 ? 's' : ''} • 
-                          {companyData.totalShifts} total shifts • 
-                          Rs. {companyData.totalGross.toFixed(2)} total gross
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleExportToExcel(companyData);
-                          }}
-                        >
-                          <FileDown className="h-4 w-4 mr-2" />
-                          Export
-                        </Button>
-                        {expandedCompanies.has(companyData.company.id) ? (
-                          <ChevronUp className="h-5 w-5" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5" />
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Employee ID</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead className="text-right">Shifts</TableHead>
-                            <TableHead className="text-right">Rate</TableHead>
-                            <TableHead className="text-right">Gross</TableHead>
-                            <TableHead className="text-right">Basic</TableHead>
-                            <TableHead className="text-right">EPF (8%)</TableHead>
-                            <TableHead className="text-right">Advance</TableHead>
-                            <TableHead className="text-right">Transport</TableHead>
-                            <TableHead className="text-right">Food</TableHead>
-                            <TableHead className="text-right">Uniforms</TableHead>
-                            <TableHead className="text-right">Other</TableHead>
-                            <TableHead className="text-right bg-muted font-bold">Final Salary</TableHead>
-                            <TableHead className="text-center">Action</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {companyData.employees.map((empRecord) => (
-                            <TableRow key={empRecord.salary_id}>
-                              <TableCell className="font-medium">{empRecord.employee.employee_id}</TableCell>
-                              <TableCell>{empRecord.employee.full_name}</TableCell>
-                              <TableCell className="text-right">{empRecord.total_shifts}</TableCell>
-                              <TableCell className="text-right text-sm">Rs. {empRecord.pay_per_shift}</TableCell>
-                              <TableCell className="text-right font-medium">Rs. {empRecord.gross_shift_total.toFixed(2)}</TableCell>
-                              <TableCell className="text-right">
-                                {renderEditableCell(empRecord.salary_id, 'basic_salary', empRecord.basic_salary, empRecord)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {/* EPF is auto-calculated as 8% of Basic Salary - read-only */}
-                                <span className="text-sm text-muted-foreground">
-                                  Rs. {empRecord.epf.toFixed(2)}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {renderEditableCell(empRecord.salary_id, 'salary_advance', empRecord.salary_advance, empRecord)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {renderEditableCell(empRecord.salary_id, 'transport', empRecord.transport, empRecord)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {renderEditableCell(empRecord.salary_id, 'food', empRecord.food, empRecord)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {renderEditableCell(empRecord.salary_id, 'uniforms', empRecord.uniforms, empRecord)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {renderEditableCell(empRecord.salary_id, 'other_deductions', empRecord.other_deductions, empRecord)}
-                              </TableCell>
-                              <TableCell className="text-right font-bold bg-muted">
-                                Rs. {empRecord.final_salary.toFixed(2)}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <div className="flex gap-2 justify-center">
-                                  {isSuperAdmin && (
-                                    <Button 
-                                      size="sm" 
-                                      variant="ghost"
-                                      onClick={() => handleOpenEditDialog(empRecord)}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => handlePrintSalarySlip(empRecord, companyData.company.company_name)}
-                                  >
-                                    <Printer className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
-          ))}
-        </div>
-      )}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle>Employee Salaries - Consolidated</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12"></TableHead>
+                <TableHead>Employee ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="text-right">Total Shifts</TableHead>
+                <TableHead className="text-right">Gross Total</TableHead>
+                <TableHead className="text-right">Deductions</TableHead>
+                <TableHead className="text-right">Final Salary</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {consolidatedSalaries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    No salary data for selected month
+                  </TableCell>
+                </TableRow>
+              ) : (
+                consolidatedSalaries.map((empSalary) => (
+                  <Collapsible key={empSalary.employee.id} asChild>
+                    <>
+                      <TableRow>
+                        <TableCell>
+                          <CollapsibleTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => toggleEmployee(empSalary.employee.id)}
+                            >
+                              {expandedEmployees.has(empSalary.employee.id) ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </CollapsibleTrigger>
+                        </TableCell>
+                        <TableCell className="font-medium">{empSalary.employee.employee_id}</TableCell>
+                        <TableCell>{empSalary.employee.full_name}</TableCell>
+                        <TableCell className="text-right">{empSalary.total_shifts_all}</TableCell>
+                        <TableCell className="text-right">Rs. {empSalary.gross_shift_total_all.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          Rs. {(empSalary.epf + empSalary.salary_advance + empSalary.transport + empSalary.food + empSalary.uniforms + empSalary.other_deductions).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">Rs. {empSalary.final_salary.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenEditDialog(empSalary)}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePrintSalarySlip(empSalary)}
+                            >
+                              <Printer className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      <CollapsibleContent asChild>
+                        <TableRow>
+                          <TableCell colSpan={8} className="bg-muted/50">
+                            <div className="p-4">
+                              <h4 className="font-semibold mb-3">Company-wise Breakdown:</h4>
+                              <div className="space-y-2">
+                                {empSalary.companyWork.map((work) => (
+                                  <div key={work.company_id} className="flex justify-between items-center bg-background p-3 rounded">
+                                    <div>
+                                      <span className="font-medium">{work.company.company_name}</span>
+                                      <span className="text-muted-foreground ml-2">({work.rank})</span>
+                                    </div>
+                                    <div className="flex gap-6 text-sm">
+                                      <span>{work.total_shifts} shifts</span>
+                                      <span>@ Rs. {work.pay_per_shift}</span>
+                                      <span className="font-semibold">Rs. {work.gross_shift_total.toFixed(2)}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </CollapsibleContent>
+                    </>
+                  </Collapsible>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
-        setIsEditDialogOpen(open);
-        if (!open) setEditingRecord(null);
-      }}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Salary Details</DialogTitle>
             <DialogDescription>
-              Update salary and deductions for {editingRecord?.employee.full_name}
+              Update deductions for {editingRecord?.employee.full_name}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitEdit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit_basic_salary">Basic Salary (Rs.)</Label>
-                <Input
-                  id="edit_basic_salary"
-                  type="number"
-                  step="0.01"
-                  value={editFormData.basic_salary}
-                  onChange={(e) => setEditFormData({ ...editFormData, basic_salary: e.target.value })}
-                  required
-                />
-                <p className="text-xs text-muted-foreground">EPF will be auto-calculated as 8% of Basic Salary</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit_salary_advance">Salary Advance (Rs.)</Label>
-                <Input
-                  id="edit_salary_advance"
-                  type="number"
-                  step="0.01"
-                  value={editFormData.salary_advance}
-                  onChange={(e) => setEditFormData({ ...editFormData, salary_advance: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit_transport">Transport Deduction (Rs.)</Label>
-                <Input
-                  id="edit_transport"
-                  type="number"
-                  step="0.01"
-                  value={editFormData.transport}
-                  onChange={(e) => setEditFormData({ ...editFormData, transport: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit_food">Food Deduction (Rs.)</Label>
-                <Input
-                  id="edit_food"
-                  type="number"
-                  step="0.01"
-                  value={editFormData.food}
-                  onChange={(e) => setEditFormData({ ...editFormData, food: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit_uniforms">Uniforms Deduction (Rs.)</Label>
-                <Input
-                  id="edit_uniforms"
-                  type="number"
-                  step="0.01"
-                  value={editFormData.uniforms}
-                  onChange={(e) => setEditFormData({ ...editFormData, uniforms: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit_other_deductions">Other Deductions (Rs.)</Label>
-                <Input
-                  id="edit_other_deductions"
-                  type="number"
-                  step="0.01"
-                  value={editFormData.other_deductions}
-                  onChange={(e) => setEditFormData({ ...editFormData, other_deductions: e.target.value })}
-                  required
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="basic_salary">Basic Salary (for EPF)</Label>
+              <Input
+                id="basic_salary"
+                type="number"
+                step="0.01"
+                value={editFormData.basic_salary}
+                onChange={(e) => setEditFormData({ ...editFormData, basic_salary: e.target.value })}
+              />
             </div>
-
-            {editingRecord && (
-              <div className="bg-muted p-4 rounded-lg space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Gross Shift Total:</span>
-                  <span className="font-medium">Rs. {editingRecord.gross_shift_total.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Basic Salary:</span>
-                  <span className="font-medium">Rs. {(parseFloat(editFormData.basic_salary) || 0).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">EPF (8%):</span>
-                  <span className="font-medium">Rs. {((parseFloat(editFormData.basic_salary) || 0) * 0.08).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm border-t pt-2">
-                  <span className="text-muted-foreground">Total Deductions:</span>
-                  <span className="font-medium text-destructive">
-                    Rs. {(
-                      ((parseFloat(editFormData.basic_salary) || 0) * 0.08) +
-                      (parseFloat(editFormData.salary_advance) || 0) +
-                      (parseFloat(editFormData.transport) || 0) +
-                      (parseFloat(editFormData.food) || 0) +
-                      (parseFloat(editFormData.uniforms) || 0) +
-                      (parseFloat(editFormData.other_deductions) || 0)
-                    ).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-base font-bold border-t pt-2">
-                  <span>Final Salary:</span>
-                  <span className="text-green-600">
-                    Rs. {(
-                      editingRecord.gross_shift_total -
-                      ((parseFloat(editFormData.basic_salary) || 0) * 0.08) -
-                      (parseFloat(editFormData.salary_advance) || 0) -
-                      (parseFloat(editFormData.transport) || 0) -
-                      (parseFloat(editFormData.food) || 0) -
-                      (parseFloat(editFormData.uniforms) || 0) -
-                      (parseFloat(editFormData.other_deductions) || 0)
-                    ).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            )}
-
+            <div className="space-y-2">
+              <Label htmlFor="salary_advance">Salary Advance</Label>
+              <Input
+                id="salary_advance"
+                type="number"
+                step="0.01"
+                value={editFormData.salary_advance}
+                onChange={(e) => setEditFormData({ ...editFormData, salary_advance: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="transport">Transport</Label>
+              <Input
+                id="transport"
+                type="number"
+                step="0.01"
+                value={editFormData.transport}
+                onChange={(e) => setEditFormData({ ...editFormData, transport: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="food">Food</Label>
+              <Input
+                id="food"
+                type="number"
+                step="0.01"
+                value={editFormData.food}
+                onChange={(e) => setEditFormData({ ...editFormData, food: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="uniforms">Uniforms</Label>
+              <Input
+                id="uniforms"
+                type="number"
+                step="0.01"
+                value={editFormData.uniforms}
+                onChange={(e) => setEditFormData({ ...editFormData, uniforms: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="other_deductions">Other Deductions</Label>
+              <Input
+                id="other_deductions"
+                type="number"
+                step="0.01"
+                value={editFormData.other_deductions}
+                onChange={(e) => setEditFormData({ ...editFormData, other_deductions: e.target.value })}
+              />
+            </div>
             <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsEditDialogOpen(false);
-                  setEditingRecord(null);
-                }}
-              >
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit">Save Changes</Button>
