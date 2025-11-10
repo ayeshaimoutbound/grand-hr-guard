@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Printer, ChevronDown, ChevronUp, FileDown } from "lucide-react";
+import { Printer, ChevronDown, ChevronUp, FileDown, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -22,6 +22,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Employee {
   id: string;
@@ -67,6 +74,16 @@ export default function Salaries() {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
   const [editingCell, setEditingCell] = useState<{ salaryId: string; field: string } | null>(null);
   const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<EmployeeSalaryRecord | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    basic_salary: "",
+    salary_advance: "",
+    transport: "",
+    food: "",
+    uniforms: "",
+    other_deductions: "",
+  });
   const { isSuperAdmin } = useAuth();
 
   useEffect(() => {
@@ -206,6 +223,147 @@ export default function Salaries() {
     setCompanySalaryData(Array.from(companyDataMap.values()));
     // Expand all companies by default
     setExpandedCompanies(new Set(Array.from(companyDataMap.keys())));
+  };
+
+  const handleOpenEditDialog = (record: EmployeeSalaryRecord) => {
+    if (!isSuperAdmin) {
+      toast.error("Only Super Admin can edit salaries");
+      return;
+    }
+    
+    setEditingRecord(record);
+    setEditFormData({
+      basic_salary: record.basic_salary.toString(),
+      salary_advance: record.salary_advance.toString(),
+      transport: record.transport.toString(),
+      food: record.food.toString(),
+      uniforms: record.uniforms.toString(),
+      other_deductions: record.other_deductions.toString(),
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSubmitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingRecord) return;
+
+    // Validate inputs
+    const salaryFieldSchema = z.number()
+      .min(0, 'Value cannot be negative')
+      .max(10000000, 'Value exceeds maximum allowed');
+    
+    const values = {
+      basic_salary: parseFloat(editFormData.basic_salary) || 0,
+      salary_advance: parseFloat(editFormData.salary_advance) || 0,
+      transport: parseFloat(editFormData.transport) || 0,
+      food: parseFloat(editFormData.food) || 0,
+      uniforms: parseFloat(editFormData.uniforms) || 0,
+      other_deductions: parseFloat(editFormData.other_deductions) || 0,
+    };
+
+    try {
+      Object.values(values).forEach(val => salaryFieldSchema.parse(val));
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+        return;
+      }
+    }
+
+    // Auto-calculate EPF as 8% of Basic Salary
+    const epf = values.basic_salary * 0.08;
+    
+    // Calculate final salary
+    const finalSalary = values.basic_salary + editingRecord.gross_shift_total - 
+      epf - values.salary_advance - values.transport - 
+      values.food - values.uniforms - values.other_deductions;
+
+    // Check if this is a new record (temp ID) or existing record
+    const isNewRecord = editingRecord.salary_id.startsWith('temp-');
+    
+    if (isNewRecord) {
+      // Extract employee_id and company_id from temp ID
+      const parts = editingRecord.salary_id.split('-');
+      const employee_id = parts[1];
+      const company_id = parts[2];
+      
+      // Create new salary record
+      const { data, error } = await supabase
+        .from("salaries")
+        .insert({
+          employee_id,
+          company_id,
+          salary_month: `${selectedMonth}-01`,
+          total_shifts: editingRecord.total_shifts,
+          pay_per_shift: editingRecord.pay_per_shift,
+          gross_shift_total: editingRecord.gross_shift_total,
+          ...values,
+          epf: epf,
+          final_salary: finalSalary,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Failed to create salary record");
+        return;
+      }
+
+      // Update local state with new real ID
+      setCompanySalaryData(prev =>
+        prev.map(companyData => ({
+          ...companyData,
+          employees: companyData.employees.map(emp =>
+            emp.salary_id === editingRecord.salary_id
+              ? { 
+                  ...emp, 
+                  salary_id: data.id,
+                  ...values,
+                  epf: epf,
+                  final_salary: finalSalary 
+                }
+              : emp
+          ),
+        }))
+      );
+    } else {
+      // Update existing record
+      const { error } = await supabase
+        .from("salaries")
+        .update({
+          ...values,
+          epf: epf,
+          final_salary: finalSalary,
+        })
+        .eq("id", editingRecord.salary_id);
+
+      if (error) {
+        toast.error("Failed to update salary");
+        return;
+      }
+
+      // Update local state
+      setCompanySalaryData(prev =>
+        prev.map(companyData => ({
+          ...companyData,
+          employees: companyData.employees.map(emp =>
+            emp.salary_id === editingRecord.salary_id
+              ? { 
+                  ...emp, 
+                  ...values,
+                  epf: epf,
+                  final_salary: finalSalary 
+                }
+              : emp
+          ),
+        }))
+      );
+    }
+
+    toast.success("Salary updated successfully");
+    setIsEditDialogOpen(false);
+    setEditingRecord(null);
   };
 
   const handleCellEdit = async (salaryId: string, field: string, value: number, employeeRecord: EmployeeSalaryRecord) => {
@@ -740,13 +898,24 @@ export default function Salaries() {
                                 Rs. {empRecord.final_salary.toFixed(2)}
                               </TableCell>
                               <TableCell className="text-center">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => handlePrintSalarySlip(empRecord, companyData.company.company_name)}
-                                >
-                                  <Printer className="h-4 w-4" />
-                                </Button>
+                                <div className="flex gap-2 justify-center">
+                                  {isSuperAdmin && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost"
+                                      onClick={() => handleOpenEditDialog(empRecord)}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handlePrintSalarySlip(empRecord, companyData.company.company_name)}
+                                  >
+                                    <Printer className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -760,6 +929,150 @@ export default function Salaries() {
           ))}
         </div>
       )}
+
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open);
+        if (!open) setEditingRecord(null);
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Salary Details</DialogTitle>
+            <DialogDescription>
+              Update salary and deductions for {editingRecord?.employee.full_name}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitEdit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_basic_salary">Basic Salary (Rs.)</Label>
+                <Input
+                  id="edit_basic_salary"
+                  type="number"
+                  step="0.01"
+                  value={editFormData.basic_salary}
+                  onChange={(e) => setEditFormData({ ...editFormData, basic_salary: e.target.value })}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">EPF will be auto-calculated as 8% of Basic Salary</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_salary_advance">Salary Advance (Rs.)</Label>
+                <Input
+                  id="edit_salary_advance"
+                  type="number"
+                  step="0.01"
+                  value={editFormData.salary_advance}
+                  onChange={(e) => setEditFormData({ ...editFormData, salary_advance: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_transport">Transport Deduction (Rs.)</Label>
+                <Input
+                  id="edit_transport"
+                  type="number"
+                  step="0.01"
+                  value={editFormData.transport}
+                  onChange={(e) => setEditFormData({ ...editFormData, transport: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_food">Food Deduction (Rs.)</Label>
+                <Input
+                  id="edit_food"
+                  type="number"
+                  step="0.01"
+                  value={editFormData.food}
+                  onChange={(e) => setEditFormData({ ...editFormData, food: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_uniforms">Uniforms Deduction (Rs.)</Label>
+                <Input
+                  id="edit_uniforms"
+                  type="number"
+                  step="0.01"
+                  value={editFormData.uniforms}
+                  onChange={(e) => setEditFormData({ ...editFormData, uniforms: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_other_deductions">Other Deductions (Rs.)</Label>
+                <Input
+                  id="edit_other_deductions"
+                  type="number"
+                  step="0.01"
+                  value={editFormData.other_deductions}
+                  onChange={(e) => setEditFormData({ ...editFormData, other_deductions: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            {editingRecord && (
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Gross Shift Total:</span>
+                  <span className="font-medium">Rs. {editingRecord.gross_shift_total.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Basic Salary:</span>
+                  <span className="font-medium">Rs. {(parseFloat(editFormData.basic_salary) || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">EPF (8%):</span>
+                  <span className="font-medium">Rs. {((parseFloat(editFormData.basic_salary) || 0) * 0.08).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm border-t pt-2">
+                  <span className="text-muted-foreground">Total Deductions:</span>
+                  <span className="font-medium text-destructive">
+                    Rs. {(
+                      ((parseFloat(editFormData.basic_salary) || 0) * 0.08) +
+                      (parseFloat(editFormData.salary_advance) || 0) +
+                      (parseFloat(editFormData.transport) || 0) +
+                      (parseFloat(editFormData.food) || 0) +
+                      (parseFloat(editFormData.uniforms) || 0) +
+                      (parseFloat(editFormData.other_deductions) || 0)
+                    ).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-base font-bold border-t pt-2">
+                  <span>Final Salary:</span>
+                  <span className="text-green-600">
+                    Rs. {(
+                      (parseFloat(editFormData.basic_salary) || 0) +
+                      editingRecord.gross_shift_total -
+                      ((parseFloat(editFormData.basic_salary) || 0) * 0.08) -
+                      (parseFloat(editFormData.salary_advance) || 0) -
+                      (parseFloat(editFormData.transport) || 0) -
+                      (parseFloat(editFormData.food) || 0) -
+                      (parseFloat(editFormData.uniforms) || 0) -
+                      (parseFloat(editFormData.other_deductions) || 0)
+                    ).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setEditingRecord(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
