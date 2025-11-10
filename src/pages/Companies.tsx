@@ -29,6 +29,7 @@ interface Company {
   id: string;
   company_name: string;
   location: string;
+  company_number: string;
   pay_oic: number;
   pay_sso: number;
   pay_jso: number;
@@ -50,6 +51,7 @@ export default function Companies() {
 
   const [formData, setFormData] = useState({
     company_name: "",
+    company_number: "",
     location: "",
     pay_oic: "",
     pay_sso: "",
@@ -93,6 +95,7 @@ export default function Companies() {
 
     const payload = {
       company_name: formData.company_name,
+      company_number: formData.company_number,
       location: formData.location,
       pay_oic: parseFloat(formData.pay_oic),
       pay_sso: parseFloat(formData.pay_sso),
@@ -146,6 +149,7 @@ export default function Companies() {
     setCurrentCompany(company);
     setFormData({
       company_name: company.company_name,
+      company_number: company.company_number || "",
       location: company.location,
       pay_oic: company.pay_oic.toString(),
       pay_sso: company.pay_sso.toString(),
@@ -182,6 +186,7 @@ export default function Companies() {
   const resetForm = () => {
     setFormData({
       company_name: "",
+      company_number: "",
       location: "",
       pay_oic: "",
       pay_sso: "",
@@ -234,6 +239,16 @@ export default function Companies() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="company_number">Company Number</Label>
+                  <Input
+                    id="company_number"
+                    value={formData.company_number}
+                    onChange={(e) => setFormData({ ...formData, company_number: e.target.value })}
+                    placeholder="e.g., GS-001"
+                    required
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="location">Location</Label>
                   <Input
                     id="location"
@@ -378,6 +393,7 @@ export default function Companies() {
             <TableHeader>
               <TableRow>
                 <TableHead>Company Name</TableHead>
+                <TableHead>Company No.</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>OIC Pay</TableHead>
                 <TableHead>SSO Pay</TableHead>
@@ -389,7 +405,7 @@ export default function Companies() {
             <TableBody>
               {filteredCompanies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No companies found
                   </TableCell>
                 </TableRow>
@@ -397,6 +413,7 @@ export default function Companies() {
                 filteredCompanies.map((company) => (
                   <TableRow key={company.id}>
                     <TableCell className="font-medium">{company.company_name}</TableCell>
+                    <TableCell className="font-mono text-sm">{company.company_number || "-"}</TableCell>
                     <TableCell>{company.location}</TableCell>
                     <TableCell>Rs. {company.pay_oic.toFixed(2)}</TableCell>
                     <TableCell>Rs. {company.pay_sso.toFixed(2)}</TableCell>

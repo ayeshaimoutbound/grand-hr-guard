@@ -34,6 +34,7 @@ import {
 interface Company {
   id: string;
   company_name: string;
+  company_number: string;
   location: string;
   pay_oic: number;
   pay_sso: number;
@@ -195,9 +196,12 @@ export default function Invoices() {
       // Use existing invoice number
       invoiceNumber = existingInvoice.invoice_number;
     } else {
-      // Generate new invoice number
-      const companyIndex = companies.findIndex(c => c.id === company.id) + 1;
-      invoiceNumber = generateInvoiceNumber(companyIndex, selectedDate.getFullYear(), selectedDate.getMonth() + 1);
+      // Generate new invoice number using company number
+      if (!company.company_number) {
+        toast.error("Company number is missing. Please update company details.");
+        return;
+      }
+      invoiceNumber = generateInvoiceNumber(company.company_number, selectedDate.getFullYear(), selectedDate.getMonth() + 1);
     }
 
     setPreviewData({

@@ -187,8 +187,8 @@ export const generateInvoicePDF = (invoiceData: InvoiceData) => {
   }
 };
 
-export const generateInvoiceNumber = (companyIndex: number, year: number, month: number): string => {
+export const generateInvoiceNumber = (companyNumber: string, year: number, month: number): string => {
   const yearShort = year.toString().slice(-2);
   const monthPadded = month.toString().padStart(2, '0');
-  return `${companyIndex}-${yearShort}-${monthPadded}`;
+  return `${companyNumber}-${monthPadded}-${yearShort}`;
 };

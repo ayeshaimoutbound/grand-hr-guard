@@ -82,6 +82,7 @@ export type Database = {
           charge_oic: number
           charge_sso: number
           company_name: string
+          company_number: string | null
           created_at: string | null
           created_by: string | null
           id: string
@@ -98,6 +99,7 @@ export type Database = {
           charge_oic?: number
           charge_sso?: number
           company_name: string
+          company_number?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
@@ -114,6 +116,7 @@ export type Database = {
           charge_oic?: number
           charge_sso?: number
           company_name?: string
+          company_number?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
