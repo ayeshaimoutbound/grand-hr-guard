@@ -1,27 +1,12 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, DollarSign, Calculator } from "lucide-react";
+import { Search, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -31,561 +16,369 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-interface SalaryRecord {
+interface Employee {
   id: string;
   employee_id: string;
-  company_id: string;
-  salary_month: string;
-  basic_salary: number;
+  full_name: string;
+  nic: string;
+  phone_number: string;
+  bank_name: string;
+  branch: string;
+  account_number: string;
+}
+
+interface Company {
+  id: string;
+  company_name: string;
+}
+
+interface EmployeeSalaryData {
+  employee: Employee;
+  companies: {
+    [companyId: string]: {
+      company_name: string;
+      total_shifts: number;
+      pay_per_shift: number;
+      gross_total: number;
+    };
+  };
   total_shifts: number;
-  gross_shift_total: number;
-  pay_per_shift: number;
-  final_salary: number;
+  total_gross: number;
+  basic_salary: number;
   epf: number;
   salary_advance: number;
   transport: number;
   food: number;
   uniforms: number;
   other_deductions: number;
-}
-
-interface Employee {
-  id: string;
-  full_name: string;
-}
-
-interface Company {
-  id: string;
-  company_name: string;
-  pay_oic: number;
-  pay_sso: number;
-  pay_jso: number;
-  pay_lso: number;
-}
-
-interface AttendanceRecord {
-  id: string;
-  employee_id: string;
-  rank: string;
-  present: boolean;
-  shift_type: string;
+  final_salary: number;
 }
 
 export default function Salaries() {
-  const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([]);
-  const [filteredRecords, setFilteredRecords] = useState<SalaryRecord[]>([]);
+  const [employeesSalaryData, setEmployeesSalaryData] = useState<EmployeeSalaryData[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [currentRecord, setCurrentRecord] = useState<SalaryRecord | null>(null);
+  const [editingCell, setEditingCell] = useState<{ employeeId: string; field: string } | null>(null);
   const { isSuperAdmin } = useAuth();
 
-  const [formData, setFormData] = useState({
-    employee_id: "",
-    company_id: "",
-    salary_month: new Date().toISOString().substring(0, 7),
-    basic_salary: "0",
-    total_shifts: "0",
-    gross_shift_total: "0",
-    pay_per_shift: "0",
-    epf: "0",
-    salary_advance: "0",
-    transport: "0",
-    food: "0",
-    uniforms: "0",
-    other_deductions: "0",
-  });
-
   useEffect(() => {
     fetchData();
-  }, []);
-
-  useEffect(() => {
-    const filtered = salaryRecords.filter((record) => {
-      const employee = employees.find((e) => e.id === record.employee_id);
-      const company = companies.find((c) => c.id === record.company_id);
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        employee?.full_name.toLowerCase().includes(searchLower) ||
-        company?.company_name.toLowerCase().includes(searchLower) ||
-        record.salary_month.includes(searchLower)
-      );
-    });
-    setFilteredRecords(filtered);
-  }, [searchTerm, salaryRecords, employees, companies]);
+  }, [selectedMonth]);
 
   const fetchData = async () => {
-    const [salariesRes, employeesRes, companiesRes] = await Promise.all([
-      supabase.from("salaries").select("*").order("salary_month", { ascending: false }),
-      supabase.from("employees").select("id, full_name"),
-      supabase.from("companies").select("id, company_name, pay_oic, pay_sso, pay_jso, pay_lso"),
+    const [employeesRes, companiesRes, salariesRes] = await Promise.all([
+      supabase.from("employees").select("*"),
+      supabase.from("companies").select("id, company_name"),
+      supabase.from("salaries").select("*").gte("salary_month", `${selectedMonth}-01`).lte("salary_month", `${selectedMonth}-31`),
     ]);
 
-    if (salariesRes.error) {
-      toast.error("Error fetching salary records");
-    } else {
-      setSalaryRecords(salariesRes.data || []);
-      setFilteredRecords(salariesRes.data || []);
-    }
-
-    if (!employeesRes.error) setEmployees(employeesRes.data || []);
-    if (!companiesRes.error) setCompanies(companiesRes.data || []);
-  };
-
-  const handleAutoCalculate = async () => {
-    if (!formData.employee_id || !formData.company_id || !formData.salary_month) {
-      toast.error("Please select employee, company, and month first");
+    if (employeesRes.error || companiesRes.error) {
+      toast.error("Error fetching data");
       return;
     }
 
-    // Fetch attendance records for the selected employee, company, and month
-    const startDate = `${formData.salary_month}-01`;
-    const endDate = `${formData.salary_month}-31`;
+    const employeesList = employeesRes.data || [];
+    const companiesList = companiesRes.data || [];
+    const salariesList = salariesRes.data || [];
 
-    const { data: attendanceData, error } = await supabase
-      .from("attendance")
-      .select("*")
-      .eq("employee_id", formData.employee_id)
-      .eq("company_id", formData.company_id)
-      .gte("attendance_date", startDate)
-      .lte("attendance_date", endDate)
-      .eq("present", true);
+    setEmployees(employeesList);
+    setCompanies(companiesList);
 
-    if (error) {
-      toast.error("Error fetching attendance data");
-      return;
-    }
+    // Build salary data structure
+    const salaryData: EmployeeSalaryData[] = employeesList.map((emp) => {
+      const employeeSalaries = salariesList.filter(s => s.employee_id === emp.id);
+      
+      const companiesData: { [key: string]: any } = {};
+      let totalShifts = 0;
+      let totalGross = 0;
+      let basicSalary = 0;
+      let epf = 0;
+      let salaryAdvance = 0;
+      let transport = 0;
+      let food = 0;
+      let uniforms = 0;
+      let otherDeductions = 0;
 
-    if (!attendanceData || attendanceData.length === 0) {
-      toast.error("No attendance records found for this period");
-      return;
-    }
+      employeeSalaries.forEach(salary => {
+        if (salary.company_id) {
+          const company = companiesList.find(c => c.id === salary.company_id);
+          companiesData[salary.company_id] = {
+            company_name: company?.company_name || "Unknown",
+            total_shifts: salary.total_shifts || 0,
+            pay_per_shift: salary.pay_per_shift || 0,
+            gross_total: salary.gross_shift_total || 0,
+          };
+          totalShifts += salary.total_shifts || 0;
+          totalGross += salary.gross_shift_total || 0;
+        }
+        
+        // Use the latest values for deductions
+        basicSalary = salary.basic_salary || 0;
+        epf = salary.epf || 0;
+        salaryAdvance = salary.salary_advance || 0;
+        transport = salary.transport || 0;
+        food = salary.food || 0;
+        uniforms = salary.uniforms || 0;
+        otherDeductions = salary.other_deductions || 0;
+      });
 
-    const totalShifts = attendanceData.length;
-    const employeeRank = attendanceData[0]?.rank as "OIC" | "SSO" | "JSO" | "LSO";
+      const finalSalary = basicSalary + totalGross - epf - salaryAdvance - transport - food - uniforms - otherDeductions;
 
-    // Get pay rate from company
-    const company = companies.find((c) => c.id === formData.company_id);
-    if (!company) {
-      toast.error("Company not found");
-      return;
-    }
-
-    let payPerShift = 0;
-    switch (employeeRank) {
-      case "OIC":
-        payPerShift = company.pay_oic;
-        break;
-      case "SSO":
-        payPerShift = company.pay_sso;
-        break;
-      case "JSO":
-        payPerShift = company.pay_jso;
-        break;
-      case "LSO":
-        payPerShift = company.pay_lso;
-        break;
-    }
-
-    const grossShiftTotal = totalShifts * payPerShift;
-
-    setFormData({
-      ...formData,
-      total_shifts: totalShifts.toString(),
-      pay_per_shift: payPerShift.toString(),
-      gross_shift_total: grossShiftTotal.toString(),
+      return {
+        employee: emp,
+        companies: companiesData,
+        total_shifts: totalShifts,
+        total_gross: totalGross,
+        basic_salary: basicSalary,
+        epf,
+        salary_advance: salaryAdvance,
+        transport,
+        food,
+        uniforms,
+        other_deductions: otherDeductions,
+        final_salary: finalSalary,
+      };
     });
 
-    toast.success(`Auto-calculated: ${totalShifts} shifts × Rs. ${payPerShift} = Rs. ${grossShiftTotal}`);
+    setEmployeesSalaryData(salaryData);
   };
 
-  const calculateFinalSalary = () => {
-    const basicSalary = parseFloat(formData.basic_salary) || 0;
-    const grossShiftTotal = parseFloat(formData.gross_shift_total) || 0;
-    const epf = parseFloat(formData.epf) || 0;
-    const advance = parseFloat(formData.salary_advance) || 0;
-    const transport = parseFloat(formData.transport) || 0;
-    const food = parseFloat(formData.food) || 0;
-    const uniforms = parseFloat(formData.uniforms) || 0;
-    const other = parseFloat(formData.other_deductions) || 0;
+  const handleCellEdit = async (employeeId: string, field: string, value: number) => {
+    // Update the local state
+    setEmployeesSalaryData(prev => 
+      prev.map(data => {
+        if (data.employee.id === employeeId) {
+          const updated = { ...data, [field]: value };
+          updated.final_salary = updated.basic_salary + updated.total_gross - updated.epf - updated.salary_advance - updated.transport - updated.food - updated.uniforms - updated.other_deductions;
+          return updated;
+        }
+        return data;
+      })
+    );
 
-    return basicSalary + grossShiftTotal - epf - advance - transport - food - uniforms - other;
-  };
+    // Update in database
+    const salaryMonth = `${selectedMonth}-01`;
+    const { data: salaries } = await supabase
+      .from("salaries")
+      .select("id")
+      .eq("employee_id", employeeId)
+      .gte("salary_month", salaryMonth)
+      .lte("salary_month", `${selectedMonth}-31`);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    if (salaries && salaries.length > 0) {
+      const employeeData = employeesSalaryData.find(d => d.employee.id === employeeId);
+      if (employeeData) {
+        const finalSalary = (field === 'basic_salary' ? value : employeeData.basic_salary) + 
+                           employeeData.total_gross - 
+                           (field === 'epf' ? value : employeeData.epf) - 
+                           (field === 'salary_advance' ? value : employeeData.salary_advance) - 
+                           (field === 'transport' ? value : employeeData.transport) - 
+                           (field === 'food' ? value : employeeData.food) - 
+                           (field === 'uniforms' ? value : employeeData.uniforms) - 
+                           (field === 'other_deductions' ? value : employeeData.other_deductions);
 
-    const payload = {
-      employee_id: formData.employee_id,
-      company_id: formData.company_id,
-      salary_month: formData.salary_month + "-01",
-      basic_salary: parseFloat(formData.basic_salary),
-      total_shifts: parseInt(formData.total_shifts),
-      gross_shift_total: parseFloat(formData.gross_shift_total),
-      pay_per_shift: parseFloat(formData.pay_per_shift),
-      final_salary: calculateFinalSalary(),
-      epf: parseFloat(formData.epf),
-      salary_advance: parseFloat(formData.salary_advance),
-      transport: parseFloat(formData.transport),
-      food: parseFloat(formData.food),
-      uniforms: parseFloat(formData.uniforms),
-      other_deductions: parseFloat(formData.other_deductions),
-    };
-
-    if (isEditMode && currentRecord) {
-      const { error } = await supabase
-        .from("salaries")
-        .update(payload)
-        .eq("id", currentRecord.id);
-
-      if (error) {
-        toast.error("Error updating salary");
-        return;
+        for (const salary of salaries) {
+          await supabase
+            .from("salaries")
+            .update({ 
+              [field]: value,
+              final_salary: finalSalary 
+            })
+            .eq("id", salary.id);
+        }
       }
-      toast.success("Salary updated successfully");
-    } else {
-      const { error } = await supabase.from("salaries").insert([payload]);
-
-      if (error) {
-        toast.error("Error adding salary");
-        return;
-      }
-      toast.success("Salary added successfully");
     }
 
-    resetForm();
-    fetchData();
-    setIsDialogOpen(false);
+    setEditingCell(null);
   };
 
-  const handleEdit = (record: SalaryRecord) => {
-    setCurrentRecord(record);
-    setFormData({
-      employee_id: record.employee_id,
-      company_id: record.company_id || "",
-      salary_month: record.salary_month.substring(0, 7),
-      basic_salary: record.basic_salary.toString(),
-      total_shifts: record.total_shifts.toString(),
-      gross_shift_total: record.gross_shift_total.toString(),
-      pay_per_shift: record.pay_per_shift.toString(),
-      epf: record.epf.toString(),
-      salary_advance: record.salary_advance.toString(),
-      transport: record.transport.toString(),
-      food: record.food.toString(),
-      uniforms: record.uniforms.toString(),
-      other_deductions: record.other_deductions.toString(),
-    });
-    setIsEditMode(true);
-    setIsDialogOpen(true);
+  const handlePrintSalarySlip = (employeeData: EmployeeSalaryData) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Salary Slip - ${employeeData.employee.full_name}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; }
+          .header { text-align: center; margin-bottom: 30px; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .header p { margin: 5px 0; color: #666; }
+          .info-section { margin-bottom: 20px; }
+          .info-row { display: flex; margin: 5px 0; }
+          .info-label { font-weight: bold; width: 150px; }
+          .info-value { flex: 1; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+          th { background-color: #f5f5f5; }
+          .total-row { font-weight: bold; background-color: #f9f9f9; }
+          .final-row { font-weight: bold; background-color: #e8f5e9; font-size: 16px; }
+          @media print {
+            body { padding: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>SALARY SLIP</h1>
+          <p>Month: ${new Date(selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+        </div>
+
+        <div class="info-section">
+          <div class="info-row">
+            <span class="info-label">Employee ID:</span>
+            <span class="info-value">${employeeData.employee.employee_id}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Name:</span>
+            <span class="info-value">${employeeData.employee.full_name}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">NIC:</span>
+            <span class="info-value">${employeeData.employee.nic}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Phone:</span>
+            <span class="info-value">${employeeData.employee.phone_number}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Bank:</span>
+            <span class="info-value">${employeeData.employee.bank_name} - ${employeeData.employee.branch}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Account Number:</span>
+            <span class="info-value">${employeeData.employee.account_number}</span>
+          </div>
+        </div>
+
+        <h3>Company-wise Shift Details</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Total Shifts</th>
+              <th>Pay per Shift</th>
+              <th>Gross Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Object.values(employeeData.companies).map(comp => `
+              <tr>
+                <td>${comp.company_name}</td>
+                <td>${comp.total_shifts}</td>
+                <td>Rs. ${comp.pay_per_shift.toFixed(2)}</td>
+                <td>Rs. ${comp.gross_total.toFixed(2)}</td>
+              </tr>
+            `).join('')}
+            <tr class="total-row">
+              <td>Total</td>
+              <td>${employeeData.total_shifts}</td>
+              <td>-</td>
+              <td>Rs. ${employeeData.total_gross.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Earnings & Deductions</h3>
+        <table>
+          <tbody>
+            <tr>
+              <td>Basic Salary</td>
+              <td style="text-align: right;">Rs. ${employeeData.basic_salary.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>Shift Total</td>
+              <td style="text-align: right;">Rs. ${employeeData.total_gross.toFixed(2)}</td>
+            </tr>
+            <tr class="total-row">
+              <td>Gross Earnings</td>
+              <td style="text-align: right;">Rs. ${(employeeData.basic_salary + employeeData.total_gross).toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>EPF</td>
+              <td style="text-align: right;">Rs. ${employeeData.epf.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>Salary Advance</td>
+              <td style="text-align: right;">Rs. ${employeeData.salary_advance.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>Transport</td>
+              <td style="text-align: right;">Rs. ${employeeData.transport.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>Food</td>
+              <td style="text-align: right;">Rs. ${employeeData.food.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>Uniforms</td>
+              <td style="text-align: right;">Rs. ${employeeData.uniforms.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td>Other Deductions</td>
+              <td style="text-align: right;">Rs. ${employeeData.other_deductions.toFixed(2)}</td>
+            </tr>
+            <tr class="total-row">
+              <td>Total Deductions</td>
+              <td style="text-align: right;">Rs. ${(employeeData.epf + employeeData.salary_advance + employeeData.transport + employeeData.food + employeeData.uniforms + employeeData.other_deductions).toFixed(2)}</td>
+            </tr>
+            <tr class="final-row">
+              <td>NET SALARY</td>
+              <td style="text-align: right;">Rs. ${employeeData.final_salary.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top: 50px; text-align: center; color: #666; font-size: 12px;">
+          <p>This is a computer-generated salary slip</p>
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!isSuperAdmin) {
-      toast.error("Only Super Admin can delete salary records");
-      return;
-    }
-
-    if (!confirm("Are you sure you want to delete this salary record?")) return;
-
-    const { error } = await supabase.from("salaries").delete().eq("id", id);
-
-    if (error) {
-      toast.error("Error deleting salary");
-      return;
-    }
-
-    toast.success("Salary deleted successfully");
-    fetchData();
-  };
-
-  const resetForm = () => {
-    setFormData({
-      employee_id: "",
-      company_id: "",
-      salary_month: new Date().toISOString().substring(0, 7),
-      basic_salary: "0",
-      total_shifts: "0",
-      gross_shift_total: "0",
-      pay_per_shift: "0",
-      epf: "0",
-      salary_advance: "0",
-      transport: "0",
-      food: "0",
-      uniforms: "0",
-      other_deductions: "0",
-    });
-    setIsEditMode(false);
-    setCurrentRecord(null);
-  };
-
-  const getEmployeeName = (employeeId: string) => {
-    const employee = employees.find((e) => e.id === employeeId);
-    return employee ? employee.full_name : "Unknown";
-  };
-
-  const getCompanyName = (companyId: string) => {
-    const company = companies.find((c) => c.id === companyId);
-    return company ? company.company_name : "Unknown";
-  };
+  const filteredData = employeesSalaryData.filter(data =>
+    data.employee.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    data.employee.employee_id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Salary Management</h1>
-          <p className="text-muted-foreground">Calculate and manage employee salaries</p>
+          <p className="text-muted-foreground">Manage employee salaries across all companies</p>
         </div>
-        <Dialog
-          open={isDialogOpen}
-          onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Salary
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {isEditMode ? "Edit Salary" : "Add Salary Record"}
-              </DialogTitle>
-              <DialogDescription>
-                {isEditMode
-                  ? "Update salary record details"
-                  : "Enter salary details for an employee"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="employee_id">Employee</Label>
-                  <Select
-                    value={formData.employee_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, employee_id: value })
-                    }
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select employee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {emp.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="company_id">Company</Label>
-                  <Select
-                    value={formData.company_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, company_id: value })
-                    }
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select company" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {companies.map((comp) => (
-                        <SelectItem key={comp.id} value={comp.id}>
-                          {comp.company_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="salary_month">Salary Month</Label>
-                  <Input
-                    id="salary_month"
-                    type="month"
-                    value={formData.salary_month}
-                    onChange={(e) =>
-                      setFormData({ ...formData, salary_month: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2 flex items-end">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full"
-                    onClick={handleAutoCalculate}
-                  >
-                    <Calculator className="h-4 w-4 mr-2" />
-                    Auto-Calculate from Attendance
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="basic_salary">Basic Salary (Rs.)</Label>
-                  <Input
-                    id="basic_salary"
-                    type="number"
-                    step="0.01"
-                    value={formData.basic_salary}
-                    onChange={(e) =>
-                      setFormData({ ...formData, basic_salary: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="total_shifts">Total Shifts</Label>
-                  <Input
-                    id="total_shifts"
-                    type="number"
-                    value={formData.total_shifts}
-                    onChange={(e) =>
-                      setFormData({ ...formData, total_shifts: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pay_per_shift">Pay per Shift (Rs.)</Label>
-                  <Input
-                    id="pay_per_shift"
-                    type="number"
-                    step="0.01"
-                    value={formData.pay_per_shift}
-                    onChange={(e) =>
-                      setFormData({ ...formData, pay_per_shift: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="gross_shift_total">Gross Shift Total (Rs.)</Label>
-                  <Input
-                    id="gross_shift_total"
-                    type="number"
-                    step="0.01"
-                    value={formData.gross_shift_total}
-                    onChange={(e) =>
-                      setFormData({ ...formData, gross_shift_total: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <h3 className="text-sm font-semibold mb-3">Deductions (Rs.)</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="epf">EPF</Label>
-                    <Input
-                      id="epf"
-                      type="number"
-                      step="0.01"
-                      value={formData.epf}
-                      onChange={(e) => setFormData({ ...formData, epf: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="salary_advance">Salary Advance</Label>
-                    <Input
-                      id="salary_advance"
-                      type="number"
-                      step="0.01"
-                      value={formData.salary_advance}
-                      onChange={(e) =>
-                        setFormData({ ...formData, salary_advance: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="transport">Transport</Label>
-                    <Input
-                      id="transport"
-                      type="number"
-                      step="0.01"
-                      value={formData.transport}
-                      onChange={(e) =>
-                        setFormData({ ...formData, transport: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="food">Food</Label>
-                    <Input
-                      id="food"
-                      type="number"
-                      step="0.01"
-                      value={formData.food}
-                      onChange={(e) => setFormData({ ...formData, food: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="uniforms">Uniforms</Label>
-                    <Input
-                      id="uniforms"
-                      type="number"
-                      step="0.01"
-                      value={formData.uniforms}
-                      onChange={(e) =>
-                        setFormData({ ...formData, uniforms: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="other_deductions">Other Deductions</Label>
-                    <Input
-                      id="other_deductions"
-                      type="number"
-                      step="0.01"
-                      value={formData.other_deductions}
-                      onChange={(e) =>
-                        setFormData({ ...formData, other_deductions: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t pt-4 bg-muted/50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-lg">Final Salary:</span>
-                  <span className="text-2xl font-bold text-primary">
-                    Rs. {calculateFinalSalary().toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsDialogOpen(false);
-                    resetForm();
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit">{isEditMode ? "Update" : "Add"} Salary</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
 
-      <Card className="shadow-card">
+      <Card>
         <CardHeader>
           <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <Label htmlFor="salary_month">Select Month</Label>
+              <Input
+                id="salary_month"
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
             <div className="relative flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by employee, company, or month..."
+                placeholder="Search by employee name or ID..."
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -593,82 +386,224 @@ export default function Salaries() {
             </div>
           </div>
         </CardHeader>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Employee Salary Sheet</CardTitle>
+        </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Month</TableHead>
-                <TableHead>Employee</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Shifts</TableHead>
-                <TableHead>Basic Salary</TableHead>
-                <TableHead>Shift Total</TableHead>
-                <TableHead>Deductions</TableHead>
-                <TableHead className="font-bold">Final Salary</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRecords.length === 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    No salary records found
-                  </TableCell>
+                  <TableHead className="sticky left-0 bg-background z-10">Employee ID</TableHead>
+                  <TableHead className="sticky left-[120px] bg-background z-10">Name</TableHead>
+                  {companies.map(company => (
+                    <TableHead key={company.id} className="text-center" colSpan={3}>
+                      {company.company_name}
+                    </TableHead>
+                  ))}
+                  <TableHead className="text-right">Total Shifts</TableHead>
+                  <TableHead className="text-right">Total Gross</TableHead>
+                  <TableHead className="text-right">Basic</TableHead>
+                  <TableHead className="text-right">EPF</TableHead>
+                  <TableHead className="text-right">Advance</TableHead>
+                  <TableHead className="text-right">Transport</TableHead>
+                  <TableHead className="text-right">Food</TableHead>
+                  <TableHead className="text-right">Uniforms</TableHead>
+                  <TableHead className="text-right">Other</TableHead>
+                  <TableHead className="text-right bg-muted font-bold">Final Salary</TableHead>
+                  <TableHead className="text-center">Action</TableHead>
                 </TableRow>
-              ) : (
-                filteredRecords.map((record) => {
-                  const totalDeductions =
-                    record.epf +
-                    record.salary_advance +
-                    record.transport +
-                    record.food +
-                    record.uniforms +
-                    record.other_deductions;
-                  return (
-                    <TableRow key={record.id}>
-                      <TableCell className="font-medium">
-                        {new Date(record.salary_month).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                        })}
-                      </TableCell>
-                      <TableCell>{getEmployeeName(record.employee_id)}</TableCell>
-                      <TableCell>{getCompanyName(record.company_id)}</TableCell>
-                      <TableCell>{record.total_shifts}</TableCell>
-                      <TableCell>Rs. {record.basic_salary.toFixed(2)}</TableCell>
-                      <TableCell>Rs. {record.gross_shift_total.toFixed(2)}</TableCell>
-                      <TableCell className="text-destructive">
-                        Rs. {totalDeductions.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="font-bold text-primary">
-                        Rs. {record.final_salary.toFixed(2)}
+                <TableRow>
+                  <TableHead className="sticky left-0 bg-background z-10"></TableHead>
+                  <TableHead className="sticky left-[120px] bg-background z-10"></TableHead>
+                  {companies.map(company => (
+                    <>
+                      <TableHead key={`${company.id}-shifts`} className="text-xs text-center">Shifts</TableHead>
+                      <TableHead key={`${company.id}-rate`} className="text-xs text-center">Rate</TableHead>
+                      <TableHead key={`${company.id}-total`} className="text-xs text-center">Total</TableHead>
+                    </>
+                  ))}
+                  <TableHead colSpan={10}></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={13 + companies.length * 3} className="text-center text-muted-foreground">
+                      No salary data found for selected month
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredData.map((data) => (
+                    <TableRow key={data.employee.id}>
+                      <TableCell className="sticky left-0 bg-background font-medium">{data.employee.employee_id}</TableCell>
+                      <TableCell className="sticky left-[120px] bg-background">{data.employee.full_name}</TableCell>
+                      {companies.map(company => {
+                        const companyData = data.companies[company.id];
+                        return (
+                          <>
+                            <TableCell key={`${company.id}-shifts`} className="text-center">
+                              {companyData?.total_shifts || 0}
+                            </TableCell>
+                            <TableCell key={`${company.id}-rate`} className="text-center text-xs">
+                              {companyData ? `Rs. ${companyData.pay_per_shift}` : '-'}
+                            </TableCell>
+                            <TableCell key={`${company.id}-total`} className="text-right">
+                              {companyData ? `Rs. ${companyData.gross_total.toFixed(2)}` : '-'}
+                            </TableCell>
+                          </>
+                        );
+                      })}
+                      <TableCell className="text-right font-medium">{data.total_shifts}</TableCell>
+                      <TableCell className="text-right font-medium">Rs. {data.total_gross.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        {editingCell?.employeeId === data.employee.id && editingCell?.field === 'basic_salary' ? (
+                          <Input
+                            type="number"
+                            defaultValue={data.basic_salary}
+                            onBlur={(e) => handleCellEdit(data.employee.id, 'basic_salary', parseFloat(e.target.value) || 0)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleCellEdit(data.employee.id, 'basic_salary', parseFloat(e.currentTarget.value) || 0);
+                            }}
+                            autoFocus
+                            className="w-24 h-8"
+                          />
+                        ) : (
+                          <span onClick={() => isSuperAdmin && setEditingCell({ employeeId: data.employee.id, field: 'basic_salary' })} className={isSuperAdmin ? "cursor-pointer hover:bg-muted" : ""}>
+                            Rs. {data.basic_salary.toFixed(2)}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(record)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          {isSuperAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(record.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
-                        </div>
+                        {editingCell?.employeeId === data.employee.id && editingCell?.field === 'epf' ? (
+                          <Input
+                            type="number"
+                            defaultValue={data.epf}
+                            onBlur={(e) => handleCellEdit(data.employee.id, 'epf', parseFloat(e.target.value) || 0)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleCellEdit(data.employee.id, 'epf', parseFloat(e.currentTarget.value) || 0);
+                            }}
+                            autoFocus
+                            className="w-24 h-8"
+                          />
+                        ) : (
+                          <span onClick={() => isSuperAdmin && setEditingCell({ employeeId: data.employee.id, field: 'epf' })} className={isSuperAdmin ? "cursor-pointer hover:bg-muted" : ""}>
+                            Rs. {data.epf.toFixed(2)}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingCell?.employeeId === data.employee.id && editingCell?.field === 'salary_advance' ? (
+                          <Input
+                            type="number"
+                            defaultValue={data.salary_advance}
+                            onBlur={(e) => handleCellEdit(data.employee.id, 'salary_advance', parseFloat(e.target.value) || 0)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleCellEdit(data.employee.id, 'salary_advance', parseFloat(e.currentTarget.value) || 0);
+                            }}
+                            autoFocus
+                            className="w-24 h-8"
+                          />
+                        ) : (
+                          <span onClick={() => isSuperAdmin && setEditingCell({ employeeId: data.employee.id, field: 'salary_advance' })} className={isSuperAdmin ? "cursor-pointer hover:bg-muted" : ""}>
+                            Rs. {data.salary_advance.toFixed(2)}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingCell?.employeeId === data.employee.id && editingCell?.field === 'transport' ? (
+                          <Input
+                            type="number"
+                            defaultValue={data.transport}
+                            onBlur={(e) => handleCellEdit(data.employee.id, 'transport', parseFloat(e.target.value) || 0)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleCellEdit(data.employee.id, 'transport', parseFloat(e.currentTarget.value) || 0);
+                            }}
+                            autoFocus
+                            className="w-24 h-8"
+                          />
+                        ) : (
+                          <span onClick={() => isSuperAdmin && setEditingCell({ employeeId: data.employee.id, field: 'transport' })} className={isSuperAdmin ? "cursor-pointer hover:bg-muted" : ""}>
+                            Rs. {data.transport.toFixed(2)}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingCell?.employeeId === data.employee.id && editingCell?.field === 'food' ? (
+                          <Input
+                            type="number"
+                            defaultValue={data.food}
+                            onBlur={(e) => handleCellEdit(data.employee.id, 'food', parseFloat(e.target.value) || 0)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleCellEdit(data.employee.id, 'food', parseFloat(e.currentTarget.value) || 0);
+                            }}
+                            autoFocus
+                            className="w-24 h-8"
+                          />
+                        ) : (
+                          <span onClick={() => isSuperAdmin && setEditingCell({ employeeId: data.employee.id, field: 'food' })} className={isSuperAdmin ? "cursor-pointer hover:bg-muted" : ""}>
+                            Rs. {data.food.toFixed(2)}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingCell?.employeeId === data.employee.id && editingCell?.field === 'uniforms' ? (
+                          <Input
+                            type="number"
+                            defaultValue={data.uniforms}
+                            onBlur={(e) => handleCellEdit(data.employee.id, 'uniforms', parseFloat(e.target.value) || 0)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleCellEdit(data.employee.id, 'uniforms', parseFloat(e.currentTarget.value) || 0);
+                            }}
+                            autoFocus
+                            className="w-24 h-8"
+                          />
+                        ) : (
+                          <span onClick={() => isSuperAdmin && setEditingCell({ employeeId: data.employee.id, field: 'uniforms' })} className={isSuperAdmin ? "cursor-pointer hover:bg-muted" : ""}>
+                            Rs. {data.uniforms.toFixed(2)}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingCell?.employeeId === data.employee.id && editingCell?.field === 'other_deductions' ? (
+                          <Input
+                            type="number"
+                            defaultValue={data.other_deductions}
+                            onBlur={(e) => handleCellEdit(data.employee.id, 'other_deductions', parseFloat(e.target.value) || 0)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleCellEdit(data.employee.id, 'other_deductions', parseFloat(e.currentTarget.value) || 0);
+                            }}
+                            autoFocus
+                            className="w-24 h-8"
+                          />
+                        ) : (
+                          <span onClick={() => isSuperAdmin && setEditingCell({ employeeId: data.employee.id, field: 'other_deductions' })} className={isSuperAdmin ? "cursor-pointer hover:bg-muted" : ""}>
+                            Rs. {data.other_deductions.toFixed(2)}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right bg-muted font-bold">
+                        Rs. {data.final_salary.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePrintSalarySlip(data)}
+                        >
+                          <Printer className="h-4 w-4 mr-2" />
+                          Print
+                        </Button>
                       </TableCell>
                     </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

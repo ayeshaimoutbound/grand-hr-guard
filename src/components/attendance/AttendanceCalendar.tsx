@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download } from "lucide-react";
+import { Download, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -239,6 +239,150 @@ export default function AttendanceCalendar({
     (emp) => !activeEmployees.some((active) => active.id === emp.id)
   );
 
+  const handleSaveAllAttendance = async () => {
+    try {
+      toast.loading("Saving attendance and updating salaries/invoices...");
+
+      // Update salaries for all active employees
+      for (const employee of activeEmployees) {
+        await updateEmployeeSalary(employee.id);
+      }
+
+      // Update invoice for this company and month
+      await updateCompanyInvoice();
+
+      toast.dismiss();
+      toast.success("Attendance saved! Salaries and invoices updated successfully.");
+      onRefresh();
+    } catch (error) {
+      toast.dismiss();
+      console.error("Error saving attendance:", error);
+      toast.error("Failed to save attendance");
+    }
+  };
+
+  const updateEmployeeSalary = async (employeeId: string) => {
+    const stats = calculateEmployeeStats(employeeId);
+    const rank = getEmployeeRank(employeeId) as "OIC" | "SSO" | "JSO" | "LSO";
+    
+    let payPerShift = 0;
+    switch (rank) {
+      case "OIC": payPerShift = selectedCompany.pay_oic; break;
+      case "SSO": payPerShift = selectedCompany.pay_sso; break;
+      case "JSO": payPerShift = selectedCompany.pay_jso; break;
+      case "LSO": payPerShift = selectedCompany.pay_lso; break;
+    }
+
+    const grossShiftTotal = stats.totalShifts * payPerShift;
+    const salaryMonth = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
+
+    // Check if salary record exists
+    const { data: existing } = await supabase
+      .from("salaries")
+      .select("id, basic_salary, epf, salary_advance, transport, food, uniforms, other_deductions")
+      .eq("employee_id", employeeId)
+      .eq("company_id", selectedCompany.id)
+      .eq("salary_month", salaryMonth)
+      .single();
+
+    if (existing) {
+      // Update existing record - preserve deductions
+      const finalSalary = (existing.basic_salary || 0) + grossShiftTotal - 
+        (existing.epf || 0) - (existing.salary_advance || 0) - 
+        (existing.transport || 0) - (existing.food || 0) - 
+        (existing.uniforms || 0) - (existing.other_deductions || 0);
+
+      await supabase
+        .from("salaries")
+        .update({ 
+          total_shifts: stats.totalShifts, 
+          pay_per_shift: payPerShift, 
+          gross_shift_total: grossShiftTotal,
+          final_salary: finalSalary
+        })
+        .eq("id", existing.id);
+    } else {
+      // Create new record
+      const salaryData = {
+        employee_id: employeeId,
+        company_id: selectedCompany.id,
+        salary_month: salaryMonth,
+        total_shifts: stats.totalShifts,
+        pay_per_shift: payPerShift,
+        gross_shift_total: grossShiftTotal,
+        basic_salary: 0,
+        epf: 0,
+        salary_advance: 0,
+        transport: 0,
+        food: 0,
+        uniforms: 0,
+        other_deductions: 0,
+        final_salary: grossShiftTotal,
+      };
+
+      await supabase.from("salaries").insert(salaryData);
+    }
+  };
+
+  const updateCompanyInvoice = async () => {
+    const salaryMonth = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
+    
+    // Calculate total amount based on shift report
+    let totalAmount = 0;
+    
+    const ranks: Array<"OIC" | "SSO" | "JSO" | "LSO"> = ["OIC", "SSO", "JSO", "LSO"];
+    ranks.forEach((rank) => {
+      const totalShifts = shiftReport[rank].total;
+      let chargePerShift = 0;
+      
+      switch (rank) {
+        case "OIC": chargePerShift = selectedCompany.pay_oic; break;
+        case "SSO": chargePerShift = selectedCompany.pay_sso; break;
+        case "JSO": chargePerShift = selectedCompany.pay_jso; break;
+        case "LSO": chargePerShift = selectedCompany.pay_lso; break;
+      }
+      
+      totalAmount += totalShifts * chargePerShift;
+    });
+
+    // Check if invoice exists
+    const { data: existing } = await supabase
+      .from("invoices")
+      .select("id, amount_received")
+      .eq("company_id", selectedCompany.id)
+      .eq("month_period", salaryMonth)
+      .single();
+
+    const invoiceNumber = `INV-${selectedCompany.company_name.substring(0, 3).toUpperCase()}-${selectedMonth.getFullYear()}${String(selectedMonth.getMonth() + 1).padStart(2, '0')}`;
+
+    if (existing) {
+      // Update existing invoice - preserve amount_received
+      await supabase
+        .from("invoices")
+        .update({ 
+          amount_to_collect: totalAmount,
+          invoice_data: shiftReport
+        })
+        .eq("id", existing.id);
+    } else {
+      // Create new invoice
+      const invoiceData = {
+        company_id: selectedCompany.id,
+        month_period: salaryMonth,
+        invoice_date: new Date().toISOString().split("T")[0],
+        invoice_number: invoiceNumber,
+        amount_to_collect: totalAmount,
+        amount_received: 0,
+        invoice_sent: false,
+        printed: false,
+        emailed: false,
+        invoice_data: shiftReport,
+      };
+
+      await supabase.from("invoices").insert(invoiceData);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -250,10 +394,18 @@ export default function AttendanceCalendar({
             <Badge variant="secondary">Total Shifts: {totals.totalShifts}</Badge>
           </div>
         </div>
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4 mr-2" />
-          Export
-        </Button>
+        <div className="flex gap-2">
+          {isSuperAdmin && (
+            <Button onClick={handleSaveAllAttendance} variant="default">
+              <Save className="h-4 w-4 mr-2" />
+              Save All Attendance
+            </Button>
+          )}
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
       </div>
 
       {/* Shift Report Summary */}
