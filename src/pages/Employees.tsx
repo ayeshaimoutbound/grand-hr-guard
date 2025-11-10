@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Search, Edit, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { employeeSchema } from "@/lib/validationSchemas";
+import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -86,11 +87,14 @@ export default function Employees() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate input
-    const validation = employeeSchema.safeParse(formData);
-    if (!validation.success) {
-      toast.error(validation.error.errors[0].message);
-      return;
+    // Validate form data
+    try {
+      employeeSchema.parse(formData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+        return;
+      }
     }
 
     if (isEditMode && currentEmployee) {
@@ -228,6 +232,7 @@ export default function Employees() {
                     value={formData.nic}
                     onChange={(e) => setFormData({ ...formData, nic: e.target.value })}
                     required
+                    placeholder="e.g., 123456789V or 199012345678"
                   />
                 </div>
                 <div className="space-y-2">
@@ -237,6 +242,7 @@ export default function Employees() {
                     value={formData.phone_number}
                     onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
                     required
+                    placeholder="e.g., 0771234567"
                   />
                 </div>
                 <div className="space-y-2">
@@ -264,6 +270,7 @@ export default function Employees() {
                     value={formData.account_number}
                     onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
                     required
+                    placeholder="Digits only"
                   />
                 </div>
               </div>
@@ -307,20 +314,16 @@ export default function Employees() {
                 <TableHead>Full Name</TableHead>
                 <TableHead>NIC</TableHead>
                 <TableHead>Phone</TableHead>
-                {isSuperAdmin && (
-                  <>
-                    <TableHead>Bank</TableHead>
-                    <TableHead>Branch</TableHead>
-                    <TableHead>Account No.</TableHead>
-                  </>
-                )}
+                {isSuperAdmin && <TableHead>Bank</TableHead>}
+                {isSuperAdmin && <TableHead>Branch</TableHead>}
+                {isSuperAdmin && <TableHead>Account No.</TableHead>}
                 {isSuperAdmin && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredEmployees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isSuperAdmin ? 8 : 5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No employees found
                   </TableCell>
                 </TableRow>
@@ -332,17 +335,12 @@ export default function Employees() {
                     <TableCell>
                       {isSuperAdmin 
                         ? employee.nic 
-                        : employee.nic.substring(0, 4) + "****"
-                      }
+                        : employee.nic.substring(0, 4) + "XXXX"}
                     </TableCell>
                     <TableCell>{employee.phone_number}</TableCell>
-                    {isSuperAdmin && (
-                      <>
-                        <TableCell>{employee.bank_name}</TableCell>
-                        <TableCell>{employee.branch}</TableCell>
-                        <TableCell>{employee.account_number}</TableCell>
-                      </>
-                    )}
+                    {isSuperAdmin && <TableCell>{employee.bank_name}</TableCell>}
+                    {isSuperAdmin && <TableCell>{employee.branch}</TableCell>}
+                    {isSuperAdmin && <TableCell>{employee.account_number}</TableCell>}
                     {isSuperAdmin && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
