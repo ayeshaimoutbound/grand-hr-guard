@@ -12,6 +12,7 @@ import {
 import { Download, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 interface Employee {
   id: string;
@@ -414,6 +415,66 @@ export default function AttendanceCalendar({
           <CardTitle className="text-base">Attendance Summary</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Day vs Night Shifts Chart */}
+            <div>
+              <h4 className="text-sm font-medium mb-4 text-center">Day vs Night Shifts</h4>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Day Shifts", value: shiftReport.totals.day },
+                      { name: "Night Shifts", value: shiftReport.totals.night },
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    <Cell fill="hsl(var(--primary))" />
+                    <Cell fill="hsl(var(--secondary))" />
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Shifts by Rank Chart */}
+            <div>
+              <h4 className="text-sm font-medium mb-4 text-center">Shifts by Rank</h4>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "OIC", value: shiftReport.OIC.total },
+                      { name: "SSO", value: shiftReport.SSO.total },
+                      { name: "JSO", value: shiftReport.JSO.total },
+                      { name: "LSO", value: shiftReport.LSO.total },
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => value > 0 ? `${name}: ${value}` : ''}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    <Cell fill="hsl(var(--chart-1))" />
+                    <Cell fill="hsl(var(--chart-2))" />
+                    <Cell fill="hsl(var(--chart-3))" />
+                    <Cell fill="hsl(var(--chart-4))" />
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
