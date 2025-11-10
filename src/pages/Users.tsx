@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { userSchema } from "@/lib/validationSchemas";
 import {
   Dialog,
   DialogContent,
@@ -82,33 +83,44 @@ export default function Users() {
     e.preventDefault();
 
     try {
-      // Create auth user with special email format
+      // Validate input
+      const validation = userSchema.safeParse(formData);
+      if (!validation.success) {
+        toast.error(validation.error.errors[0].message);
+        return;
+      }
+
+      // Generate email based on username for consistent authentication
+      const email = `${formData.username.toLowerCase()}@grandsenaro.local`;
+
+      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: `${Date.now()}@grandsenaro.local`,
+        email,
         password: formData.password,
       });
 
       if (authError) throw authError;
       if (!authData.user) throw new Error("Failed to create user");
 
-      // Create profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert([{
+      // Create profile with email stored
+      const { error: profileError } = await supabase.from("profiles").insert([
+        {
           id: authData.user.id,
           username: formData.username,
-          full_name: formData.full_name,
-        }]);
+          full_name: formData.full_name || null,
+          email: email,
+        },
+      ]);
 
       if (profileError) throw profileError;
 
-      // Assign role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert([{
+      // Create user role
+      const { error: roleError } = await supabase.from("user_roles").insert([
+        {
           user_id: authData.user.id,
           role: formData.role as "admin" | "super_admin",
-        }]);
+        },
+      ]);
 
       if (roleError) throw roleError;
 

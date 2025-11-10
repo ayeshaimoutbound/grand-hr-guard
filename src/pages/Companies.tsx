@@ -7,6 +7,7 @@ import { Plus, Search, Edit, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { companySchema } from "@/lib/validationSchemas";
 import {
   Dialog,
   DialogContent,
@@ -83,12 +84,20 @@ export default function Companies() {
     e.preventDefault();
 
     const payload = {
-      ...formData,
+      company_name: formData.company_name,
+      location: formData.location,
       pay_oic: parseFloat(formData.pay_oic),
       pay_sso: parseFloat(formData.pay_sso),
       pay_jso: parseFloat(formData.pay_jso),
       pay_lso: parseFloat(formData.pay_lso),
     };
+
+    // Validate input
+    const validation = companySchema.safeParse(payload);
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
+      return;
+    }
 
     if (isEditMode && currentCompany) {
       const { error } = await supabase

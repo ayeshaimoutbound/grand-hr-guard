@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { employeeSchema } from "@/lib/validationSchemas";
 import {
   Dialog,
   DialogContent,
@@ -84,6 +85,13 @@ export default function Employees() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate input
+    const validation = employeeSchema.safeParse(formData);
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
+      return;
+    }
 
     if (isEditMode && currentEmployee) {
       // Update employee (Super Admin only)
@@ -299,16 +307,20 @@ export default function Employees() {
                 <TableHead>Full Name</TableHead>
                 <TableHead>NIC</TableHead>
                 <TableHead>Phone</TableHead>
-                <TableHead>Bank</TableHead>
-                <TableHead>Branch</TableHead>
-                <TableHead>Account No.</TableHead>
+                {isSuperAdmin && (
+                  <>
+                    <TableHead>Bank</TableHead>
+                    <TableHead>Branch</TableHead>
+                    <TableHead>Account No.</TableHead>
+                  </>
+                )}
                 {isSuperAdmin && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredEmployees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={isSuperAdmin ? 8 : 5} className="text-center text-muted-foreground">
                     No employees found
                   </TableCell>
                 </TableRow>
@@ -317,11 +329,20 @@ export default function Employees() {
                   <TableRow key={employee.id}>
                     <TableCell className="font-medium">{employee.employee_id}</TableCell>
                     <TableCell>{employee.full_name}</TableCell>
-                    <TableCell>{employee.nic}</TableCell>
+                    <TableCell>
+                      {isSuperAdmin 
+                        ? employee.nic 
+                        : employee.nic.substring(0, 4) + "****"
+                      }
+                    </TableCell>
                     <TableCell>{employee.phone_number}</TableCell>
-                    <TableCell>{employee.bank_name}</TableCell>
-                    <TableCell>{employee.branch}</TableCell>
-                    <TableCell>{employee.account_number}</TableCell>
+                    {isSuperAdmin && (
+                      <>
+                        <TableCell>{employee.bank_name}</TableCell>
+                        <TableCell>{employee.branch}</TableCell>
+                        <TableCell>{employee.account_number}</TableCell>
+                      </>
+                    )}
                     {isSuperAdmin && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

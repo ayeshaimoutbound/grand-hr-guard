@@ -79,19 +79,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (username: string, password: string) => {
     try {
-      // Map usernames to predefined emails
-      const emailMap: Record<string, string> = {
-        'Super': 'super@grandsenaro.local',
-        'admin': 'admin@grandsenaro.local',
-      };
+      // Look up email from profiles table based on username
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("username", username)
+        .single();
 
-      const email = emailMap[username];
-      if (!email) {
+      if (profileError || !profile?.email) {
         throw new Error("Invalid username or password");
       }
 
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: profile.email,
         password: password,
       });
 
