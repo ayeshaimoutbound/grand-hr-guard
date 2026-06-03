@@ -54,8 +54,10 @@ interface Invoice {
   invoice_date: string;
   month_period: string;
   amount_to_collect: number;
+  invoice_data?: any;
   companies: {
     company_name: string;
+    location: string;
   };
 }
 
@@ -92,7 +94,7 @@ export default function Invoices() {
   const fetchRecentInvoices = async () => {
     const { data, error } = await supabase
       .from("invoices")
-      .select("*, companies(company_name)")
+      .select("*, companies(company_name, location)")
       .order("invoice_date", { ascending: false })
       .limit(10);
 
@@ -302,12 +304,10 @@ export default function Invoices() {
           <h1 className="text-3xl font-bold">Invoices</h1>
           <p className="text-muted-foreground">Generate and manage company invoices</p>
         </div>
-        {!isOffice && (
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Generate Invoice
-          </Button>
-        )}
+        <Button onClick={() => setIsDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          {isOffice ? "Update Invoice" : "Generate Invoice"}
+        </Button>
       </div>
 
 
@@ -355,12 +355,13 @@ export default function Invoices() {
                 <TableHead>Invoice Date</TableHead>
                 <TableHead>Period</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {recentInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No invoices generated yet
                   </TableCell>
                 </TableRow>
@@ -374,6 +375,30 @@ export default function Invoices() {
                       {new Date(invoice.month_period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </TableCell>
                     <TableCell className="text-right">Rs. {invoice.amount_to_collect.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const lineItems = invoice.invoice_data?.lineItems || [];
+                          const monthStart = new Date(invoice.month_period);
+                          const monthEnd = endOfMonth(monthStart);
+                          const periodStr =
+                            format(monthStart, "dd") + "-" + format(monthEnd, "dd MMM yy").toUpperCase();
+                          generateInvoicePDF({
+                            invoiceNumber: invoice.invoice_number,
+                            invoiceDate: format(new Date(invoice.invoice_date), "MMMM d, yyyy"),
+                            duration: periodStr,
+                            companyName: invoice.companies.company_name,
+                            companyAddress: invoice.companies.location,
+                            lineItems,
+                            total: invoice.amount_to_collect,
+                          });
+                        }}
+                      >
+                        <Download className="h-4 w-4 mr-1" /> PDF
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
