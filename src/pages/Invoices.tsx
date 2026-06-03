@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { generateInvoicePDF, generateInvoiceNumber } from "@/lib/invoiceGenerator";
 import { format, startOfMonth, endOfMonth } from "date-fns";
@@ -59,6 +60,7 @@ interface Invoice {
 }
 
 export default function Invoices() {
+  const { isOffice } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -300,11 +302,12 @@ export default function Invoices() {
           <h1 className="text-3xl font-bold">Invoices</h1>
           <p className="text-muted-foreground">Generate and manage company invoices</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Generate Invoice
-        </Button>
-      </div>
+        {!isOffice && (
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Generate Invoice
+          </Button>
+        )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
