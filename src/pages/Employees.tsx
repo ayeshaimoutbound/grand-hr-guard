@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Upload } from "lucide-react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -44,7 +45,7 @@ export default function Employees() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isOffice } = useAuth();
 
   const [formData, setFormData] = useState({
     employee_id: "",
@@ -70,9 +71,9 @@ export default function Employees() {
   }, [searchTerm, employees]);
 
   const fetchEmployees = async () => {
-    // Super admins query the full employees table with all sensitive data
+    // Super admins and office staff query the full employees table
     // Regular admins query the limited view with only non-sensitive fields
-    const { data, error } = isSuperAdmin
+    const { data, error } = (isSuperAdmin || isOffice)
       ? await supabase
           .from("employees")
           .select("*")
@@ -185,6 +186,60 @@ export default function Employees() {
     setCurrentEmployee(null);
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+      const norm = (k: string) => k.toString().toLowerCase().replace(/[\s_-]/g, "");
+      const pick = (row: any, keys: string[]) => {
+        for (const key of Object.keys(row)) {
+          if (keys.includes(norm(key))) return String(row[key] ?? "").trim();
+        }
+        return "";
+      };
+
+      const mapped = rows
+        .map((row) => ({
+          employee_id: pick(row, ["employeeid", "empid", "id"]),
+          full_name: pick(row, ["fullname", "name"]),
+          nic: pick(row, ["nic"]),
+          phone_number: pick(row, ["phone", "phonenumber", "mobile"]),
+          bank_name: pick(row, ["bank", "bankname"]),
+          branch: pick(row, ["branch"]),
+          account_number: pick(row, ["accountno", "accountnumber", "acno", "account"]),
+        }))
+        .filter((r) => r.employee_id && r.full_name);
+
+      if (mapped.length === 0) {
+        toast.error("No valid rows found. Required columns: Employee ID, Full name, NIC, Phone, Bank, Branch, Account no");
+        return;
+      }
+
+      const { error, count } = await supabase
+        .from("employees")
+        .insert(mapped, { count: "exact" });
+
+      if (error) {
+        toast.error("Bulk upload failed: " + error.message);
+      } else {
+        toast.success(`Imported ${count ?? mapped.length} employees`);
+        fetchEmployees();
+      }
+    } catch (err: any) {
+      toast.error("Failed to parse file: " + err.message);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -192,7 +247,19 @@ export default function Employees() {
           <h1 className="text-3xl font-bold">Employees</h1>
           <p className="text-muted-foreground">Manage employee information</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleBulkUpload}
+            className="hidden"
+          />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-2" />
+            Bulk Upload (.xlsx)
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) resetForm();
         }}>
@@ -297,7 +364,9 @@ export default function Employees() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
 
       <Card className="shadow-card">
         <CardHeader>

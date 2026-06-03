@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { ReactNode } from "react";
 
@@ -7,8 +7,12 @@ interface ProtectedRouteProps {
   requireSuperAdmin?: boolean;
 }
 
+// Routes that "office" role users are allowed to access
+const OFFICE_ALLOWED = ["/employees", "/attendance", "/invoices"];
+
 export function ProtectedRoute({ children, requireSuperAdmin = false }: ProtectedRouteProps) {
   const { user, role, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -24,6 +28,10 @@ export function ProtectedRoute({ children, requireSuperAdmin = false }: Protecte
 
   if (requireSuperAdmin && role !== "super_admin") {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  if (role === "office" && !OFFICE_ALLOWED.some((p) => location.pathname.startsWith(p))) {
+    return <Navigate to="/employees" replace />;
   }
 
   return <>{children}</>;

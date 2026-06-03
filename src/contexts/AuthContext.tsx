@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-type UserRole = "super_admin" | "admin";
+type UserRole = "super_admin" | "admin" | "office";
 
 interface AuthContextType {
   user: User | null;
@@ -17,6 +17,7 @@ interface AuthContextType {
   resetPassword: (newPassword: string) => Promise<void>;
   isSuperAdmin: boolean;
   isAdmin: boolean;
+  isOffice: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -136,8 +137,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Clear rate limiting on successful login
       localStorage.removeItem(rateLimitKey);
-      
+
       toast.success("Logged in successfully");
+      // Fetch role to decide where to land
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: roleRow } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (roleRow?.role === "office") {
+          navigate("/employees");
+          return;
+        }
+      }
       navigate("/dashboard");
     } catch (error: any) {
       // Ensure consistent error message
@@ -211,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isSuperAdmin = role === "super_admin";
   const isAdmin = role === "admin" || role === "super_admin";
+  const isOffice = role === "office";
 
   return (
     <AuthContext.Provider
@@ -225,6 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resetPassword,
         isSuperAdmin,
         isAdmin,
+        isOffice,
       }}
     >
       {children}

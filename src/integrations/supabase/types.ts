@@ -447,11 +447,18 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_super: { Args: { _user_id: string }; Returns: boolean }
+      is_office: { Args: { _user_id: string }; Returns: boolean }
       is_regular_admin: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "super_admin" | "admin" | "user" | "moderator" | "viewer"
+      app_role:
+        | "super_admin"
+        | "admin"
+        | "user"
+        | "moderator"
+        | "viewer"
+        | "office"
       rank: "OIC" | "SSO" | "JSO" | "LSO"
       shift_type: "Day" | "Night"
     }
@@ -581,7 +588,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "admin", "user", "moderator", "viewer"],
+      app_role: [
+        "super_admin",
+        "admin",
+        "user",
+        "moderator",
+        "viewer",
+        "office",
+      ],
       rank: ["OIC", "SSO", "JSO", "LSO"],
       shift_type: ["Day", "Night"],
     },

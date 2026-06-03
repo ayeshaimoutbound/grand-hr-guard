@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { generateInvoicePDF, generateInvoiceNumber } from "@/lib/invoiceGenerator";
 import { format, startOfMonth, endOfMonth } from "date-fns";
@@ -53,12 +54,15 @@ interface Invoice {
   invoice_date: string;
   month_period: string;
   amount_to_collect: number;
+  invoice_data?: any;
   companies: {
     company_name: string;
+    location: string;
   };
 }
 
 export default function Invoices() {
+  const { isOffice } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -90,7 +94,7 @@ export default function Invoices() {
   const fetchRecentInvoices = async () => {
     const { data, error } = await supabase
       .from("invoices")
-      .select("*, companies(company_name)")
+      .select("*, companies(company_name, location)")
       .order("invoice_date", { ascending: false })
       .limit(10);
 
@@ -302,9 +306,10 @@ export default function Invoices() {
         </div>
         <Button onClick={() => setIsDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Generate Invoice
+          {isOffice ? "Update Invoice" : "Generate Invoice"}
         </Button>
       </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -350,12 +355,13 @@ export default function Invoices() {
                 <TableHead>Invoice Date</TableHead>
                 <TableHead>Period</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {recentInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No invoices generated yet
                   </TableCell>
                 </TableRow>
@@ -369,6 +375,30 @@ export default function Invoices() {
                       {new Date(invoice.month_period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </TableCell>
                     <TableCell className="text-right">Rs. {invoice.amount_to_collect.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const lineItems = invoice.invoice_data?.lineItems || [];
+                          const monthStart = new Date(invoice.month_period);
+                          const monthEnd = endOfMonth(monthStart);
+                          const periodStr =
+                            format(monthStart, "dd") + "-" + format(monthEnd, "dd MMM yy").toUpperCase();
+                          generateInvoicePDF({
+                            invoiceNumber: invoice.invoice_number,
+                            invoiceDate: format(new Date(invoice.invoice_date), "MMMM d, yyyy"),
+                            duration: periodStr,
+                            companyName: invoice.companies.company_name,
+                            companyAddress: invoice.companies.location,
+                            lineItems,
+                            total: invoice.amount_to_collect,
+                          });
+                        }}
+                      >
+                        <Download className="h-4 w-4 mr-1" /> PDF
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
