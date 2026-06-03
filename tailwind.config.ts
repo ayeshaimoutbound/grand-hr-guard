@@ -63,6 +63,16 @@ export default {
       boxShadow: {
         card: "var(--shadow-card)",
         elevated: "var(--shadow-elevated)",
+        glow: "var(--shadow-glow)",
+        "glow-lg": "var(--shadow-glow-lg)",
+      },
+      fontFamily: {
+        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        '3xl': '1.5rem',
+        '4xl': '2rem',
       },
       backgroundImage: {
         "gradient-primary": "var(--gradient-primary)",
