@@ -364,7 +364,9 @@ export default function Employees() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
 
       <Card className="shadow-card">
         <CardHeader>
