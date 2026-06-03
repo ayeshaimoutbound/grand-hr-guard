@@ -67,6 +67,8 @@ export default {
       backgroundImage: {
         "gradient-primary": "var(--gradient-primary)",
         "gradient-accent": "var(--gradient-accent)",
+        "gradient-glass": "var(--gradient-glass)",
+        "gradient-page": "var(--gradient-page)",
       },
       transitionProperty: {
         base: "var(--transition-base)",
