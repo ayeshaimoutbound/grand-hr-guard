@@ -45,7 +45,7 @@ export default function Employees() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isOffice } = useAuth();
 
   const [formData, setFormData] = useState({
     employee_id: "",
@@ -71,9 +71,9 @@ export default function Employees() {
   }, [searchTerm, employees]);
 
   const fetchEmployees = async () => {
-    // Super admins query the full employees table with all sensitive data
+    // Super admins and office staff query the full employees table
     // Regular admins query the limited view with only non-sensitive fields
-    const { data, error } = isSuperAdmin
+    const { data, error } = (isSuperAdmin || isOffice)
       ? await supabase
           .from("employees")
           .select("*")
