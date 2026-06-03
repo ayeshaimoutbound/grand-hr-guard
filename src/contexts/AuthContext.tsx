@@ -137,8 +137,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Clear rate limiting on successful login
       localStorage.removeItem(rateLimitKey);
-      
+
       toast.success("Logged in successfully");
+      // Fetch role to decide where to land
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: roleRow } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (roleRow?.role === "office") {
+          navigate("/employees");
+          return;
+        }
+      }
       navigate("/dashboard");
     } catch (error: any) {
       // Ensure consistent error message
