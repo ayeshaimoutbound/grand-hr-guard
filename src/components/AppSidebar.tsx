@@ -6,7 +6,6 @@ import {
   Building2,
   Calendar,
   DollarSign,
-  Receipt,
   FileText,
   Shield,
   LogOut,
@@ -28,13 +27,11 @@ import { Button } from "@/components/ui/button";
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, roles: ["admin", "super_admin"] },
-  { title: "Employees", url: "/employees", icon: Users, roles: ["admin", "super_admin"] },
+  { title: "Employees", url: "/employees", icon: Users, roles: ["admin", "super_admin", "office"] },
   { title: "Companies", url: "/companies", icon: Building2, roles: ["admin", "super_admin"] },
-  { title: "Attendance", url: "/attendance", icon: Calendar, roles: ["admin", "super_admin"] },
+  { title: "Attendance", url: "/attendance", icon: Calendar, roles: ["admin", "super_admin", "office"] },
   { title: "Salaries", url: "/salaries", icon: DollarSign, roles: ["admin", "super_admin"] },
-  { title: "Invoices", url: "/invoices", icon: FileText, roles: ["admin", "super_admin"] },
-  { title: "Finance", url: "/finance", icon: Receipt, roles: ["admin", "super_admin"] },
-  { title: "User Management", url: "/users", icon: Shield, roles: ["super_admin"] },
+  { title: "Invoices", url: "/invoices", icon: FileText, roles: ["admin", "super_admin", "office"] },
 ];
 
 export function AppSidebar() {
@@ -50,15 +47,16 @@ export function AppSidebar() {
     <Sidebar className={isCollapsed ? "w-14" : "w-60"} collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border p-4">
         {!isCollapsed && (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-sidebar-primary rounded flex items-center justify-center">
-              <Shield className="h-5 w-5 text-sidebar-primary-foreground" />
-            </div>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="Grand Senaro Security" className="w-10 h-10 object-contain drop-shadow" />
             <div>
               <p className="text-sm font-semibold text-sidebar-foreground">Grand Senaro</p>
               <p className="text-xs text-sidebar-foreground/60">HR System</p>
             </div>
           </div>
+        )}
+        {isCollapsed && (
+          <img src="/logo.png" alt="GSS" className="w-8 h-8 object-contain mx-auto" />
         )}
       </SidebarHeader>
 
