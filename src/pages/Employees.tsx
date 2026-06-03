@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Upload } from "lucide-react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -183,6 +184,60 @@ export default function Employees() {
     });
     setIsEditMode(false);
     setCurrentEmployee(null);
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+      const norm = (k: string) => k.toString().toLowerCase().replace(/[\s_-]/g, "");
+      const pick = (row: any, keys: string[]) => {
+        for (const key of Object.keys(row)) {
+          if (keys.includes(norm(key))) return String(row[key] ?? "").trim();
+        }
+        return "";
+      };
+
+      const mapped = rows
+        .map((row) => ({
+          employee_id: pick(row, ["employeeid", "empid", "id"]),
+          full_name: pick(row, ["fullname", "name"]),
+          nic: pick(row, ["nic"]),
+          phone_number: pick(row, ["phone", "phonenumber", "mobile"]),
+          bank_name: pick(row, ["bank", "bankname"]),
+          branch: pick(row, ["branch"]),
+          account_number: pick(row, ["accountno", "accountnumber", "acno", "account"]),
+        }))
+        .filter((r) => r.employee_id && r.full_name);
+
+      if (mapped.length === 0) {
+        toast.error("No valid rows found. Required columns: Employee ID, Full name, NIC, Phone, Bank, Branch, Account no");
+        return;
+      }
+
+      const { error, count } = await supabase
+        .from("employees")
+        .insert(mapped, { count: "exact" });
+
+      if (error) {
+        toast.error("Bulk upload failed: " + error.message);
+      } else {
+        toast.success(`Imported ${count ?? mapped.length} employees`);
+        fetchEmployees();
+      }
+    } catch (err: any) {
+      toast.error("Failed to parse file: " + err.message);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   return (
