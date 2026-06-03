@@ -247,7 +247,19 @@ export default function Employees() {
           <h1 className="text-3xl font-bold">Employees</h1>
           <p className="text-muted-foreground">Manage employee information</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleBulkUpload}
+            className="hidden"
+          />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-2" />
+            Bulk Upload (.xlsx)
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) resetForm();
         }}>
