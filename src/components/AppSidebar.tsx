@@ -31,7 +31,7 @@ const menuItems = [
   { title: "Companies", url: "/companies", icon: Building2, roles: ["admin", "super_admin"] },
   { title: "Attendance", url: "/attendance", icon: Calendar, roles: ["admin", "super_admin", "office"] },
   { title: "Salaries", url: "/salaries", icon: DollarSign, roles: ["admin", "super_admin"] },
-  { title: "Invoices", url: "/invoices", icon: FileText, roles: ["admin", "super_admin", "office"] },
+  { title: "Invoices", url: "/invoices", icon: FileText, roles: ["admin", "super_admin"] },
 ];
 
 export function AppSidebar() {

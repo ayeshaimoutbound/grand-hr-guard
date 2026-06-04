@@ -200,6 +200,57 @@ export default function AttendanceCalendar({
   const totals = calculateTotals();
   const shiftReport = calculateShiftReport();
 
+  const handleExportPDF = () => {
+    const monthLabel = selectedMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const rows = activeEmployees.map((emp) => {
+      const stats = calculateEmployeeStats(emp.id);
+      return `<tr><td>${emp.employee_id}</td><td>${emp.full_name}</td><td>${getEmployeeRank(emp.id)}</td><td style="text-align:right">${stats.totalShifts}</td></tr>`;
+    }).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Attendance ${selectedCompany.company_name} ${monthLabel}</title>
+    <style>
+      body{font-family:Arial,sans-serif;margin:32px;color:#000;font-size:12px;}
+      .header{text-align:center;margin-bottom:20px;}
+      .header img{width:70px;height:70px;}
+      h1{margin:6px 0;font-size:16px;}
+      h2{font-size:14px;margin:14px 0 8px;}
+      table{width:100%;border-collapse:collapse;margin-top:10px;}
+      th,td{border:1px solid #000;padding:6px;text-align:left;}
+      th{background:#f0f0f0;}
+      .summary td{padding:4px 8px;}
+    </style></head><body>
+      <div class="header">
+        <img src="/logo.png" alt="logo"/>
+        <h1>GRAND SENARO SECURITY (PVT) LTD</h1>
+        <p>Attendance Report</p>
+      </div>
+      <p><strong>Company:</strong> ${selectedCompany.company_name}<br/>
+      <strong>Period:</strong> ${monthLabel}</p>
+
+      <h2>Shift Summary</h2>
+      <table class="summary">
+        <thead><tr><th>Rank</th><th style="text-align:right">Day</th><th style="text-align:right">Night</th><th style="text-align:right">Total</th></tr></thead>
+        <tbody>
+          ${(["OIC","SSO","JSO","LSO"] as const).map(r=>`<tr><td>${r}</td><td style="text-align:right">${shiftReport[r].day}</td><td style="text-align:right">${shiftReport[r].night}</td><td style="text-align:right">${shiftReport[r].total}</td></tr>`).join("")}
+          <tr><td><strong>Totals</strong></td><td style="text-align:right"><strong>${shiftReport.totals.day}</strong></td><td style="text-align:right"><strong>${shiftReport.totals.night}</strong></td><td style="text-align:right"><strong>${shiftReport.totals.total}</strong></td></tr>
+        </tbody>
+      </table>
+
+      <h2>Employee Shifts</h2>
+      <table>
+        <thead><tr><th>Employee ID</th><th>Name</th><th>Rank</th><th style="text-align:right">Total Shifts</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="4" style="text-align:center">No records</td></tr>'}</tbody>
+      </table>
+    </body></html>`;
+
+    const w = window.open("", "_blank");
+    if (!w) { toast.error("Pop-ups blocked. Allow pop-ups to export."); return; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 350);
+  };
+
   // Get unique employees who have attendance in this company/month
   const activeEmployees = employees.filter((emp) =>
     attendanceRecords.some((record) => record.employee_id === emp.id)
@@ -438,7 +489,7 @@ export default function AttendanceCalendar({
               Save All Attendance
             </Button>
           )}
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
