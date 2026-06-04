@@ -489,7 +489,7 @@ export default function AttendanceCalendar({
               Save All Attendance
             </Button>
           )}
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExportPDF}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
