@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 // Routes that "office" role users are allowed to access
-const OFFICE_ALLOWED = ["/employees", "/attendance", "/invoices"];
+const OFFICE_ALLOWED = ["/employees", "/attendance"];
 
 export function ProtectedRoute({ children, requireSuperAdmin = false }: ProtectedRouteProps) {
   const { user, role, loading } = useAuth();
