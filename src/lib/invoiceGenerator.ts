@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "./pdfHeader";
 
 interface InvoiceLineItem {
   period: string;
