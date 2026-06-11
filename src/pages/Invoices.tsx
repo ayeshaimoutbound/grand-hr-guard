@@ -54,11 +54,21 @@ interface Invoice {
   invoice_date: string;
   month_period: string;
   amount_to_collect: number;
+  amount_received?: number;
   invoice_data?: any;
   companies: {
     company_name: string;
     location: string;
   };
+}
+
+interface Payment {
+  id: string;
+  payment_date: string;
+  amount: number;
+  payment_method: string;
+  reference_number: string | null;
+  notes: string | null;
 }
 
 export default function Invoices() {
@@ -71,6 +81,17 @@ export default function Invoices() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const [editableInvoiceNumber, setEditableInvoiceNumber] = useState("");
+
+  // Payment collection state
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
+  const [existingPayments, setExistingPayments] = useState<Payment[]>([]);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "cheque" | "bank_transfer">("cash");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentDate, setPaymentDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [paymentNotes, setPaymentNotes] = useState("");
+  const [savingPayment, setSavingPayment] = useState(false);
+
 
   useEffect(() => {
     fetchCompanies();
