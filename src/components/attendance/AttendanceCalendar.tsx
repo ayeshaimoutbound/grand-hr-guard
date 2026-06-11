@@ -210,23 +210,21 @@ export default function AttendanceCalendar({
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Attendance ${selectedCompany.company_name} ${monthLabel}</title>
     <style>
-      body{font-family:Arial,sans-serif;margin:32px;color:#000;font-size:12px;}
-      .header{text-align:center;margin-bottom:20px;}
-      .header img{width:70px;height:70px;}
-      h1{margin:6px 0;font-size:16px;}
-      h2{font-size:14px;margin:14px 0 8px;}
+      body{font-family:Arial,sans-serif;margin:28px;color:#000;font-size:12px;}
+      ${PDF_HEADER_STYLES}
+      h2{font-size:14px;margin:14px 0 8px;color:#014d3a;}
       table{width:100%;border-collapse:collapse;margin-top:10px;}
-      th,td{border:1px solid #000;padding:6px;text-align:left;}
-      th{background:#f0f0f0;}
+      th,td{border:1px solid #cfd8d6;padding:6px;text-align:left;}
+      th{background:#e6f4ef;color:#014d3a;}
       .summary td{padding:4px 8px;}
+      .meta{margin:4px 0 12px;padding:8px 12px;background:#f4faf7;border-left:3px solid #00855e;}
     </style></head><body>
-      <div class="header">
-        <img src="/logo.png" alt="logo"/>
-        <h1>GRAND SENARO SECURITY (PVT) LTD</h1>
-        <p>Attendance Report</p>
+      ${getPdfHeaderHtml("ATTENDANCE REPORT")}
+      <div class="meta">
+        <strong>Company:</strong> ${selectedCompany.company_name}<br/>
+        <strong>Location:</strong> ${selectedCompany.location || "-"}<br/>
+        <strong>Period:</strong> ${monthLabel}
       </div>
-      <p><strong>Company:</strong> ${selectedCompany.company_name}<br/>
-      <strong>Period:</strong> ${monthLabel}</p>
 
       <h2>Shift Summary</h2>
       <table class="summary">
