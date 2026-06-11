@@ -33,6 +33,7 @@ interface AttendanceRecord {
 interface Company {
   id: string;
   company_name: string;
+  location?: string;
   pay_oic: number;
   pay_sso: number;
   pay_jso: number;
