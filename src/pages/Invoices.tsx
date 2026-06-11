@@ -127,6 +127,64 @@ export default function Invoices() {
     setRecentInvoices(data || []);
   };
 
+  const openPaymentDialog = async (invoice: Invoice) => {
+    setPaymentInvoice(invoice);
+    setPaymentAmount("");
+    setPaymentMethod("cash");
+    setPaymentReference("");
+    setPaymentNotes("");
+    setPaymentDate(format(new Date(), "yyyy-MM-dd"));
+    const { data, error } = await supabase
+      .from("invoice_payments")
+      .select("id, payment_date, amount, payment_method, reference_number, notes")
+      .eq("invoice_id", invoice.id)
+      .order("payment_date", { ascending: false });
+    if (error) {
+      toast.error("Error loading payments");
+      return;
+    }
+    setExistingPayments(data || []);
+  };
+
+  const savePayment = async () => {
+    if (!paymentInvoice) return;
+    const amt = parseFloat(paymentAmount);
+    if (!amt || amt <= 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
+    if ((paymentMethod === "cheque" || paymentMethod === "bank_transfer") && !paymentReference.trim()) {
+      toast.error(paymentMethod === "cheque" ? "Cheque number is required" : "Bank transfer reference is required");
+      return;
+    }
+    const received = existingPayments.reduce((s, p) => s + Number(p.amount), 0);
+    const balance = paymentInvoice.amount_to_collect - received;
+    if (amt > balance + 0.001) {
+      toast.error(`Amount exceeds outstanding balance (Rs. ${balance.toLocaleString()})`);
+      return;
+    }
+    setSavingPayment(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from("invoice_payments").insert({
+      invoice_id: paymentInvoice.id,
+      payment_date: paymentDate,
+      amount: amt,
+      payment_method: paymentMethod,
+      reference_number: paymentMethod === "cash" ? null : paymentReference.trim(),
+      notes: paymentNotes.trim() || null,
+      created_by: userData.user?.id,
+    });
+    setSavingPayment(false);
+    if (error) {
+      toast.error("Error saving payment: " + error.message);
+      return;
+    }
+    toast.success("Payment recorded");
+    setPaymentInvoice(null);
+    fetchRecentInvoices();
+  };
+
+
   const generatePreview = async () => {
     if (!selectedCompany) {
       toast.error("Please select a company");
