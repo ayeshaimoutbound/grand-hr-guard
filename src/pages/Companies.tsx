@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -201,6 +202,31 @@ export default function Companies() {
     setCurrentCompany(null);
   };
 
+  const handleBulkDownload = () => {
+    if (!companies.length) {
+      toast.error("No companies to export");
+      return;
+    }
+    const rows = companies.map((c) => ({
+      "Company Name": c.company_name,
+      "Company Number": c.company_number || "",
+      Location: c.location,
+      "OIC Pay": c.pay_oic,
+      "SSO Pay": c.pay_sso,
+      "JSO Pay": c.pay_jso,
+      "LSO Pay": c.pay_lso,
+      "OIC Charge": c.charge_oic,
+      "SSO Charge": c.charge_sso,
+      "JSO Charge": c.charge_jso,
+      "LSO Charge": c.charge_lso,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Companies");
+    XLSX.writeFile(wb, `Companies_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success("Companies exported");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -208,6 +234,11 @@ export default function Companies() {
           <h1 className="text-3xl font-bold">Companies</h1>
           <p className="text-muted-foreground">Manage company information and pay rates</p>
         </div>
+        <div className="flex items-center gap-2">
+        <Button variant="outline" onClick={handleBulkDownload}>
+          <Download className="h-4 w-4 mr-2" />
+          Download (.xlsx)
+        </Button>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) resetForm();
@@ -372,6 +403,7 @@ export default function Companies() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card className="shadow-card">

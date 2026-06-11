@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, Upload } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Upload, Download } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -240,6 +240,27 @@ export default function Employees() {
     }
   };
 
+  const handleBulkDownload = () => {
+    if (!employees.length) {
+      toast.error("No employees to export");
+      return;
+    }
+    const rows = employees.map((e) => ({
+      "Employee ID": e.employee_id,
+      "Full name": e.full_name,
+      NIC: e.nic || "",
+      Phone: e.phone_number || "",
+      Bank: e.bank_name || "",
+      Branch: e.branch || "",
+      "Account no": e.account_number || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Employees");
+    XLSX.writeFile(wb, `Employees_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success("Employees exported");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -258,6 +279,10 @@ export default function Employees() {
           <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-2" />
             Bulk Upload (.xlsx)
+          </Button>
+          <Button variant="outline" onClick={handleBulkDownload}>
+            <Download className="h-4 w-4 mr-2" />
+            Download (.xlsx)
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
