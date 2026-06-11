@@ -280,6 +280,10 @@ export default function Employees() {
             <Upload className="h-4 w-4 mr-2" />
             Bulk Upload (.xlsx)
           </Button>
+          <Button variant="outline" onClick={handleBulkDownload}>
+            <Download className="h-4 w-4 mr-2" />
+            Download (.xlsx)
+          </Button>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) resetForm();
