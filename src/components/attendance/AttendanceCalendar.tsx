@@ -13,6 +13,7 @@ import { Download, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "@/lib/pdfHeader";
 
 interface Employee {
   id: string;
