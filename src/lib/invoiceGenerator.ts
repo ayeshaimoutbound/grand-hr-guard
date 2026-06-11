@@ -31,90 +31,53 @@ export const generateInvoicePDF = (invoiceData: InvoiceData) => {
       <style>
         body {
           font-family: Arial, sans-serif;
-          margin: 40px;
+          margin: 32px;
           font-size: 12px;
+          color: #111;
         }
-        .header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-        .logo {
-          width: 80px;
-          height: 80px;
-          margin: 0 auto 10px;
-        }
-        .header h1 {
-          margin: 5px 0;
-          font-size: 16px;
-          font-weight: bold;
-        }
-        .header p {
-          margin: 3px 0;
-          font-size: 11px;
-        }
-        .invoice-title {
-          text-align: center;
-          font-size: 18px;
-          font-weight: bold;
-          margin: 20px 0;
-        }
-        .info-section {
-          margin-bottom: 20px;
-        }
-        .info-row {
-          margin: 5px 0;
-          display: flex;
-        }
-        .info-label {
-          font-weight: bold;
-          width: 150px;
-        }
+        ${PDF_HEADER_STYLES}
+        .info-section { margin-bottom: 18px; }
+        .info-row { margin: 4px 0; display: flex; }
+        .info-label { font-weight: bold; width: 150px; }
         .client-box {
           float: right;
           text-align: right;
           margin-top: -60px;
+          padding: 8px 12px;
+          border-left: 3px solid #00855e;
         }
         table {
           width: 100%;
           border-collapse: collapse;
-          margin: 20px 0;
+          margin: 18px 0;
         }
         th, td {
-          border: 1px solid #000;
+          border: 1px solid #cfd8d6;
           padding: 8px;
           text-align: left;
         }
         th {
-          background-color: #f0f0f0;
+          background-color: #e6f4ef;
+          color: #014d3a;
           font-weight: bold;
         }
-        .text-right {
-          text-align: right;
-        }
+        .text-right { text-align: right; }
         .total-row {
           font-weight: bold;
-          background-color: #f9f9f9;
+          background-color: #f4faf7;
         }
         .footer {
-          margin-top: 30px;
+          margin-top: 24px;
           font-size: 10px;
+          border-top: 1px solid #cfd8d6;
+          padding-top: 10px;
+          color: #444;
         }
-        .footer p {
-          margin: 5px 0;
-        }
+        .footer p { margin: 4px 0; }
       </style>
     </head>
     <body>
-      <div class="header">
-        <img src="/logo.png" alt="Company Logo" class="logo">
-        <h1>GRAND SENARO SECURITY (PVT) LTD</h1>
-        <p>232/1/1B LAKSIRI BUILDING, WATTEGEDARA, MAHARAGAMA</p>
-        <p>REAR ADMIN AND LOGISTICS DEPARTMENT</p>
-        <p>21/58 SWARNA PLACE, GALWALADENIYA ROAD, MATTEGODA</p>
-        <p>HOTLINES: +94 77 730 5321 | +94 71 730 5321 | +94 76 661 3165 | +94 11 365 1070</p>
-      </div>
-
-      <div class="invoice-title">INVOICE</div>
+      ${getPdfHeaderHtml("INVOICE")}
 
       <div class="info-section">
         <div class="info-row">
