@@ -644,6 +644,126 @@ export default function Invoices() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!paymentInvoice} onOpenChange={(open) => { if (!open) setPaymentInvoice(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Collect Payment</DialogTitle>
+            <DialogDescription>
+              {paymentInvoice && (
+                <>Invoice {paymentInvoice.invoice_number} — {paymentInvoice.companies.company_name}</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {paymentInvoice && (() => {
+            const received = existingPayments.reduce((s, p) => s + Number(p.amount), 0);
+            const balance = paymentInvoice.amount_to_collect - received;
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-muted-foreground">Total</p>
+                    <p className="font-semibold">Rs. {paymentInvoice.amount_to_collect.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-muted-foreground">Received</p>
+                    <p className="font-semibold">Rs. {received.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-muted-foreground">Balance</p>
+                    <p className="font-semibold text-primary">Rs. {balance.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {existingPayments.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Reference</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {existingPayments.map((p) => (
+                          <TableRow key={p.id}>
+                            <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
+                            <TableCell className="capitalize">{p.payment_method.replace("_", " ")}</TableCell>
+                            <TableCell>{p.reference_number || "—"}</TableCell>
+                            <TableCell className="text-right">Rs. {Number(p.amount).toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {balance > 0 ? (
+                  <div className="space-y-3 border-t pt-4">
+                    <h4 className="font-semibold">Record New Payment</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Date</Label>
+                        <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Amount</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max={balance}
+                          placeholder={`Max ${balance.toLocaleString()}`}
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Payment Method</Label>
+                        <Select value={paymentMethod} onValueChange={(v: any) => { setPaymentMethod(v); setPaymentReference(""); }}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cash">Cash</SelectItem>
+                            <SelectItem value="cheque">Cheque</SelectItem>
+                            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {paymentMethod !== "cash" && (
+                        <div className="space-y-2">
+                          <Label>{paymentMethod === "cheque" ? "Cheque Number" : "B/T Reference"}</Label>
+                          <Input
+                            value={paymentReference}
+                            onChange={(e) => setPaymentReference(e.target.value)}
+                            placeholder={paymentMethod === "cheque" ? "e.g. 123456" : "e.g. TXN-987654"}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Notes (optional)</Label>
+                      <Input value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setPaymentInvoice(null)}>Cancel</Button>
+                      <Button onClick={savePayment} disabled={savingPayment}>
+                        <Wallet className="h-4 w-4 mr-2" />
+                        {savingPayment ? "Saving..." : "Record Payment"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-sm text-muted-foreground border-t pt-4">
+                    Invoice fully paid.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
