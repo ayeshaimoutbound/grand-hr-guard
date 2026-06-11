@@ -240,6 +240,27 @@ export default function Employees() {
     }
   };
 
+  const handleBulkDownload = () => {
+    if (!employees.length) {
+      toast.error("No employees to export");
+      return;
+    }
+    const rows = employees.map((e) => ({
+      "Employee ID": e.employee_id,
+      "Full name": e.full_name,
+      NIC: e.nic || "",
+      Phone: e.phone_number || "",
+      Bank: e.bank_name || "",
+      Branch: e.branch || "",
+      "Account no": e.account_number || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Employees");
+    XLSX.writeFile(wb, `Employees_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success("Employees exported");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
