@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, Plus, Download } from "lucide-react";
+import { FileText, Plus, Download, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -54,11 +54,21 @@ interface Invoice {
   invoice_date: string;
   month_period: string;
   amount_to_collect: number;
+  amount_received?: number;
   invoice_data?: any;
   companies: {
     company_name: string;
     location: string;
   };
+}
+
+interface Payment {
+  id: string;
+  payment_date: string;
+  amount: number;
+  payment_method: string;
+  reference_number: string | null;
+  notes: string | null;
 }
 
 export default function Invoices() {
@@ -71,6 +81,17 @@ export default function Invoices() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const [editableInvoiceNumber, setEditableInvoiceNumber] = useState("");
+
+  // Payment collection state
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
+  const [existingPayments, setExistingPayments] = useState<Payment[]>([]);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "cheque" | "bank_transfer">("cash");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentDate, setPaymentDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [paymentNotes, setPaymentNotes] = useState("");
+  const [savingPayment, setSavingPayment] = useState(false);
+
 
   useEffect(() => {
     fetchCompanies();
@@ -105,6 +126,64 @@ export default function Invoices() {
 
     setRecentInvoices(data || []);
   };
+
+  const openPaymentDialog = async (invoice: Invoice) => {
+    setPaymentInvoice(invoice);
+    setPaymentAmount("");
+    setPaymentMethod("cash");
+    setPaymentReference("");
+    setPaymentNotes("");
+    setPaymentDate(format(new Date(), "yyyy-MM-dd"));
+    const { data, error } = await supabase
+      .from("invoice_payments")
+      .select("id, payment_date, amount, payment_method, reference_number, notes")
+      .eq("invoice_id", invoice.id)
+      .order("payment_date", { ascending: false });
+    if (error) {
+      toast.error("Error loading payments");
+      return;
+    }
+    setExistingPayments(data || []);
+  };
+
+  const savePayment = async () => {
+    if (!paymentInvoice) return;
+    const amt = parseFloat(paymentAmount);
+    if (!amt || amt <= 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
+    if ((paymentMethod === "cheque" || paymentMethod === "bank_transfer") && !paymentReference.trim()) {
+      toast.error(paymentMethod === "cheque" ? "Cheque number is required" : "Bank transfer reference is required");
+      return;
+    }
+    const received = existingPayments.reduce((s, p) => s + Number(p.amount), 0);
+    const balance = paymentInvoice.amount_to_collect - received;
+    if (amt > balance + 0.001) {
+      toast.error(`Amount exceeds outstanding balance (Rs. ${balance.toLocaleString()})`);
+      return;
+    }
+    setSavingPayment(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from("invoice_payments").insert({
+      invoice_id: paymentInvoice.id,
+      payment_date: paymentDate,
+      amount: amt,
+      payment_method: paymentMethod,
+      reference_number: paymentMethod === "cash" ? null : paymentReference.trim(),
+      notes: paymentNotes.trim() || null,
+      created_by: userData.user?.id,
+    });
+    setSavingPayment(false);
+    if (error) {
+      toast.error("Error saving payment: " + error.message);
+      return;
+    }
+    toast.success("Payment recorded");
+    setPaymentInvoice(null);
+    fetchRecentInvoices();
+  };
+
 
   const generatePreview = async () => {
     if (!selectedCompany) {
@@ -355,18 +434,23 @@ export default function Invoices() {
                 <TableHead>Invoice Date</TableHead>
                 <TableHead>Period</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Received</TableHead>
+                <TableHead className="text-right">Balance</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {recentInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No invoices generated yet
                   </TableCell>
                 </TableRow>
               ) : (
-                recentInvoices.map((invoice) => (
+                recentInvoices.map((invoice) => {
+                  const received = Number(invoice.amount_received || 0);
+                  const balance = invoice.amount_to_collect - received;
+                  return (
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                     <TableCell>{invoice.companies.company_name}</TableCell>
@@ -375,37 +459,54 @@ export default function Invoices() {
                       {new Date(invoice.month_period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </TableCell>
                     <TableCell className="text-right">Rs. {invoice.amount_to_collect.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">Rs. {received.toLocaleString()}</TableCell>
+                    <TableCell className={`text-right ${balance > 0 ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                      Rs. {balance.toLocaleString()}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          const lineItems = invoice.invoice_data?.lineItems || [];
-                          const monthStart = new Date(invoice.month_period);
-                          const monthEnd = endOfMonth(monthStart);
-                          const periodStr =
-                            format(monthStart, "dd") + "-" + format(monthEnd, "dd MMM yy").toUpperCase();
-                          generateInvoicePDF({
-                            invoiceNumber: invoice.invoice_number,
-                            invoiceDate: format(new Date(invoice.invoice_date), "MMMM d, yyyy"),
-                            duration: periodStr,
-                            companyName: invoice.companies.company_name,
-                            companyAddress: invoice.companies.location,
-                            lineItems,
-                            total: invoice.amount_to_collect,
-                          });
-                        }}
-                      >
-                        <Download className="h-4 w-4 mr-1" /> PDF
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        {!isOffice && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openPaymentDialog(invoice)}
+                          >
+                            <Wallet className="h-4 w-4 mr-1" /> Payment
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const lineItems = invoice.invoice_data?.lineItems || [];
+                            const monthStart = new Date(invoice.month_period);
+                            const monthEnd = endOfMonth(monthStart);
+                            const periodStr =
+                              format(monthStart, "dd") + "-" + format(monthEnd, "dd MMM yy").toUpperCase();
+                            generateInvoicePDF({
+                              invoiceNumber: invoice.invoice_number,
+                              invoiceDate: format(new Date(invoice.invoice_date), "MMMM d, yyyy"),
+                              duration: periodStr,
+                              companyName: invoice.companies.company_name,
+                              companyAddress: invoice.companies.location,
+                              lineItems,
+                              total: invoice.amount_to_collect,
+                            });
+                          }}
+                        >
+                          <Download className="h-4 w-4 mr-1" /> PDF
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
         setIsDialogOpen(open);
@@ -541,6 +642,126 @@ export default function Invoices() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!paymentInvoice} onOpenChange={(open) => { if (!open) setPaymentInvoice(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Collect Payment</DialogTitle>
+            <DialogDescription>
+              {paymentInvoice && (
+                <>Invoice {paymentInvoice.invoice_number} — {paymentInvoice.companies.company_name}</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {paymentInvoice && (() => {
+            const received = existingPayments.reduce((s, p) => s + Number(p.amount), 0);
+            const balance = paymentInvoice.amount_to_collect - received;
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-muted-foreground">Total</p>
+                    <p className="font-semibold">Rs. {paymentInvoice.amount_to_collect.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-muted-foreground">Received</p>
+                    <p className="font-semibold">Rs. {received.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-muted-foreground">Balance</p>
+                    <p className="font-semibold text-primary">Rs. {balance.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {existingPayments.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Reference</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {existingPayments.map((p) => (
+                          <TableRow key={p.id}>
+                            <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
+                            <TableCell className="capitalize">{p.payment_method.replace("_", " ")}</TableCell>
+                            <TableCell>{p.reference_number || "—"}</TableCell>
+                            <TableCell className="text-right">Rs. {Number(p.amount).toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {balance > 0 ? (
+                  <div className="space-y-3 border-t pt-4">
+                    <h4 className="font-semibold">Record New Payment</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Date</Label>
+                        <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Amount</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max={balance}
+                          placeholder={`Max ${balance.toLocaleString()}`}
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Payment Method</Label>
+                        <Select value={paymentMethod} onValueChange={(v: any) => { setPaymentMethod(v); setPaymentReference(""); }}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cash">Cash</SelectItem>
+                            <SelectItem value="cheque">Cheque</SelectItem>
+                            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {paymentMethod !== "cash" && (
+                        <div className="space-y-2">
+                          <Label>{paymentMethod === "cheque" ? "Cheque Number" : "B/T Reference"}</Label>
+                          <Input
+                            value={paymentReference}
+                            onChange={(e) => setPaymentReference(e.target.value)}
+                            placeholder={paymentMethod === "cheque" ? "e.g. 123456" : "e.g. TXN-987654"}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Notes (optional)</Label>
+                      <Input value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setPaymentInvoice(null)}>Cancel</Button>
+                      <Button onClick={savePayment} disabled={savingPayment}>
+                        <Wallet className="h-4 w-4 mr-2" />
+                        {savingPayment ? "Saving..." : "Record Payment"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-sm text-muted-foreground border-t pt-4">
+                    Invoice fully paid.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
