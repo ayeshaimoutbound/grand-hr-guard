@@ -1,0 +1,1 @@
+ALTER TABLE public.salaries ADD COLUMN IF NOT EXISTS salary_advance_2 numeric NOT NULL DEFAULT 0;
