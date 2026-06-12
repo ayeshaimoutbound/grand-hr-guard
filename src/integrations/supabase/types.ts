@@ -319,6 +319,7 @@ export type Database = {
           other_deductions: number | null
           pay_per_shift: number | null
           salary_advance: number | null
+          salary_advance_2: number
           salary_month: string
           total_shifts: number | null
           transport: number | null
@@ -339,6 +340,7 @@ export type Database = {
           other_deductions?: number | null
           pay_per_shift?: number | null
           salary_advance?: number | null
+          salary_advance_2?: number
           salary_month: string
           total_shifts?: number | null
           transport?: number | null
@@ -359,6 +361,7 @@ export type Database = {
           other_deductions?: number | null
           pay_per_shift?: number | null
           salary_advance?: number | null
+          salary_advance_2?: number
           salary_month?: string
           total_shifts?: number | null
           transport?: number | null

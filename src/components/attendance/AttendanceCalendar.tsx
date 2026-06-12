@@ -231,7 +231,7 @@ export default function AttendanceCalendar({
       <table class="summary">
         <thead><tr><th>Rank</th><th style="text-align:right">Day</th><th style="text-align:right">Night</th><th style="text-align:right">Total</th></tr></thead>
         <tbody>
-          ${(["OIC","SSO","JSO","LSO"] as const).map(r=>`<tr><td>${r}</td><td style="text-align:right">${shiftReport[r].day}</td><td style="text-align:right">${shiftReport[r].night}</td><td style="text-align:right">${shiftReport[r].total}</td></tr>`).join("")}
+          ${(["OIC","SSO","JSO","LSO"] as const).filter(r => shiftReport[r].total > 0).map(r=>`<tr><td>${r}</td><td style="text-align:right">${shiftReport[r].day}</td><td style="text-align:right">${shiftReport[r].night}</td><td style="text-align:right">${shiftReport[r].total}</td></tr>`).join("")}
           <tr><td><strong>Totals</strong></td><td style="text-align:right"><strong>${shiftReport.totals.day}</strong></td><td style="text-align:right"><strong>${shiftReport.totals.night}</strong></td><td style="text-align:right"><strong>${shiftReport.totals.total}</strong></td></tr>
         </tbody>
       </table>
