@@ -66,6 +66,7 @@ interface ConsolidatedEmployeeSalary {
   epf_employer: number;
   etf_employer: number;
   salary_advance: number;
+  salary_advance_2: number;
   transport: number;
   food: number;
   uniforms: number;
@@ -83,6 +84,7 @@ export default function Salaries() {
   const [editFormData, setEditFormData] = useState({
     basic_salary: "",
     salary_advance: "",
+    salary_advance_2: "",
     transport: "",
     food: "",
     uniforms: "",
@@ -177,6 +179,7 @@ export default function Salaries() {
       
       let basicSalary = 0;
       let salaryAdvance = 0;
+      let salaryAdvance2 = 0;
       let transport = 0;
       let food = 0;
       let uniforms = 0;
@@ -184,10 +187,11 @@ export default function Salaries() {
       let primarySalaryId = '';
 
       if (employeeSalaries.length > 0) {
-        const primarySalary = employeeSalaries[0];
+        const primarySalary = employeeSalaries[0] as any;
         primarySalaryId = primarySalary.id;
         basicSalary = primarySalary.basic_salary || 0;
         salaryAdvance = primarySalary.salary_advance || 0;
+        salaryAdvance2 = primarySalary.salary_advance_2 || 0;
         transport = primarySalary.transport || 0;
         food = primarySalary.food || 0;
         uniforms = primarySalary.uniforms || 0;
@@ -199,7 +203,7 @@ export default function Salaries() {
       const epfEmployee = basicSalary * 0.08;
       const epfEmployer = basicSalary * 0.12;
       const etfEmployer = basicSalary * 0.03;
-      const finalSalary = grossShiftTotalAll - epfEmployee - salaryAdvance - transport - food - uniforms - otherDeductions;
+      const finalSalary = grossShiftTotalAll - epfEmployee - salaryAdvance - salaryAdvance2 - transport - food - uniforms - otherDeductions;
 
       if (totalShiftsAll > 0) {
         consolidatedMap.set(employee.id, {
@@ -212,6 +216,7 @@ export default function Salaries() {
           epf_employer: epfEmployer,
           etf_employer: etfEmployer,
           salary_advance: salaryAdvance,
+          salary_advance_2: salaryAdvance2,
           transport: transport,
           food: food,
           uniforms: uniforms,
@@ -235,6 +240,7 @@ export default function Salaries() {
     setEditFormData({
       basic_salary: record.basic_salary.toString(),
       salary_advance: record.salary_advance.toString(),
+      salary_advance_2: (record.salary_advance_2 || 0).toString(),
       transport: record.transport.toString(),
       food: record.food.toString(),
       uniforms: record.uniforms.toString(),
@@ -255,6 +261,7 @@ export default function Salaries() {
     const values = {
       basic_salary: parseFloat(editFormData.basic_salary) || 0,
       salary_advance: parseFloat(editFormData.salary_advance) || 0,
+      salary_advance_2: parseFloat(editFormData.salary_advance_2) || 0,
       transport: parseFloat(editFormData.transport) || 0,
       food: parseFloat(editFormData.food) || 0,
       uniforms: parseFloat(editFormData.uniforms) || 0,
@@ -273,7 +280,7 @@ export default function Salaries() {
     const epfEmployee = values.basic_salary * 0.08;
     const epfEmployer = values.basic_salary * 0.12;
     const etfEmployer = values.basic_salary * 0.03;
-    const finalSalary = editingRecord.gross_shift_total_all - epfEmployee - values.salary_advance - values.transport - values.food - values.uniforms - values.other_deductions;
+    const finalSalary = editingRecord.gross_shift_total_all - epfEmployee - values.salary_advance - values.salary_advance_2 - values.transport - values.food - values.uniforms - values.other_deductions;
 
     // Update the primary salary record
     const isNewRecord = editingRecord.primary_salary_id.startsWith('temp-');
@@ -293,7 +300,7 @@ export default function Salaries() {
           ...values,
           epf: epfEmployee,
           final_salary: finalSalary,
-        });
+        } as any);
 
       if (error) {
         toast.error("Failed to create salary record");
@@ -307,7 +314,7 @@ export default function Salaries() {
           ...values,
           epf: epfEmployee,
           final_salary: finalSalary,
-        })
+        } as any)
         .eq("id", editingRecord.primary_salary_id);
 
       if (error) {
@@ -433,6 +440,10 @@ export default function Salaries() {
               <td style="text-align: right;">${employeeRecord.salary_advance.toFixed(2)}</td>
             </tr>
             <tr>
+              <td>Salary Advance 2</td>
+              <td style="text-align: right;">${(employeeRecord.salary_advance_2 || 0).toFixed(2)}</td>
+            </tr>
+            <tr>
               <td>Transport</td>
               <td style="text-align: right;">${employeeRecord.transport.toFixed(2)}</td>
             </tr>
@@ -450,7 +461,7 @@ export default function Salaries() {
             </tr>
             <tr class="total-row">
               <td>Total Deductions</td>
-              <td style="text-align: right;">${(employeeRecord.epf_employee + employeeRecord.salary_advance + employeeRecord.transport + employeeRecord.food + employeeRecord.uniforms + employeeRecord.other_deductions).toFixed(2)}</td>
+              <td style="text-align: right;">${(employeeRecord.epf_employee + employeeRecord.salary_advance + (employeeRecord.salary_advance_2 || 0) + employeeRecord.transport + employeeRecord.food + employeeRecord.uniforms + employeeRecord.other_deductions).toFixed(2)}</td>
             </tr>
             <tr class="final-row">
               <td>NET SALARY</td>
@@ -512,6 +523,7 @@ export default function Salaries() {
       'EPF Employer (12%)': `Rs. ${emp.epf_employer.toFixed(2)}`,
       'ETF Employer (3%)': `Rs. ${emp.etf_employer.toFixed(2)}`,
       'Salary Advance': `Rs. ${emp.salary_advance.toFixed(2)}`,
+      'Salary Advance 2': `Rs. ${(emp.salary_advance_2 || 0).toFixed(2)}`,
       'Transport': `Rs. ${emp.transport.toFixed(2)}`,
       'Food': `Rs. ${emp.food.toFixed(2)}`,
       'Uniforms': `Rs. ${emp.uniforms.toFixed(2)}`,
@@ -532,6 +544,7 @@ export default function Salaries() {
       'EPF Employer (12%)': '',
       'ETF Employer (3%)': '',
       'Salary Advance': '',
+      'Salary Advance 2': '',
       'Transport': '',
       'Food': '',
       'Uniforms': '',
@@ -651,7 +664,7 @@ export default function Salaries() {
                         <TableCell className="text-right">{empSalary.total_shifts_all}</TableCell>
                         <TableCell className="text-right">Rs. {empSalary.gross_shift_total_all.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
-                          Rs. {(empSalary.epf_employee + empSalary.salary_advance + empSalary.transport + empSalary.food + empSalary.uniforms + empSalary.other_deductions).toFixed(2)}
+                          Rs. {(empSalary.epf_employee + empSalary.salary_advance + (empSalary.salary_advance_2 || 0) + empSalary.transport + empSalary.food + empSalary.uniforms + empSalary.other_deductions).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right font-semibold">Rs. {empSalary.final_salary.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
@@ -733,6 +746,16 @@ export default function Salaries() {
                 step="0.01"
                 value={editFormData.salary_advance}
                 onChange={(e) => setEditFormData({ ...editFormData, salary_advance: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="salary_advance_2">Salary Advance 2</Label>
+              <Input
+                id="salary_advance_2"
+                type="number"
+                step="0.01"
+                value={editFormData.salary_advance_2}
+                onChange={(e) => setEditFormData({ ...editFormData, salary_advance_2: e.target.value })}
               />
             </div>
             <div className="space-y-2">
