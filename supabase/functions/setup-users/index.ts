@@ -9,6 +9,7 @@ const corsHeaders = {
 const USERS = [
   { username: "admin", password: "gssadmin17", full_name: "Administrator", role: "super_admin" },
   { username: "office1", password: "gssoffice26", full_name: "Office Staff", role: "office" },
+  { username: "office2", password: "gssoffice26", full_name: "Office Staff 2", role: "office" },
 ];
 
 Deno.serve(async (req) => {
