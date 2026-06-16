@@ -419,6 +419,15 @@ export default function Employees() {
                     placeholder="Digits only"
                   />
                 </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="epf_no">EPF No</Label>
+                  <Input
+                    id="epf_no"
+                    value={formData.epf_no}
+                    onChange={(e) => setFormData({ ...formData, epf_no: e.target.value })}
+                    placeholder="EPF number"
+                  />
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button
