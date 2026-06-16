@@ -98,8 +98,35 @@ export default function Employees() {
       return;
     }
 
-    setEmployees((data || []) as Employee[]);
-    setFilteredEmployees((data || []) as Employee[]);
+    const list = (data || []) as Employee[];
+    setEmployees(list);
+    setFilteredEmployees(list);
+    fetchAttendanceStats(list);
+  };
+
+  const fetchAttendanceStats = async (list: Employee[]) => {
+    const { data, error } = await supabase
+      .from("attendance")
+      .select("employee_id, attendance_date, present")
+      .eq("present", true);
+    if (error) return;
+
+    const now = new Date();
+    const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+
+    const stats: Record<string, AttendanceStat> = {};
+    list.forEach((e) => {
+      stats[e.id] = { lastDate: null, lastMonthShifts: 0 };
+    });
+    (data || []).forEach((row: any) => {
+      const s = stats[row.employee_id];
+      if (!s) return;
+      if (!s.lastDate || row.attendance_date > s.lastDate) s.lastDate = row.attendance_date;
+      const d = new Date(row.attendance_date);
+      if (d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear) s.lastMonthShifts += 1;
+    });
+    setAttendanceStats(stats);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
