@@ -54,6 +54,8 @@ export default function Employees() {
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const { isSuperAdmin, isOffice } = useAuth();
 
+  const [attendanceStats, setAttendanceStats] = useState<Record<string, AttendanceStat>>({});
+
   const [formData, setFormData] = useState({
     employee_id: "",
     full_name: "",
@@ -62,6 +64,7 @@ export default function Employees() {
     branch: "",
     account_number: "",
     phone_number: "",
+    epf_no: "",
   });
 
   useEffect(() => {
