@@ -469,8 +469,10 @@ export default function Employees() {
               <TableRow>
                 <TableHead>Employee ID</TableHead>
                 <TableHead>Full Name</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>NIC</TableHead>
                 <TableHead>Phone</TableHead>
+                {isSuperAdmin && <TableHead>EPF No</TableHead>}
                 {isSuperAdmin && <TableHead>Bank</TableHead>}
                 {isSuperAdmin && <TableHead>Branch</TableHead>}
                 {isSuperAdmin && <TableHead>Account No.</TableHead>}
@@ -480,46 +482,76 @@ export default function Employees() {
             <TableBody>
               {filteredEmployees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground">
                     No employees found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredEmployees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell className="font-medium">{employee.employee_id}</TableCell>
-                    <TableCell>{employee.full_name}</TableCell>
-                    <TableCell>
-                      {isSuperAdmin 
-                        ? employee.nic 
-                        : employee.nic.substring(0, 4) + "XXXX"}
-                    </TableCell>
-                    <TableCell>{employee.phone_number}</TableCell>
-                    {isSuperAdmin && <TableCell>{employee.bank_name}</TableCell>}
-                    {isSuperAdmin && <TableCell>{employee.branch}</TableCell>}
-                    {isSuperAdmin && <TableCell>{employee.account_number}</TableCell>}
-                    {isSuperAdmin && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(employee)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(employee.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                filteredEmployees.map((employee) => {
+                  const stat = attendanceStats[employee.id];
+                  let statusEl: JSX.Element;
+                  if (!stat || !stat.lastDate) {
+                    statusEl = (
+                      <Badge variant="destructive" className="font-normal">
+                        Inactive · never worked
+                      </Badge>
+                    );
+                  } else {
+                    const daysAgo = Math.floor(
+                      (Date.now() - new Date(stat.lastDate).getTime()) / 86400000
+                    );
+                    if (daysAgo > 60) {
+                      statusEl = (
+                        <Badge variant="destructive" className="font-normal">
+                          Inactive · last worked {daysAgo}d ago
+                        </Badge>
+                      );
+                    } else {
+                      statusEl = (
+                        <Badge className="font-normal bg-emerald-500/90 hover:bg-emerald-500 text-white">
+                          Active · {stat.lastMonthShifts} shifts last month
+                        </Badge>
+                      );
+                    }
+                  }
+                  return (
+                    <TableRow key={employee.id}>
+                      <TableCell className="font-medium">{employee.employee_id}</TableCell>
+                      <TableCell>{employee.full_name}</TableCell>
+                      <TableCell>{statusEl}</TableCell>
+                      <TableCell>
+                        {isSuperAdmin
+                          ? employee.nic
+                          : (employee.nic || "").substring(0, 4) + "XXXX"}
                       </TableCell>
-                    )}
-                  </TableRow>
-                ))
+                      <TableCell>{employee.phone_number}</TableCell>
+                      {isSuperAdmin && <TableCell>{employee.epf_no || "-"}</TableCell>}
+                      {isSuperAdmin && <TableCell>{employee.bank_name}</TableCell>}
+                      {isSuperAdmin && <TableCell>{employee.branch}</TableCell>}
+                      {isSuperAdmin && <TableCell>{employee.account_number}</TableCell>}
+                      {isSuperAdmin && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(employee)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(employee.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
