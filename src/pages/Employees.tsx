@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Search, Edit, Trash2, Upload, Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,6 +37,12 @@ interface Employee {
   branch?: string;
   account_number?: string;
   phone_number?: string;
+  epf_no?: string;
+}
+
+interface AttendanceStat {
+  lastDate: string | null;
+  lastMonthShifts: number;
 }
 
 export default function Employees() {
@@ -47,6 +54,8 @@ export default function Employees() {
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const { isSuperAdmin, isOffice } = useAuth();
 
+  const [attendanceStats, setAttendanceStats] = useState<Record<string, AttendanceStat>>({});
+
   const [formData, setFormData] = useState({
     employee_id: "",
     full_name: "",
@@ -55,6 +64,7 @@ export default function Employees() {
     branch: "",
     account_number: "",
     phone_number: "",
+    epf_no: "",
   });
 
   useEffect(() => {
@@ -88,8 +98,35 @@ export default function Employees() {
       return;
     }
 
-    setEmployees((data || []) as Employee[]);
-    setFilteredEmployees((data || []) as Employee[]);
+    const list = (data || []) as Employee[];
+    setEmployees(list);
+    setFilteredEmployees(list);
+    fetchAttendanceStats(list);
+  };
+
+  const fetchAttendanceStats = async (list: Employee[]) => {
+    const { data, error } = await supabase
+      .from("attendance")
+      .select("employee_id, attendance_date, present")
+      .eq("present", true);
+    if (error) return;
+
+    const now = new Date();
+    const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+
+    const stats: Record<string, AttendanceStat> = {};
+    list.forEach((e) => {
+      stats[e.id] = { lastDate: null, lastMonthShifts: 0 };
+    });
+    (data || []).forEach((row: any) => {
+      const s = stats[row.employee_id];
+      if (!s) return;
+      if (!s.lastDate || row.attendance_date > s.lastDate) s.lastDate = row.attendance_date;
+      const d = new Date(row.attendance_date);
+      if (d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear) s.lastMonthShifts += 1;
+    });
+    setAttendanceStats(stats);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -148,6 +185,7 @@ export default function Employees() {
       branch: employee.branch,
       account_number: employee.account_number,
       phone_number: employee.phone_number,
+      epf_no: employee.epf_no || "",
     });
     setIsEditMode(true);
     setIsDialogOpen(true);
@@ -181,6 +219,7 @@ export default function Employees() {
       branch: "",
       account_number: "",
       phone_number: "",
+      epf_no: "",
     });
     setIsEditMode(false);
     setCurrentEmployee(null);
@@ -215,6 +254,7 @@ export default function Employees() {
           bank_name: pick(row, ["bank", "bankname"]),
           branch: pick(row, ["branch"]),
           account_number: pick(row, ["accountno", "accountnumber", "acno", "account"]),
+          epf_no: pick(row, ["epfno", "epf", "epfnumber"]),
         }))
         .filter((r) => r.employee_id && r.full_name);
 
@@ -253,6 +293,13 @@ export default function Employees() {
       Bank: e.bank_name || "",
       Branch: e.branch || "",
       "Account no": e.account_number || "",
+      "EPF No": e.epf_no || "",
+      Status: (() => {
+        const s = attendanceStats[e.id];
+        if (!s || !s.lastDate) return "Inactive (never)";
+        const daysAgo = Math.floor((Date.now() - new Date(s.lastDate).getTime()) / 86400000);
+        return daysAgo > 60 ? `Inactive (last worked ${daysAgo}d ago)` : `Active (${s.lastMonthShifts} shifts last month)`;
+      })(),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -372,6 +419,15 @@ export default function Employees() {
                     placeholder="Digits only"
                   />
                 </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="epf_no">EPF No</Label>
+                  <Input
+                    id="epf_no"
+                    value={formData.epf_no}
+                    onChange={(e) => setFormData({ ...formData, epf_no: e.target.value })}
+                    placeholder="EPF number"
+                  />
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button
@@ -413,8 +469,10 @@ export default function Employees() {
               <TableRow>
                 <TableHead>Employee ID</TableHead>
                 <TableHead>Full Name</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>NIC</TableHead>
                 <TableHead>Phone</TableHead>
+                {isSuperAdmin && <TableHead>EPF No</TableHead>}
                 {isSuperAdmin && <TableHead>Bank</TableHead>}
                 {isSuperAdmin && <TableHead>Branch</TableHead>}
                 {isSuperAdmin && <TableHead>Account No.</TableHead>}
@@ -424,46 +482,76 @@ export default function Employees() {
             <TableBody>
               {filteredEmployees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground">
                     No employees found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredEmployees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell className="font-medium">{employee.employee_id}</TableCell>
-                    <TableCell>{employee.full_name}</TableCell>
-                    <TableCell>
-                      {isSuperAdmin 
-                        ? employee.nic 
-                        : employee.nic.substring(0, 4) + "XXXX"}
-                    </TableCell>
-                    <TableCell>{employee.phone_number}</TableCell>
-                    {isSuperAdmin && <TableCell>{employee.bank_name}</TableCell>}
-                    {isSuperAdmin && <TableCell>{employee.branch}</TableCell>}
-                    {isSuperAdmin && <TableCell>{employee.account_number}</TableCell>}
-                    {isSuperAdmin && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(employee)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(employee.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                filteredEmployees.map((employee) => {
+                  const stat = attendanceStats[employee.id];
+                  let statusEl: JSX.Element;
+                  if (!stat || !stat.lastDate) {
+                    statusEl = (
+                      <Badge variant="destructive" className="font-normal">
+                        Inactive · never worked
+                      </Badge>
+                    );
+                  } else {
+                    const daysAgo = Math.floor(
+                      (Date.now() - new Date(stat.lastDate).getTime()) / 86400000
+                    );
+                    if (daysAgo > 60) {
+                      statusEl = (
+                        <Badge variant="destructive" className="font-normal">
+                          Inactive · last worked {daysAgo}d ago
+                        </Badge>
+                      );
+                    } else {
+                      statusEl = (
+                        <Badge className="font-normal bg-emerald-500/90 hover:bg-emerald-500 text-white">
+                          Active · {stat.lastMonthShifts} shifts last month
+                        </Badge>
+                      );
+                    }
+                  }
+                  return (
+                    <TableRow key={employee.id}>
+                      <TableCell className="font-medium">{employee.employee_id}</TableCell>
+                      <TableCell>{employee.full_name}</TableCell>
+                      <TableCell>{statusEl}</TableCell>
+                      <TableCell>
+                        {isSuperAdmin
+                          ? employee.nic
+                          : (employee.nic || "").substring(0, 4) + "XXXX"}
                       </TableCell>
-                    )}
-                  </TableRow>
-                ))
+                      <TableCell>{employee.phone_number}</TableCell>
+                      {isSuperAdmin && <TableCell>{employee.epf_no || "-"}</TableCell>}
+                      {isSuperAdmin && <TableCell>{employee.bank_name}</TableCell>}
+                      {isSuperAdmin && <TableCell>{employee.branch}</TableCell>}
+                      {isSuperAdmin && <TableCell>{employee.account_number}</TableCell>}
+                      {isSuperAdmin && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(employee)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(employee.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
