@@ -137,6 +137,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           employee_id: string
+          epf_no: string | null
           full_name: string
           id: string
           nic: string
@@ -150,6 +151,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           employee_id: string
+          epf_no?: string | null
           full_name: string
           id?: string
           nic: string
@@ -163,6 +165,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           employee_id?: string
+          epf_no?: string | null
           full_name?: string
           id?: string
           nic?: string
