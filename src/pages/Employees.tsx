@@ -293,6 +293,13 @@ export default function Employees() {
       Bank: e.bank_name || "",
       Branch: e.branch || "",
       "Account no": e.account_number || "",
+      "EPF No": e.epf_no || "",
+      Status: (() => {
+        const s = attendanceStats[e.id];
+        if (!s || !s.lastDate) return "Inactive (never)";
+        const daysAgo = Math.floor((Date.now() - new Date(s.lastDate).getTime()) / 86400000);
+        return daysAgo > 60 ? `Inactive (last worked ${daysAgo}d ago)` : `Active (${s.lastMonthShifts} shifts last month)`;
+      })(),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
