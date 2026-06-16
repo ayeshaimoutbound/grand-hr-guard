@@ -158,6 +158,7 @@ export default function Employees() {
       branch: employee.branch,
       account_number: employee.account_number,
       phone_number: employee.phone_number,
+      epf_no: employee.epf_no || "",
     });
     setIsEditMode(true);
     setIsDialogOpen(true);
