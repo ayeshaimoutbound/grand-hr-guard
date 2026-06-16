@@ -254,6 +254,7 @@ export default function Employees() {
           bank_name: pick(row, ["bank", "bankname"]),
           branch: pick(row, ["branch"]),
           account_number: pick(row, ["accountno", "accountnumber", "acno", "account"]),
+          epf_no: pick(row, ["epfno", "epf", "epfnumber"]),
         }))
         .filter((r) => r.employee_id && r.full_name);
 
