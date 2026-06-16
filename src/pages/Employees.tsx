@@ -37,6 +37,12 @@ interface Employee {
   branch?: string;
   account_number?: string;
   phone_number?: string;
+  epf_no?: string;
+}
+
+interface AttendanceStat {
+  lastDate: string | null;
+  lastMonthShifts: number;
 }
 
 export default function Employees() {
