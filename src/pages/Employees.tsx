@@ -192,6 +192,7 @@ export default function Employees() {
       branch: "",
       account_number: "",
       phone_number: "",
+      epf_no: "",
     });
     setIsEditMode(false);
     setCurrentEmployee(null);
