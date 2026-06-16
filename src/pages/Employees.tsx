@@ -353,6 +353,10 @@ export default function Employees() {
             onChange={handleBulkUpload}
             className="hidden"
           />
+          <Button variant="outline" onClick={handleDownloadTemplate}>
+            <FileDown className="h-4 w-4 mr-2" />
+            Download Format
+          </Button>
           <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-2" />
             Bulk Upload (.xlsx)
