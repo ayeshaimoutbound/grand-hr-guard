@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, Upload, Download } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Upload, Download, FileDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
@@ -308,6 +308,36 @@ export default function Employees() {
     toast.success("Employees exported");
   };
 
+  const handleDownloadTemplate = () => {
+    const rows = [
+      {
+        "Employee ID": "GSS001",
+        "Full Name": "John Doe",
+        NIC: "123456789V",
+        Phone: "0777305321",
+        Bank: "Commercial Bank",
+        Branch: "Maharagama",
+        "Account No": "1234567890",
+        "EPF No": "EPF001",
+      },
+      {
+        "Employee ID": "GSS002",
+        "Full Name": "Jane Smith",
+        NIC: "987654321V",
+        Phone: "0717305321",
+        Bank: "Sampath Bank",
+        Branch: "Nugegoda",
+        "Account No": "0987654321",
+        "EPF No": "EPF002",
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "Employee_Bulk_Upload_Template.xlsx");
+    toast.success("Template downloaded");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -323,6 +353,10 @@ export default function Employees() {
             onChange={handleBulkUpload}
             className="hidden"
           />
+          <Button variant="outline" onClick={handleDownloadTemplate}>
+            <FileDown className="h-4 w-4 mr-2" />
+            Download Format
+          </Button>
           <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-2" />
             Bulk Upload (.xlsx)
