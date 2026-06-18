@@ -39,6 +39,7 @@ interface Company {
   charge_sso: number;
   charge_jso: number;
   charge_lso: number;
+  client_ot_rate?: number;
 }
 
 export default function Companies() {
@@ -62,6 +63,7 @@ export default function Companies() {
     charge_sso: "",
     charge_jso: "",
     charge_lso: "",
+    client_ot_rate: "0",
   });
 
   useEffect(() => {
@@ -108,17 +110,19 @@ export default function Companies() {
       charge_lso: parseFloat(formData.charge_lso),
     };
 
-    // Validate input
+    // Validate input (client_ot_rate excluded from strict schema)
     const validation = companySchema.safeParse(payload);
     if (!validation.success) {
       toast.error(validation.error.errors[0].message);
       return;
     }
 
+    const fullPayload = { ...payload, client_ot_rate: parseFloat(formData.client_ot_rate) || 0 };
+
     if (isEditMode && currentCompany) {
       const { error } = await supabase
         .from("companies")
-        .update(payload)
+        .update(fullPayload)
         .eq("id", currentCompany.id);
 
       if (error) {
@@ -127,7 +131,7 @@ export default function Companies() {
       }
       toast.success("Company updated successfully");
     } else {
-      const { error } = await supabase.from("companies").insert([payload]);
+      const { error } = await supabase.from("companies").insert([fullPayload]);
 
       if (error) {
         toast.error("Error adding company");
@@ -160,6 +164,7 @@ export default function Companies() {
       charge_sso: company.charge_sso.toString(),
       charge_jso: company.charge_jso.toString(),
       charge_lso: company.charge_lso.toString(),
+      client_ot_rate: (company.client_ot_rate ?? 0).toString(),
     });
     setIsEditMode(true);
     setIsDialogOpen(true);
@@ -197,6 +202,7 @@ export default function Companies() {
       charge_sso: "",
       charge_jso: "",
       charge_lso: "",
+      client_ot_rate: "0",
     });
     setIsEditMode(false);
     setCurrentCompany(null);
@@ -383,6 +389,22 @@ export default function Companies() {
                       value={formData.charge_lso}
                       onChange={(e) => setFormData({ ...formData, charge_lso: e.target.value })}
                       required
+                    />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Client Overtime Billing</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="client_ot_rate">Client O/T Rate (Rs./hour)</Label>
+                    <Input
+                      id="client_ot_rate"
+                      type="number"
+                      step="0.01"
+                      value={formData.client_ot_rate}
+                      onChange={(e) => setFormData({ ...formData, client_ot_rate: e.target.value })}
+                      placeholder="0 = don't bill OT"
                     />
                   </div>
                 </div>
