@@ -65,6 +65,9 @@ export default function Employees() {
     account_number: "",
     phone_number: "",
     epf_no: "",
+    ot_hourly_rate: "225",
+    normal_ot_hours: "3",
+    extended_ot_hours: "6",
   });
 
   useEffect(() => {
@@ -132,9 +135,10 @@ export default function Employees() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form data
+    const { ot_hourly_rate, normal_ot_hours, extended_ot_hours, ...baseData } = formData;
+    // Validate base form data
     try {
-      employeeSchema.parse(formData);
+      employeeSchema.parse(baseData);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
@@ -142,26 +146,24 @@ export default function Employees() {
       }
     }
 
+    const payload = {
+      ...baseData,
+      ot_hourly_rate: parseFloat(ot_hourly_rate) || 225,
+      normal_ot_hours: parseFloat(normal_ot_hours) || 3,
+      extended_ot_hours: parseFloat(extended_ot_hours) || 6,
+    };
+
     if (isEditMode && currentEmployee) {
-      // Update employee (Super Admin only)
       const { error } = await supabase
         .from("employees")
-        .update(formData)
+        .update(payload)
         .eq("id", currentEmployee.id);
 
-      if (error) {
-        toast.error("Error updating employee");
-        return;
-      }
+      if (error) { toast.error("Error updating employee"); return; }
       toast.success("Employee updated successfully");
     } else {
-      // Add new employee
-      const { error } = await supabase.from("employees").insert([formData]);
-
-      if (error) {
-        toast.error("Error adding employee");
-        return;
-      }
+      const { error } = await supabase.from("employees").insert([payload]);
+      if (error) { toast.error("Error adding employee"); return; }
       toast.success("Employee added successfully");
     }
 
@@ -186,6 +188,9 @@ export default function Employees() {
       account_number: employee.account_number,
       phone_number: employee.phone_number,
       epf_no: employee.epf_no || "",
+      ot_hourly_rate: String((employee as any).ot_hourly_rate ?? 225),
+      normal_ot_hours: String((employee as any).normal_ot_hours ?? 3),
+      extended_ot_hours: String((employee as any).extended_ot_hours ?? 6),
     });
     setIsEditMode(true);
     setIsDialogOpen(true);
@@ -220,6 +225,9 @@ export default function Employees() {
       account_number: "",
       phone_number: "",
       epf_no: "",
+      ot_hourly_rate: "225",
+      normal_ot_hours: "3",
+      extended_ot_hours: "6",
     });
     setIsEditMode(false);
     setCurrentEmployee(null);
@@ -461,6 +469,29 @@ export default function Employees() {
                     onChange={(e) => setFormData({ ...formData, epf_no: e.target.value })}
                     placeholder="EPF number"
                   />
+                </div>
+                <div className="col-span-2 border-t pt-3 mt-1">
+                  <p className="text-sm font-medium mb-2">Overtime Pay Settings</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="ot_hourly_rate">OT Hourly Rate</Label>
+                      <Input id="ot_hourly_rate" type="number" step="0.01"
+                        value={formData.ot_hourly_rate}
+                        onChange={(e) => setFormData({ ...formData, ot_hourly_rate: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="normal_ot_hours">Normal OT hrs/day</Label>
+                      <Input id="normal_ot_hours" type="number" step="0.01"
+                        value={formData.normal_ot_hours}
+                        onChange={(e) => setFormData({ ...formData, normal_ot_hours: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="extended_ot_hours">Extended OT hrs/day</Label>
+                      <Input id="extended_ot_hours" type="number" step="0.01"
+                        value={formData.extended_ot_hours}
+                        onChange={(e) => setFormData({ ...formData, extended_ot_hours: e.target.value })} />
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-2">

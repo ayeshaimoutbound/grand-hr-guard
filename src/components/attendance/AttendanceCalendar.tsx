@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "@/lib/pdfHeader";
+import OvertimeSection from "@/components/attendance/OvertimeSection";
 
 interface Employee {
   id: string;
@@ -563,6 +564,13 @@ export default function AttendanceCalendar({
           </div>
         </CardContent>
       </Card>
+
+      {/* Overtime Logging */}
+      <OvertimeSection
+        companyId={selectedCompany.id}
+        selectedMonth={selectedMonth}
+        employees={activeEmployees as any}
+      />
 
       {/* Add Employee Section */}
       {!showAddEmployee ? (

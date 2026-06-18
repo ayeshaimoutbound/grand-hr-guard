@@ -8,7 +8,9 @@ interface ProtectedRouteProps {
 }
 
 // Routes that "office" role users are allowed to access
-const OFFICE_ALLOWED = ["/employees", "/attendance"];
+const OFFICE_ALLOWED = ["/employees", "/attendance", "/salaries"];
+// Routes only admins (and super_admin) can access
+const ADMIN_ONLY = ["/accounts"];
 
 export function ProtectedRoute({ children, requireSuperAdmin = false }: ProtectedRouteProps) {
   const { user, role, loading } = useAuth();
@@ -34,5 +36,11 @@ export function ProtectedRoute({ children, requireSuperAdmin = false }: Protecte
     return <Navigate to="/employees" replace />;
   }
 
+  if (role !== "admin" && role !== "super_admin" &&
+      ADMIN_ONLY.some((p) => location.pathname.startsWith(p))) {
+    return <Navigate to={role === "office" ? "/employees" : "/dashboard"} replace />;
+  }
+
   return <>{children}</>;
 }
+

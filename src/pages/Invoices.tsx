@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileText, Plus, Download, Wallet } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -45,6 +46,7 @@ interface Company {
   charge_sso: number;
   charge_jso: number;
   charge_lso: number;
+  client_ot_rate?: number;
 }
 
 interface Invoice {
@@ -261,6 +263,30 @@ export default function Invoices() {
       }
     });
 
+    // Add overtime line if client OT rate is set and OT was logged this month
+    const otRate = Number(company.client_ot_rate || 0);
+    if (otRate > 0) {
+      const { data: otData } = await supabase
+        .from("overtime_entries")
+        .select("hours")
+        .eq("company_id", company.id)
+        .gte("ot_date", format(monthStart, "yyyy-MM-dd"))
+        .lte("ot_date", format(monthEnd, "yyyy-MM-dd"));
+      const totalOtHours = (otData || []).reduce((s, r) => s + Number(r.hours || 0), 0);
+      if (totalOtHours > 0) {
+        const otAmount = totalOtHours * otRate;
+        lineItems.push({
+          period: periodStr,
+          rank: "OVERTIME",
+          officers: "Hours",
+          shifts: totalOtHours,
+          rate: otRate,
+          amount: otAmount,
+        });
+        totalAmount += otAmount;
+      }
+    }
+
     if (lineItems.length === 0) {
       toast.error("No attendance records found for the selected period");
       return;
@@ -462,6 +488,15 @@ export default function Invoices() {
                     <TableCell className="text-right">Rs. {received.toLocaleString()}</TableCell>
                     <TableCell className={`text-right ${balance > 0 ? "text-primary font-medium" : "text-muted-foreground"}`}>
                       Rs. {balance.toLocaleString()}
+                      <div className="mt-1">
+                        {received <= 0 ? (
+                          <Badge variant="destructive">Unpaid</Badge>
+                        ) : balance > 0.01 ? (
+                          <Badge variant="secondary">Partially Paid</Badge>
+                        ) : (
+                          <Badge>Paid</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">

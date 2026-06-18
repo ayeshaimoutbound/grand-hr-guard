@@ -14,6 +14,7 @@ import Companies from "./pages/Companies";
 import Attendance from "./pages/Attendance";
 import Salaries from "./pages/Salaries";
 import Invoices from "./pages/Invoices";
+import Accounts from "./pages/Accounts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,7 +43,9 @@ const App = () => (
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/salaries" element={<Salaries />} />
               <Route path="/invoices" element={<Invoices />} />
+              <Route path="/accounts" element={<Accounts />} />
             </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
