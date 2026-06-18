@@ -7,6 +7,7 @@ import {
   Calendar,
   DollarSign,
   FileText,
+  Wallet,
   Shield,
   LogOut,
 } from "lucide-react";
@@ -30,9 +31,11 @@ const menuItems = [
   { title: "Employees", url: "/employees", icon: Users, roles: ["admin", "super_admin", "office"] },
   { title: "Companies", url: "/companies", icon: Building2, roles: ["admin", "super_admin"] },
   { title: "Attendance", url: "/attendance", icon: Calendar, roles: ["admin", "super_admin", "office"] },
-  { title: "Salaries", url: "/salaries", icon: DollarSign, roles: ["admin", "super_admin"] },
+  { title: "Salaries", url: "/salaries", icon: DollarSign, roles: ["admin", "super_admin", "office"] },
   { title: "Invoices", url: "/invoices", icon: FileText, roles: ["admin", "super_admin"] },
+  { title: "Accounts", url: "/accounts", icon: Wallet, roles: ["admin", "super_admin"] },
 ];
+
 
 export function AppSidebar() {
   const { state } = useSidebar();
