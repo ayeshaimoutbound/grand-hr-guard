@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           attendance_date: string
@@ -75,12 +93,61 @@ export type Database = {
           },
         ]
       }
+      cash_advances: {
+        Row: {
+          advance_date: string
+          amount: number
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          advance_date: string
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          advance_date?: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_advances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_limited"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           charge_jso: number
           charge_lso: number
           charge_oic: number
           charge_sso: number
+          client_ot_rate: number
           company_name: string
           company_number: string | null
           created_at: string | null
@@ -98,6 +165,7 @@ export type Database = {
           charge_lso?: number
           charge_oic?: number
           charge_sso?: number
+          client_ot_rate?: number
           company_name: string
           company_number?: string | null
           created_at?: string | null
@@ -115,6 +183,7 @@ export type Database = {
           charge_lso?: number
           charge_oic?: number
           charge_sso?: number
+          client_ot_rate?: number
           company_name?: string
           company_number?: string | null
           created_at?: string | null
@@ -138,9 +207,12 @@ export type Database = {
           created_by: string | null
           employee_id: string
           epf_no: string | null
+          extended_ot_hours: number
           full_name: string
           id: string
           nic: string
+          normal_ot_hours: number
+          ot_hourly_rate: number
           phone_number: string
           updated_at: string | null
         }
@@ -152,9 +224,12 @@ export type Database = {
           created_by?: string | null
           employee_id: string
           epf_no?: string | null
+          extended_ot_hours?: number
           full_name: string
           id?: string
           nic: string
+          normal_ot_hours?: number
+          ot_hourly_rate?: number
           phone_number: string
           updated_at?: string | null
         }
@@ -166,13 +241,139 @@ export type Database = {
           created_by?: string | null
           employee_id?: string
           epf_no?: string | null
+          extended_ot_hours?: number
           full_name?: string
           id?: string
           nic?: string
+          normal_ot_hours?: number
+          ot_hourly_rate?: number
           phone_number?: string
           updated_at?: string | null
         }
         Relationships: []
+      }
+      expense_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          amount: number
+          category: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expense_date: string
+          id?: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      food_advances: {
+        Row: {
+          advance_date: string
+          amount: number
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          advance_date: string
+          amount: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          advance_date?: string
+          amount?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_advances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_advances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_advances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_limited"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_payments: {
         Row: {
@@ -276,6 +477,76 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      overtime_entries: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          end_time: string
+          hours: number
+          id: string
+          ot_date: string
+          ot_rate: number
+          reason: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          end_time: string
+          hours: number
+          id?: string
+          ot_date: string
+          ot_rate: number
+          reason: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          end_time?: string
+          hours?: number
+          id?: string
+          ot_date?: string
+          ot_rate?: number
+          reason?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overtime_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overtime_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overtime_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_limited"
             referencedColumns: ["id"]
           },
         ]
@@ -388,6 +659,54 @@ export type Database = {
           },
           {
             foreignKeyName: "salaries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_limited"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uniform_advances: {
+        Row: {
+          advance_date: string
+          amount: number
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          advance_date: string
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          advance_date?: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uniform_advances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uniform_advances_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees_limited"
