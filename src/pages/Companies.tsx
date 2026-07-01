@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, Download } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Download, Upload, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -225,12 +225,64 @@ export default function Companies() {
       "SSO Charge": c.charge_sso,
       "JSO Charge": c.charge_jso,
       "LSO Charge": c.charge_lso,
+      "Client OT Rate": c.client_ot_rate || 0,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Companies");
     XLSX.writeFile(wb, `Companies_${new Date().toISOString().slice(0, 10)}.xlsx`);
     toast.success("Companies exported");
+  };
+
+  const handleDownloadTemplate = () => {
+    const sample = [{
+      "Company Name": "Sample Corp",
+      "Company Number": "GS-001",
+      Location: "Colombo",
+      "OIC Pay": 2000, "SSO Pay": 1800, "JSO Pay": 1600, "LSO Pay": 1500,
+      "OIC Charge": 2500, "SSO Charge": 2300, "JSO Charge": 2100, "LSO Charge": 2000,
+      "Client OT Rate": 250,
+    }];
+    const ws = XLSX.utils.json_to_sheet(sample);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Companies");
+    XLSX.writeFile(wb, "Companies_Bulk_Upload_Template.xlsx");
+    toast.success("Template downloaded");
+  };
+
+  const handleBulkUpload = async (file: File) => {
+    if (!isSuperAdmin) { toast.error("Only Super Admin can bulk upload companies"); return; }
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      if (!rows.length) { toast.error("Sheet is empty"); return; }
+      let ok = 0, fail = 0;
+      for (const r of rows) {
+        const payload = {
+          company_name: String(r["Company Name"] || r.company_name || "").trim(),
+          company_number: String(r["Company Number"] || r.company_number || "").trim(),
+          location: String(r.Location || r.location || "").trim(),
+          pay_oic: parseFloat(r["OIC Pay"]) || 0,
+          pay_sso: parseFloat(r["SSO Pay"]) || 0,
+          pay_jso: parseFloat(r["JSO Pay"]) || 0,
+          pay_lso: parseFloat(r["LSO Pay"]) || 0,
+          charge_oic: parseFloat(r["OIC Charge"]) || 0,
+          charge_sso: parseFloat(r["SSO Charge"]) || 0,
+          charge_jso: parseFloat(r["JSO Charge"]) || 0,
+          charge_lso: parseFloat(r["LSO Charge"]) || 0,
+          client_ot_rate: parseFloat(r["Client OT Rate"]) || 0,
+        };
+        if (!payload.company_name || !payload.location) { fail++; continue; }
+        const { error } = await supabase.from("companies").insert([payload]);
+        if (error) fail++; else ok++;
+      }
+      toast.success(`Uploaded ${ok} companies${fail ? `, ${fail} failed` : ""}`);
+      fetchCompanies();
+    } catch (e: any) {
+      toast.error("Upload failed: " + e.message);
+    }
   };
 
   return (
@@ -240,11 +292,32 @@ export default function Companies() {
           <h1 className="text-3xl font-bold">Companies</h1>
           <p className="text-muted-foreground">Manage company information and pay rates</p>
         </div>
-        <div className="flex items-center gap-2">
-        <Button variant="outline" onClick={handleBulkDownload}>
+        <div className="flex items-center gap-2 flex-wrap">
+        <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          Bulk Upload Format
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleBulkDownload}>
           <Download className="h-4 w-4 mr-2" />
           Download (.xlsx)
         </Button>
+        {isSuperAdmin && (
+          <label className="inline-flex">
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleBulkUpload(f);
+                e.target.value = "";
+              }}
+            />
+            <Button asChild variant="outline" size="sm">
+              <span><Upload className="h-4 w-4 mr-2" />Bulk Upload</span>
+            </Button>
+          </label>
+        )}
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) resetForm();
