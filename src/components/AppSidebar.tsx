@@ -8,7 +8,8 @@ import {
   DollarSign,
   FileText,
   Wallet,
-  Shield,
+  Package,
+  Settings as SettingsIcon,
   LogOut,
 } from "lucide-react";
 import {
@@ -27,24 +28,28 @@ import {
 import { Button } from "@/components/ui/button";
 
 const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, roles: ["admin", "super_admin"] },
-  { title: "Employees", url: "/employees", icon: Users, roles: ["admin", "super_admin", "office"] },
-  { title: "Companies", url: "/companies", icon: Building2, roles: ["admin", "super_admin"] },
-  { title: "Attendance", url: "/attendance", icon: Calendar, roles: ["admin", "super_admin", "office"] },
-  { title: "Salaries", url: "/salaries", icon: DollarSign, roles: ["admin", "super_admin", "office"] },
-  { title: "Invoices", url: "/invoices", icon: FileText, roles: ["admin", "super_admin"] },
-  { title: "Accounts", url: "/accounts", icon: Wallet, roles: ["admin", "super_admin"] },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, key: "dashboard", roles: ["admin", "super_admin"] },
+  { title: "Employees", url: "/employees", icon: Users, key: "employees", roles: ["admin", "super_admin", "office"] },
+  { title: "Companies", url: "/companies", icon: Building2, key: "companies", roles: ["admin", "super_admin"] },
+  { title: "Attendance", url: "/attendance", icon: Calendar, key: "attendance", roles: ["admin", "super_admin", "office"] },
+  { title: "Salaries", url: "/salaries", icon: DollarSign, key: "salaries", roles: ["admin", "super_admin"] },
+  { title: "Invoices", url: "/invoices", icon: FileText, key: "invoices", roles: ["admin", "super_admin"] },
+  { title: "Accounts", url: "/accounts", icon: Wallet, key: "accounts", roles: ["admin", "super_admin"] },
+  { title: "Inventory", url: "/inventory", icon: Package, key: "inventory", roles: ["admin", "super_admin", "office"] },
+  { title: "Settings", url: "/settings", icon: SettingsIcon, key: "settings", roles: ["super_admin"] },
 ];
-
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const { role, signOut } = useAuth();
+  const { role, signOut, moduleAccess } = useAuth();
   const isCollapsed = state === "collapsed";
 
-  const filteredItems = menuItems.filter((item) =>
-    role && item.roles.includes(role)
-  );
+  const filteredItems = menuItems.filter((item) => {
+    if (!role || !item.roles.includes(role)) return false;
+    // per-user override: if explicitly disabled, hide
+    if (moduleAccess && moduleAccess[item.key] === false) return false;
+    return true;
+  });
 
   return (
     <Sidebar className={isCollapsed ? "w-14" : "w-60"} collapsible="icon">
