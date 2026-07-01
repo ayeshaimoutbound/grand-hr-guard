@@ -279,6 +279,8 @@ function AdvancesTab() {
 }
 
 /* ============== EXPENSES TAB ============== */
+const TRANSPORT_SUBCATS = ["Service", "Upgrade", "Refuel (Petrol)", "Refuel (Diesel)", "Electric Charge", "Tolls", "Parking", "Repair", "Other"];
+
 function ExpensesTab() {
   const [rows, setRows] = useState<any[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -286,15 +288,28 @@ function ExpensesTab() {
   const [open, setOpen] = useState(false);
   const [filterCat, setFilterCat] = useState<string>("all");
   const [filterCompany, setFilterCompany] = useState<string>("all");
+  const [filterPaid, setFilterPaid] = useState<string>("all");
   const [fromDate, setFromDate] = useState<string>(format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [toDate, setToDate] = useState<string>(format(endOfMonth(new Date()), "yyyy-MM-dd"));
-  const [newCat, setNewCat] = useState("");
-  const [form, setForm] = useState({ expense_date: format(new Date(), "yyyy-MM-dd"), category: "", amount: "", description: "", vendor: "", company_id: "" });
+  const [form, setForm] = useState({
+    expense_date: format(new Date(), "yyyy-MM-dd"),
+    category: "",
+    subcategory: "",
+    amount: "",
+    description: "",
+    vendor: "",
+    supplier: "",
+    invoice_ref: "",
+    company_id: "",
+    is_paid: true,
+    payment_date: format(new Date(), "yyyy-MM-dd"),
+  });
 
   const load = async () => {
     let q = supabase.from("expenses").select("*, companies(company_name)").gte("expense_date", fromDate).lte("expense_date", toDate).order("expense_date", { ascending: false });
     if (filterCat !== "all") q = q.eq("category", filterCat);
     if (filterCompany !== "all") q = q.eq("company_id", filterCompany);
+    if (filterPaid !== "all") q = q.eq("is_paid", filterPaid === "paid");
     const { data } = await q;
     setRows(data || []);
   };
@@ -307,7 +322,7 @@ function ExpensesTab() {
     setCompanies((cos.data as any) || []);
   };
   useEffect(() => { loadMeta(); }, []);
-  useEffect(() => { load(); }, [filterCat, filterCompany, fromDate, toDate]);
+  useEffect(() => { load(); }, [filterCat, filterCompany, filterPaid, fromDate, toDate]);
 
   const save = async () => {
     if (!form.expense_date || !form.category || !form.amount) { toast.error("Date, category, amount required"); return; }
@@ -316,17 +331,28 @@ function ExpensesTab() {
     const { error } = await supabase.from("expenses").insert({
       expense_date: form.expense_date,
       category: form.category,
+      subcategory: form.subcategory || null,
       amount: amt,
       description: form.description || null,
       vendor: form.vendor || null,
+      supplier: form.supplier || null,
+      invoice_ref: form.invoice_ref || null,
       company_id: form.company_id || null,
+      is_paid: form.is_paid,
+      payment_date: form.is_paid ? form.payment_date : null,
       created_by: u.user?.id,
-    });
+    } as any);
     if (error) { toast.error(error.message); return; }
     toast.success("Expense logged");
     setOpen(false);
-    setForm({ expense_date: format(new Date(), "yyyy-MM-dd"), category: "", amount: "", description: "", vendor: "", company_id: "" });
+    setForm({ expense_date: format(new Date(), "yyyy-MM-dd"), category: "", subcategory: "", amount: "", description: "", vendor: "", supplier: "", invoice_ref: "", company_id: "", is_paid: true, payment_date: format(new Date(), "yyyy-MM-dd") });
     load();
+  };
+
+  const markPaid = async (id: string) => {
+    const { error } = await supabase.from("expenses").update({ is_paid: true, payment_date: format(new Date(), "yyyy-MM-dd") } as any).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Marked as paid"); load();
   };
 
   const remove = async (id: string) => {
@@ -335,26 +361,21 @@ function ExpensesTab() {
     load();
   };
 
-  const addCategory = async () => {
-    if (!newCat.trim()) return;
-    const { error } = await supabase.from("expense_categories").insert({ name: newCat.trim() });
-    if (error) { toast.error(error.message); return; }
-    setNewCat("");
-    loadMeta();
-    toast.success("Category added");
-  };
-
   const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
+  const unpaidTotal = rows.filter((r: any) => !r.is_paid).reduce((s, r) => s + Number(r.amount || 0), 0);
 
   return (
     <div className="mt-4 space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Expenses</CardTitle>
+          <div>
+            <CardTitle>Expenses</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Categories: Transport, Uniforms, Stationaries, Other</p>
+          </div>
           <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add Expense</Button>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
             <div className="space-y-1">
               <Label>From</Label>
               <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
@@ -383,6 +404,17 @@ function ExpensesTab() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <Label>Payment</Label>
+              <Select value={filterPaid} onValueChange={setFilterPaid}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="unpaid">Unpaid (Credit)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <Table>
@@ -390,27 +422,40 @@ function ExpensesTab() {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Vendor / Description</TableHead>
+                <TableHead>Sub / Description</TableHead>
+                <TableHead>Supplier / Vendor</TableHead>
+                <TableHead>Invoice Ref</TableHead>
                 <TableHead>Company</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No expenses</TableCell></TableRow>
-              ) : rows.map(r => (
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No expenses</TableCell></TableRow>
+              ) : rows.map((r: any) => (
                 <TableRow key={r.id}>
                   <TableCell>{new Date(r.expense_date).toLocaleDateString()}</TableCell>
                   <TableCell><Badge variant="outline">{r.category}</Badge></TableCell>
-                  <TableCell>{[r.vendor, r.description].filter(Boolean).join(" — ") || "—"}</TableCell>
+                  <TableCell>{[r.subcategory, r.description].filter(Boolean).join(" — ") || "—"}</TableCell>
+                  <TableCell>{r.supplier || r.vendor || "—"}</TableCell>
+                  <TableCell className="font-mono text-xs">{r.invoice_ref || "—"}</TableCell>
                   <TableCell>{r.companies?.company_name || "—"}</TableCell>
+                  <TableCell>
+                    {r.is_paid
+                      ? <Badge className="bg-emerald-600 hover:bg-emerald-600">Paid</Badge>
+                      : <Badge variant="destructive">Credit</Badge>}
+                  </TableCell>
                   <TableCell className="text-right">Rs. {Number(r.amount).toFixed(2)}</TableCell>
-                  <TableCell><Button variant="ghost" size="sm" onClick={() => remove(r.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button></TableCell>
+                  <TableCell className="flex gap-1 justify-end">
+                    {!r.is_paid && <Button variant="outline" size="sm" onClick={() => markPaid(r.id)}>Mark Paid</Button>}
+                    <Button variant="ghost" size="sm" onClick={() => remove(r.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                  </TableCell>
                 </TableRow>
               ))}
               <TableRow className="font-semibold bg-muted/30">
-                <TableCell colSpan={4} className="text-right">Total</TableCell>
+                <TableCell colSpan={7} className="text-right">Total (Unpaid: Rs. {unpaidTotal.toFixed(2)})</TableCell>
                 <TableCell className="text-right">Rs. {total.toFixed(2)}</TableCell>
                 <TableCell></TableCell>
               </TableRow>
@@ -419,21 +464,8 @@ function ExpensesTab() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Manage Categories</CardTitle></CardHeader>
-        <CardContent>
-          <div className="flex gap-2 mb-3">
-            <Input placeholder="New category name" value={newCat} onChange={(e) => setNewCat(e.target.value)} />
-            <Button onClick={addCategory}>Add</Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {categories.map(c => <Badge key={c.id} variant="secondary">{c.name}</Badge>)}
-          </div>
-        </CardContent>
-      </Card>
-
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Add Expense</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -446,18 +478,42 @@ function ExpensesTab() {
                 <Input type="number" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                <SelectTrigger><SelectValue placeholder="Choose category" /></SelectTrigger>
-                <SelectContent>
-                  {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v, subcategory: "" })}>
+                  <SelectTrigger><SelectValue placeholder="Choose category" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.category === "Transport" ? (
+                <div className="space-y-2">
+                  <Label>Transport Sub-category</Label>
+                  <Select value={form.subcategory} onValueChange={(v) => setForm({ ...form, subcategory: v })}>
+                    <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
+                    <SelectContent>
+                      {TRANSPORT_SUBCATS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Sub-category (optional)</Label>
+                  <Input value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })} />
+                </div>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label>Vendor</Label>
-              <Input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Supplier</Label>
+                <Input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Invoice / Reference</Label>
+                <Input value={form.invoice_ref} onChange={(e) => setForm({ ...form, invoice_ref: e.target.value })} />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
@@ -471,6 +527,13 @@ function ExpensesTab() {
                   {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.company_name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border p-3">
+              <input id="is_paid" type="checkbox" checked={form.is_paid} onChange={(e) => setForm({ ...form, is_paid: e.target.checked })} />
+              <Label htmlFor="is_paid" className="flex-1 cursor-pointer">Payment made (uncheck if on credit)</Label>
+              {form.is_paid && (
+                <Input type="date" className="w-40" value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} />
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

@@ -15,6 +15,8 @@ import Attendance from "./pages/Attendance";
 import Salaries from "./pages/Salaries";
 import Invoices from "./pages/Invoices";
 import Accounts from "./pages/Accounts";
+import Inventory from "./pages/Inventory";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +46,8 @@ const App = () => (
               <Route path="/salaries" element={<Salaries />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/accounts" element={<Accounts />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/settings" element={<ProtectedRoute requireSuperAdmin><Settings /></ProtectedRoute>} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

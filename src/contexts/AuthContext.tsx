@@ -11,6 +11,7 @@ interface AuthContextType {
   session: Session | null;
   role: UserRole | null;
   loading: boolean;
+  moduleAccess: Record<string, boolean>;
   signIn: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   requestPasswordReset: (username: string) => Promise<void>;
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [moduleAccess, setModuleAccess] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,19 +66,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .single();
-
-      if (error) throw error;
-      setRole(data?.role as UserRole);
+      const [{ data: roleRow, error: roleErr }, { data: accRows }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", userId).single(),
+        supabase.from("user_module_access").select("module_key, enabled").eq("user_id", userId),
+      ]);
+      if (roleErr) throw roleErr;
+      setRole(roleRow?.role as UserRole);
+      const map: Record<string, boolean> = {};
+      (accRows || []).forEach((r: any) => { map[r.module_key] = r.enabled; });
+      setModuleAccess(map);
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Error fetching user role:", error);
-      }
+      if (import.meta.env.DEV) console.error("Error fetching user role:", error);
       setRole(null);
+      setModuleAccess({});
     } finally {
       setLoading(false);
     }
@@ -234,6 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         role,
         loading,
+        moduleAccess,
         signIn,
         signOut,
         requestPasswordReset,
