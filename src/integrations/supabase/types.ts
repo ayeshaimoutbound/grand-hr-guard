@@ -280,6 +280,11 @@ export type Database = {
           description: string | null
           expense_date: string
           id: string
+          invoice_ref: string | null
+          is_paid: boolean
+          payment_date: string | null
+          subcategory: string | null
+          supplier: string | null
           updated_at: string
           vendor: string | null
         }
@@ -292,6 +297,11 @@ export type Database = {
           description?: string | null
           expense_date: string
           id?: string
+          invoice_ref?: string | null
+          is_paid?: boolean
+          payment_date?: string | null
+          subcategory?: string | null
+          supplier?: string | null
           updated_at?: string
           vendor?: string | null
         }
@@ -304,6 +314,11 @@ export type Database = {
           description?: string | null
           expense_date?: string
           id?: string
+          invoice_ref?: string | null
+          is_paid?: boolean
+          payment_date?: string | null
+          subcategory?: string | null
+          supplier?: string | null
           updated_at?: string
           vendor?: string | null
         }
@@ -371,6 +386,108 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees_limited"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          category: string
+          color: string | null
+          created_at: string
+          created_by: string | null
+          epaulet_rank: string | null
+          gender: string | null
+          id: string
+          item_name: string
+          notes: string | null
+          quantity: number
+          size: string | null
+          supplier: string | null
+          unit_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          epaulet_rank?: string | null
+          gender?: string | null
+          id?: string
+          item_name: string
+          notes?: string | null
+          quantity?: number
+          size?: string | null
+          supplier?: string | null
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          epaulet_rank?: string | null
+          gender?: string | null
+          id?: string
+          item_name?: string
+          notes?: string | null
+          quantity?: number
+          size?: string | null
+          supplier?: string | null
+          unit_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_movements: {
+        Row: {
+          change: number
+          created_at: string
+          created_by: string | null
+          expense_id: string | null
+          id: string
+          item_id: string
+          moved_at: string
+          reason: string | null
+          reference: string | null
+        }
+        Insert: {
+          change: number
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string | null
+          id?: string
+          item_id: string
+          moved_at?: string
+          reason?: string | null
+          reference?: string | null
+        }
+        Update: {
+          change?: number
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string | null
+          id?: string
+          item_id?: string
+          moved_at?: string
+          reason?: string | null
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
         ]
@@ -713,6 +830,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_module_access: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          module_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          module_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
