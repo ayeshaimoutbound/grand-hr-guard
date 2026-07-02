@@ -41,6 +41,14 @@ export interface CompanyBreakdown {
   amount: number;
 }
 
+export interface ManualDeductions {
+  food?: number;
+  uniforms?: number;
+  accommodation?: number;
+  transport?: number;
+  other?: number;
+}
+
 export interface PayrollLine {
   employee_id: string;
   total_shifts: number;
@@ -56,6 +64,12 @@ export interface PayrollLine {
   cash_advance: number;
   food_advance: number;
   uniform_advance: number;
+  manual_food: number;
+  manual_uniforms: number;
+  manual_accommodation: number;
+  manual_transport: number;
+  manual_other: number;
+  manual_total: number;
   total_deductions: number;
   net_pay: number;
   breakdown: CompanyBreakdown[];
