@@ -380,6 +380,43 @@ export default function Salaries() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={!!editEmp} onOpenChange={(o) => !o && setEditEmp(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Manual Deductions — {editEmp?.full_name}
+              <div className="text-xs font-normal text-muted-foreground mt-1">
+                {new Date(selectedMonth + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            {(["food","uniforms","accommodation","transport","other"] as const).map((k) => (
+              <div key={k}>
+                <Label className="capitalize">{k} (Rs.)</Label>
+                <Input
+                  type="number" step="0.01" min="0"
+                  value={(editForm as any)[k] ?? ""}
+                  onChange={(e) => setEditForm({ ...editForm, [k]: e.target.value === "" ? undefined : Number(e.target.value) })}
+                />
+              </div>
+            ))}
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Textarea
+              rows={2}
+              value={editForm.notes || ""}
+              onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditEmp(null)}>Cancel</Button>
+            <Button onClick={saveManual}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
