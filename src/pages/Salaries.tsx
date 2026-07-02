@@ -224,7 +224,11 @@ export default function Salaries() {
       <tr><td>Cash Advance</td><td style="text-align:right">${p.cash_advance.toFixed(2)}</td></tr>
       <tr><td>Food Advance</td><td style="text-align:right">${p.food_advance.toFixed(2)}</td></tr>
       <tr><td>Uniform Advance</td><td style="text-align:right">${p.uniform_advance.toFixed(2)}</td></tr>
-      <tr class="tot"><td>Total Deductions</td><td style="text-align:right">${p.total_deductions.toFixed(2)}</td></tr>
+      ${p.manual_food ? `<tr><td>Food (Manual)</td><td style="text-align:right">${p.manual_food.toFixed(2)}</td></tr>` : ""}
+      ${p.manual_uniforms ? `<tr><td>Uniforms (Manual)</td><td style="text-align:right">${p.manual_uniforms.toFixed(2)}</td></tr>` : ""}
+      ${p.manual_accommodation ? `<tr><td>Accommodation</td><td style="text-align:right">${p.manual_accommodation.toFixed(2)}</td></tr>` : ""}
+      ${p.manual_transport ? `<tr><td>Transport</td><td style="text-align:right">${p.manual_transport.toFixed(2)}</td></tr>` : ""}
+      ${p.manual_other ? `<tr><td>Other Deductions</td><td style="text-align:right">${p.manual_other.toFixed(2)}</td></tr>` : ""}
       <tr class="net ${p.net_pay < 0 ? 'neg' : ''}"><td>NET PAY</td><td style="text-align:right">Rs. ${p.net_pay.toFixed(2)}</td></tr>
       </table></body></html>`);
     w.document.close();
