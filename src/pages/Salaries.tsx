@@ -60,7 +60,7 @@ export default function Salaries() {
     const lastDay = new Date(y, m, 0).getDate();
     const endDate = `${selectedMonth}-${String(lastDay).padStart(2, "0")}`;
 
-    const [employeesRes, companiesRes, attendanceRes, otRes, cashRes, foodRes, uniRes, settingsRes] = await Promise.all([
+    const [employeesRes, companiesRes, attendanceRes, otRes, cashRes, foodRes, uniRes, settingsRes, manualRes] = await Promise.all([
       supabase.from("employees").select("*"),
       supabase.from("companies").select("id,company_name,pay_oic,pay_sso,pay_jso,pay_lso"),
       supabase.from("attendance").select("employee_id,company_id,rank,present").gte("attendance_date", startDate).lte("attendance_date", endDate).eq("present", true),
@@ -69,6 +69,7 @@ export default function Salaries() {
       supabase.from("food_advances").select("employee_id,amount").gte("advance_date", startDate).lte("advance_date", endDate),
       supabase.from("uniform_advances").select("employee_id,amount").gte("advance_date", startDate).lte("advance_date", endDate),
       supabase.from("app_settings").select("value").eq("key", "daily_min_wage").maybeSingle(),
+      supabase.from("salary_manual_deductions").select("*").eq("salary_month", startDate),
     ]);
 
     if (employeesRes.error || companiesRes.error || attendanceRes.error) {
@@ -86,6 +87,20 @@ export default function Salaries() {
     const food = (foodRes.data || []) as any[];
     const uni = (uniRes.data || []) as any[];
 
+    const mMap: Record<string, ManualRow> = {};
+    for (const r of (manualRes.data || []) as any[]) {
+      mMap[r.employee_id] = {
+        id: r.id,
+        food: Number(r.food || 0),
+        uniforms: Number(r.uniforms || 0),
+        accommodation: Number(r.accommodation || 0),
+        transport: Number(r.transport || 0),
+        other: Number(r.other || 0),
+        notes: r.notes || "",
+      };
+    }
+    setManualMap(mMap);
+
     const result: Row[] = employees.map((emp) => {
       const payroll = computePayroll({
         employeeId: emp.id,
@@ -95,6 +110,7 @@ export default function Salaries() {
         cashAdvances: cash,
         foodAdvances: food,
         uniformAdvances: uni,
+        manualDeductions: mMap[emp.id],
         settings: {
           ot_hourly_rate: Number(emp.ot_hourly_rate ?? 225),
           normal_ot_hours: Number(emp.normal_ot_hours ?? 3),
@@ -103,10 +119,37 @@ export default function Salaries() {
         dailyMinWage: dmw,
       });
       return { employee: emp, payroll };
-    }).filter(r => r.payroll.total_shifts > 0 || r.payroll.ot_pay > 0 || r.payroll.total_deductions > 0);
+    }).filter(r => r.payroll.total_shifts > 0 || r.payroll.ot_pay > 0 || r.payroll.total_deductions > 0 || !!mMap[r.employee.id]);
 
     setRows(result);
   };
+
+  const openEdit = (emp: Employee) => {
+    setEditEmp(emp);
+    setEditForm(manualMap[emp.id] || {});
+  };
+
+  const saveManual = async () => {
+    if (!editEmp) return;
+    const payload: any = {
+      employee_id: editEmp.id,
+      salary_month: `${selectedMonth}-01`,
+      food: Number(editForm.food || 0),
+      uniforms: Number(editForm.uniforms || 0),
+      accommodation: Number(editForm.accommodation || 0),
+      transport: Number(editForm.transport || 0),
+      other: Number(editForm.other || 0),
+      notes: editForm.notes || null,
+    };
+    const { error } = await supabase
+      .from("salary_manual_deductions")
+      .upsert(payload, { onConflict: "employee_id,salary_month" });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Manual deductions saved");
+    setEditEmp(null);
+    fetchData();
+  };
+
 
   const toggle = (id: string) => {
     setExpanded(prev => {
