@@ -177,6 +177,11 @@ export default function Salaries() {
       "Cash Advance": p.cash_advance.toFixed(2),
       "Food Advance": p.food_advance.toFixed(2),
       "Uniform Advance": p.uniform_advance.toFixed(2),
+      "Manual - Food": p.manual_food.toFixed(2),
+      "Manual - Uniforms": p.manual_uniforms.toFixed(2),
+      "Manual - Accommodation": p.manual_accommodation.toFixed(2),
+      "Manual - Transport": p.manual_transport.toFixed(2),
+      "Manual - Other": p.manual_other.toFixed(2),
       "Total Deductions": p.total_deductions.toFixed(2),
       "Net Pay": p.net_pay.toFixed(2),
     }));
