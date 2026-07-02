@@ -324,11 +324,18 @@ export default function Salaries() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {isSuperAdmin && (
-                          <Button variant="ghost" size="sm" onClick={() => printPayslip({ employee: e, payroll: p })}>
-                            <Printer className="h-3 w-3" />
-                          </Button>
-                        )}
+                        <div className="flex gap-1">
+                          {canEditManual && (
+                            <Button variant="ghost" size="sm" title="Edit manual deductions" onClick={() => openEdit(e)}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {isSuperAdmin && (
+                            <Button variant="ghost" size="sm" onClick={() => printPayslip({ employee: e, payroll: p })}>
+                              <Printer className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                     <CollapsibleContent asChild>
@@ -343,6 +350,11 @@ export default function Salaries() {
                               <div><span className="text-muted-foreground">Cash Adv:</span> <b>Rs. {p.cash_advance.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Food Adv:</span> <b>Rs. {p.food_advance.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Uniform Adv:</span> <b>Rs. {p.uniform_advance.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Manual Food:</span> <b>Rs. {p.manual_food.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Manual Uniforms:</span> <b>Rs. {p.manual_uniforms.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Accommodation:</span> <b>Rs. {p.manual_accommodation.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Transport:</span> <b>Rs. {p.manual_transport.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Other:</span> <b>Rs. {p.manual_other.toFixed(2)}</b></div>
                             </div>
                             {p.breakdown.length > 1 && (
                               <div>
