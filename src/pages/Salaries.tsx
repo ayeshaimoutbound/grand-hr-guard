@@ -46,7 +46,11 @@ export default function Salaries() {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [dailyMinWage, setDailyMinWage] = useState<number>(1200);
-  const { isSuperAdmin } = useAuth();
+  const [manualMap, setManualMap] = useState<Record<string, ManualRow>>({});
+  const [editEmp, setEditEmp] = useState<Employee | null>(null);
+  const [editForm, setEditForm] = useState<ManualRow>({});
+  const { isSuperAdmin, isAdmin } = useAuth();
+  const canEditManual = isSuperAdmin || isAdmin;
 
   useEffect(() => { fetchData(); }, [selectedMonth]);
 
