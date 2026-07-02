@@ -41,6 +41,14 @@ export interface CompanyBreakdown {
   amount: number;
 }
 
+export interface ManualDeductions {
+  food?: number;
+  uniforms?: number;
+  accommodation?: number;
+  transport?: number;
+  other?: number;
+}
+
 export interface PayrollLine {
   employee_id: string;
   total_shifts: number;
@@ -56,6 +64,12 @@ export interface PayrollLine {
   cash_advance: number;
   food_advance: number;
   uniform_advance: number;
+  manual_food: number;
+  manual_uniforms: number;
+  manual_accommodation: number;
+  manual_transport: number;
+  manual_other: number;
+  manual_total: number;
   total_deductions: number;
   net_pay: number;
   breakdown: CompanyBreakdown[];
@@ -82,11 +96,12 @@ export function computePayroll(args: {
   cashAdvances: AdvanceSum[];
   foodAdvances: AdvanceSum[];
   uniformAdvances: AdvanceSum[];
+  manualDeductions?: ManualDeductions;
   settings: EmployeeSettings;
   dailyMinWage: number;
 }): PayrollLine {
   const { employeeId, attendance, companies, overtime,
-    cashAdvances, foodAdvances, uniformAdvances, settings, dailyMinWage } = args;
+    cashAdvances, foodAdvances, uniformAdvances, manualDeductions, settings, dailyMinWage } = args;
 
   // Group shifts by company+rank for this employee
   const buckets = new Map<string, CompanyBreakdown>();
@@ -124,7 +139,14 @@ export function computePayroll(args: {
   const food_advance = round2(foodAdvances.filter(o => o.employee_id === employeeId).reduce((s, o) => s + Number(o.amount || 0), 0));
   const uniform_advance = round2(uniformAdvances.filter(o => o.employee_id === employeeId).reduce((s, o) => s + Number(o.amount || 0), 0));
 
-  const total_deductions = round2(epf_8 + cash_advance + food_advance + uniform_advance);
+  const manual_food = round2(Number(manualDeductions?.food || 0));
+  const manual_uniforms = round2(Number(manualDeductions?.uniforms || 0));
+  const manual_accommodation = round2(Number(manualDeductions?.accommodation || 0));
+  const manual_transport = round2(Number(manualDeductions?.transport || 0));
+  const manual_other = round2(Number(manualDeductions?.other || 0));
+  const manual_total = round2(manual_food + manual_uniforms + manual_accommodation + manual_transport + manual_other);
+
+  const total_deductions = round2(epf_8 + cash_advance + food_advance + uniform_advance + manual_total);
   const net_pay = round2(gross_pay + ot_pay - total_deductions);
 
   return {
@@ -132,6 +154,7 @@ export function computePayroll(args: {
     total_shifts, epf_days, extra_days,
     gross_pay, epf_basic, basic_plus_ot, ot_extended, allowance,
     epf_8, ot_pay, cash_advance, food_advance, uniform_advance,
+    manual_food, manual_uniforms, manual_accommodation, manual_transport, manual_other, manual_total,
     total_deductions, net_pay, breakdown,
   };
 }

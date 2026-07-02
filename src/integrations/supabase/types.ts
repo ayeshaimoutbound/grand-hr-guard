@@ -783,6 +783,63 @@ export type Database = {
           },
         ]
       }
+      salary_manual_deductions: {
+        Row: {
+          accommodation: number
+          created_at: string
+          employee_id: string
+          food: number
+          id: string
+          notes: string | null
+          other: number
+          salary_month: string
+          transport: number
+          uniforms: number
+          updated_at: string
+        }
+        Insert: {
+          accommodation?: number
+          created_at?: string
+          employee_id: string
+          food?: number
+          id?: string
+          notes?: string | null
+          other?: number
+          salary_month: string
+          transport?: number
+          uniforms?: number
+          updated_at?: string
+        }
+        Update: {
+          accommodation?: number
+          created_at?: string
+          employee_id?: string
+          food?: number
+          id?: string
+          notes?: string | null
+          other?: number
+          salary_month?: string
+          transport?: number
+          uniforms?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_manual_deductions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_manual_deductions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_limited"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       uniform_advances: {
         Row: {
           advance_date: string

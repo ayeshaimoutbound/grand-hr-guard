@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ChevronDown, ChevronUp, FileDown } from "lucide-react";
+import { Printer, ChevronDown, ChevronUp, FileDown, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -15,7 +15,16 @@ import {
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { computePayroll, PayrollLine, type CompanyRateRow, type AttendanceRow } from "@/lib/salaryEngine";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { computePayroll, PayrollLine, type CompanyRateRow, type AttendanceRow, type ManualDeductions } from "@/lib/salaryEngine";
+
+interface ManualRow extends ManualDeductions {
+  id?: string;
+  notes?: string;
+}
 
 interface Employee {
   id: string;
@@ -37,7 +46,11 @@ export default function Salaries() {
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [dailyMinWage, setDailyMinWage] = useState<number>(1200);
-  const { isSuperAdmin } = useAuth();
+  const [manualMap, setManualMap] = useState<Record<string, ManualRow>>({});
+  const [editEmp, setEditEmp] = useState<Employee | null>(null);
+  const [editForm, setEditForm] = useState<ManualRow>({});
+  const { isSuperAdmin, isAdmin } = useAuth();
+  const canEditManual = isSuperAdmin || isAdmin;
 
   useEffect(() => { fetchData(); }, [selectedMonth]);
 
@@ -47,7 +60,7 @@ export default function Salaries() {
     const lastDay = new Date(y, m, 0).getDate();
     const endDate = `${selectedMonth}-${String(lastDay).padStart(2, "0")}`;
 
-    const [employeesRes, companiesRes, attendanceRes, otRes, cashRes, foodRes, uniRes, settingsRes] = await Promise.all([
+    const [employeesRes, companiesRes, attendanceRes, otRes, cashRes, foodRes, uniRes, settingsRes, manualRes] = await Promise.all([
       supabase.from("employees").select("*"),
       supabase.from("companies").select("id,company_name,pay_oic,pay_sso,pay_jso,pay_lso"),
       supabase.from("attendance").select("employee_id,company_id,rank,present").gte("attendance_date", startDate).lte("attendance_date", endDate).eq("present", true),
@@ -56,6 +69,7 @@ export default function Salaries() {
       supabase.from("food_advances").select("employee_id,amount").gte("advance_date", startDate).lte("advance_date", endDate),
       supabase.from("uniform_advances").select("employee_id,amount").gte("advance_date", startDate).lte("advance_date", endDate),
       supabase.from("app_settings").select("value").eq("key", "daily_min_wage").maybeSingle(),
+      supabase.from("salary_manual_deductions").select("*").eq("salary_month", startDate),
     ]);
 
     if (employeesRes.error || companiesRes.error || attendanceRes.error) {
@@ -73,6 +87,20 @@ export default function Salaries() {
     const food = (foodRes.data || []) as any[];
     const uni = (uniRes.data || []) as any[];
 
+    const mMap: Record<string, ManualRow> = {};
+    for (const r of (manualRes.data || []) as any[]) {
+      mMap[r.employee_id] = {
+        id: r.id,
+        food: Number(r.food || 0),
+        uniforms: Number(r.uniforms || 0),
+        accommodation: Number(r.accommodation || 0),
+        transport: Number(r.transport || 0),
+        other: Number(r.other || 0),
+        notes: r.notes || "",
+      };
+    }
+    setManualMap(mMap);
+
     const result: Row[] = employees.map((emp) => {
       const payroll = computePayroll({
         employeeId: emp.id,
@@ -82,6 +110,7 @@ export default function Salaries() {
         cashAdvances: cash,
         foodAdvances: food,
         uniformAdvances: uni,
+        manualDeductions: mMap[emp.id],
         settings: {
           ot_hourly_rate: Number(emp.ot_hourly_rate ?? 225),
           normal_ot_hours: Number(emp.normal_ot_hours ?? 3),
@@ -90,10 +119,37 @@ export default function Salaries() {
         dailyMinWage: dmw,
       });
       return { employee: emp, payroll };
-    }).filter(r => r.payroll.total_shifts > 0 || r.payroll.ot_pay > 0 || r.payroll.total_deductions > 0);
+    }).filter(r => r.payroll.total_shifts > 0 || r.payroll.ot_pay > 0 || r.payroll.total_deductions > 0 || !!mMap[r.employee.id]);
 
     setRows(result);
   };
+
+  const openEdit = (emp: Employee) => {
+    setEditEmp(emp);
+    setEditForm(manualMap[emp.id] || {});
+  };
+
+  const saveManual = async () => {
+    if (!editEmp) return;
+    const payload: any = {
+      employee_id: editEmp.id,
+      salary_month: `${selectedMonth}-01`,
+      food: Number(editForm.food || 0),
+      uniforms: Number(editForm.uniforms || 0),
+      accommodation: Number(editForm.accommodation || 0),
+      transport: Number(editForm.transport || 0),
+      other: Number(editForm.other || 0),
+      notes: editForm.notes || null,
+    };
+    const { error } = await supabase
+      .from("salary_manual_deductions")
+      .upsert(payload, { onConflict: "employee_id,salary_month" });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Manual deductions saved");
+    setEditEmp(null);
+    fetchData();
+  };
+
 
   const toggle = (id: string) => {
     setExpanded(prev => {
@@ -121,6 +177,11 @@ export default function Salaries() {
       "Cash Advance": p.cash_advance.toFixed(2),
       "Food Advance": p.food_advance.toFixed(2),
       "Uniform Advance": p.uniform_advance.toFixed(2),
+      "Manual - Food": p.manual_food.toFixed(2),
+      "Manual - Uniforms": p.manual_uniforms.toFixed(2),
+      "Manual - Accommodation": p.manual_accommodation.toFixed(2),
+      "Manual - Transport": p.manual_transport.toFixed(2),
+      "Manual - Other": p.manual_other.toFixed(2),
       "Total Deductions": p.total_deductions.toFixed(2),
       "Net Pay": p.net_pay.toFixed(2),
     }));
@@ -163,6 +224,11 @@ export default function Salaries() {
       <tr><td>Cash Advance</td><td style="text-align:right">${p.cash_advance.toFixed(2)}</td></tr>
       <tr><td>Food Advance</td><td style="text-align:right">${p.food_advance.toFixed(2)}</td></tr>
       <tr><td>Uniform Advance</td><td style="text-align:right">${p.uniform_advance.toFixed(2)}</td></tr>
+      ${p.manual_food ? `<tr><td>Food (Manual)</td><td style="text-align:right">${p.manual_food.toFixed(2)}</td></tr>` : ""}
+      ${p.manual_uniforms ? `<tr><td>Uniforms (Manual)</td><td style="text-align:right">${p.manual_uniforms.toFixed(2)}</td></tr>` : ""}
+      ${p.manual_accommodation ? `<tr><td>Accommodation</td><td style="text-align:right">${p.manual_accommodation.toFixed(2)}</td></tr>` : ""}
+      ${p.manual_transport ? `<tr><td>Transport</td><td style="text-align:right">${p.manual_transport.toFixed(2)}</td></tr>` : ""}
+      ${p.manual_other ? `<tr><td>Other Deductions</td><td style="text-align:right">${p.manual_other.toFixed(2)}</td></tr>` : ""}
       <tr class="tot"><td>Total Deductions</td><td style="text-align:right">${p.total_deductions.toFixed(2)}</td></tr>
       <tr class="net ${p.net_pay < 0 ? 'neg' : ''}"><td>NET PAY</td><td style="text-align:right">Rs. ${p.net_pay.toFixed(2)}</td></tr>
       </table></body></html>`);
@@ -258,11 +324,18 @@ export default function Salaries() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {isSuperAdmin && (
-                          <Button variant="ghost" size="sm" onClick={() => printPayslip({ employee: e, payroll: p })}>
-                            <Printer className="h-3 w-3" />
-                          </Button>
-                        )}
+                        <div className="flex gap-1">
+                          {canEditManual && (
+                            <Button variant="ghost" size="sm" title="Edit manual deductions" onClick={() => openEdit(e)}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {isSuperAdmin && (
+                            <Button variant="ghost" size="sm" onClick={() => printPayslip({ employee: e, payroll: p })}>
+                              <Printer className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                     <CollapsibleContent asChild>
@@ -277,6 +350,11 @@ export default function Salaries() {
                               <div><span className="text-muted-foreground">Cash Adv:</span> <b>Rs. {p.cash_advance.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Food Adv:</span> <b>Rs. {p.food_advance.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Uniform Adv:</span> <b>Rs. {p.uniform_advance.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Manual Food:</span> <b>Rs. {p.manual_food.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Manual Uniforms:</span> <b>Rs. {p.manual_uniforms.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Accommodation:</span> <b>Rs. {p.manual_accommodation.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Transport:</span> <b>Rs. {p.manual_transport.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Other:</span> <b>Rs. {p.manual_other.toFixed(2)}</b></div>
                             </div>
                             {p.breakdown.length > 1 && (
                               <div>
@@ -302,6 +380,43 @@ export default function Salaries() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={!!editEmp} onOpenChange={(o) => !o && setEditEmp(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Manual Deductions — {editEmp?.full_name}
+              <div className="text-xs font-normal text-muted-foreground mt-1">
+                {new Date(selectedMonth + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            {(["food","uniforms","accommodation","transport","other"] as const).map((k) => (
+              <div key={k}>
+                <Label className="capitalize">{k} (Rs.)</Label>
+                <Input
+                  type="number" step="0.01" min="0"
+                  value={(editForm as any)[k] ?? ""}
+                  onChange={(e) => setEditForm({ ...editForm, [k]: e.target.value === "" ? undefined : Number(e.target.value) })}
+                />
+              </div>
+            ))}
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Textarea
+              rows={2}
+              value={editForm.notes || ""}
+              onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditEmp(null)}>Cancel</Button>
+            <Button onClick={saveManual}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
