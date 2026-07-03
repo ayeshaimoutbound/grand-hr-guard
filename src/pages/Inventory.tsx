@@ -224,8 +224,31 @@ export default function Inventory() {
       const buf = await bulk.file.arrayBuffer();
       const wb = XLSX.read(buf);
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      if (!rows.length) { toast.error("Sheet is empty"); return; }
+      // Support two layouts:
+      //  A) Simple: row-1 headers = Category, Item/Item Name, Size, Color, Quantity, Unit Cost, [Epaulet Rank]
+      //  B) Provided template: reference tables on left; entry columns start at col Q (index 16)
+      //     with headers row1: Q=Category-not-really; actual data cols 16..24 =
+      //     Category, Item, Size, Color, _, _, Quantity, Unit Cost, Epaulet Rank
+      const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      let rows: any[] = [];
+      // Detect template B by checking if col16 of row1 is "Quantity"
+      const header = aoa[0] || [];
+      const isTemplateB = String(header[16] || "").toLowerCase() === "quantity";
+      if (isTemplateB) {
+        for (let i = 2; i < aoa.length; i++) {
+          const r = aoa[i] || [];
+          const cat = String(r[16] || "").trim();
+          const item = String(r[17] || "").trim();
+          if (!cat || !item) continue;
+          rows.push({
+            Category: cat, "Item Name": item,
+            Size: r[18] ?? "", Color: r[19] ?? "",
+            Quantity: r[22], "Unit Cost": r[23], "Epaulet Rank": r[24] ?? "",
+          });
+        }
+      } else {
+        rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      }
 
       const { data: u } = await supabase.auth.getUser();
 
