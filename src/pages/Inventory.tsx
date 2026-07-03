@@ -249,6 +249,7 @@ export default function Inventory() {
       } else {
         rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
       }
+      if (!rows.length) { toast.error("No valid rows found in file"); return; }
 
       const { data: u } = await supabase.auth.getUser();
 
