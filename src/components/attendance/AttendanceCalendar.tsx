@@ -729,10 +729,40 @@ export default function AttendanceCalendar({
                         {employee.employee_id}
                       </td>
                       <td className="bg-background p-2 font-medium border-r">
-                        {employee.full_name}
+                        <div className="flex items-center gap-2">
+                          <span>{employee.full_name}</span>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0 text-destructive hover:text-destructive"
+                              title="Remove this employee's attendance for this month"
+                              onClick={() => handleRemoveEmployeeFromMonth(employee.id, employee.full_name)}
+                            >
+                              ×
+                            </Button>
+                          )}
+                        </div>
                       </td>
                       <td className="bg-background p-2 text-center font-medium border-r">
-                        <Badge variant="secondary">{employeeRank}</Badge>
+                        {canEdit ? (
+                          <Select
+                            value={employeeRank !== "-" ? employeeRank : undefined}
+                            onValueChange={(v) => handleChangeRank(employee.id, v as any)}
+                          >
+                            <SelectTrigger className="h-7 w-[80px] mx-auto">
+                              <SelectValue placeholder="-" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="OIC">OIC</SelectItem>
+                              <SelectItem value="SSO">SSO</SelectItem>
+                              <SelectItem value="JSO">JSO</SelectItem>
+                              <SelectItem value="LSO">LSO</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge variant="secondary">{employeeRank}</Badge>
+                        )}
                       </td>
                       {dates.map((date) =>
                         ["Day", "Night"].map((shift) => {
