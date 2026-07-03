@@ -273,7 +273,7 @@ export default function Inventory() {
       let added = 0, updated = 0;
       for (const r of rows) {
         const category = String(r.Category || r.category || "").trim();
-        const item_name = String(r["Item Name"] || r.item_name || "").trim();
+        const item_name = String(r["Item Name"] || r.item_name || r.Item || r.item || "").trim();
         const size = String(r.Size || r.size || "").trim() || null;
         const color = String(r.Color || r.color || "").trim() || null;
         const gender = String(r.Gender || r.gender || "").trim() || null;
