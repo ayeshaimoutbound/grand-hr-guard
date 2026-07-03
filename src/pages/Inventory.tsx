@@ -203,19 +203,12 @@ export default function Inventory() {
   };
 
   const downloadUniformTemplate = () => {
-    const sample = [
-      { Category: "Shirt (Men)", "Item Name": "Uniform Shirt", Size: "15", Color: "White", Quantity: 10, "Unit Cost": 1500 },
-      { Category: "Trouser (Men)", "Item Name": "Uniform Trouser", Size: "32", Color: "Black", Quantity: 10, "Unit Cost": 2000 },
-      { Category: "Blouse (Women)", "Item Name": "Uniform Blouse", Size: "M", Color: "White", Quantity: 5, "Unit Cost": 1500 },
-      { Category: "Skirt (Women)", "Item Name": "Uniform Skirt", Size: "30", Color: "Black", Quantity: 5, "Unit Cost": 1800 },
-      { Category: "Epaulet", "Item Name": "Epaulet - OIC", Size: "", Color: "", Quantity: 4, "Unit Cost": 300, "Epaulet Rank": "OIC" },
-      { Category: "Lanyard", "Item Name": "Lanyard", Size: "", Color: "Black", Quantity: 20, "Unit Cost": 200 },
-      { Category: "Shoes", "Item Name": "Uniform Shoes", Size: "9", Color: "Black", Quantity: 6, "Unit Cost": 3500 },
-    ];
-    const ws = XLSX.utils.json_to_sheet(sample);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Uniforms");
-    XLSX.writeFile(wb, "Uniform_Bulk_Upload_Template.xlsx");
+    const a = document.createElement("a");
+    a.href = "/Uniform_Bulk_Upload_Template.xlsx";
+    a.download = "Uniform_Bulk_Upload_Template.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     toast.success("Template downloaded");
   };
 
