@@ -147,6 +147,43 @@ export default function AttendanceCalendar({
     onRefresh();
   };
 
+  const monthDateRange = () => {
+    const start = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}-01`;
+    const lastDay = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate();
+    const end = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    return { start, end };
+  };
+
+  const handleRemoveEmployeeFromMonth = async (employeeId: string, name: string) => {
+    if (!confirm(`Remove ALL attendance for ${name} in this month at ${selectedCompany.company_name}? This cannot be undone.`)) return;
+    const { start, end } = monthDateRange();
+    const { error } = await supabase
+      .from("attendance")
+      .delete()
+      .eq("company_id", selectedCompany.id)
+      .eq("employee_id", employeeId)
+      .gte("attendance_date", start)
+      .lte("attendance_date", end);
+    if (error) { toast.error("Error removing employee: " + error.message); return; }
+    toast.success("Employee attendance removed for this month");
+    onRefresh();
+  };
+
+  const handleChangeRank = async (employeeId: string, newRank: "OIC" | "SSO" | "JSO" | "LSO") => {
+    const { start, end } = monthDateRange();
+    const { error } = await supabase
+      .from("attendance")
+      .update({ rank: newRank })
+      .eq("company_id", selectedCompany.id)
+      .eq("employee_id", employeeId)
+      .gte("attendance_date", start)
+      .lte("attendance_date", end);
+    if (error) { toast.error("Error updating rank: " + error.message); return; }
+    toast.success(`Rank updated to ${newRank}`);
+    onRefresh();
+  };
+
+
   const calculateEmployeeStats = (employeeId: string) => {
     const records = attendanceRecords.filter(
       (r) => r.employee_id === employeeId && r.present
