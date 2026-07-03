@@ -175,6 +175,7 @@ export default function Attendance() {
           attendanceRecords={attendanceRecords}
           onRefresh={fetchAttendanceData}
           isSuperAdmin={isSuperAdmin}
+          isAdmin={isAdmin}
         />
       )}
 
