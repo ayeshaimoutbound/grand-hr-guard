@@ -52,6 +52,7 @@ interface AttendanceCalendarProps {
   attendanceRecords: AttendanceRecord[];
   onRefresh: () => void;
   isSuperAdmin: boolean;
+  isAdmin?: boolean;
 }
 
 export default function AttendanceCalendar({
@@ -61,7 +62,9 @@ export default function AttendanceCalendar({
   attendanceRecords,
   onRefresh,
   isSuperAdmin,
+  isAdmin = false,
 }: AttendanceCalendarProps) {
+  const canEdit = isSuperAdmin || isAdmin;
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedRank, setSelectedRank] = useState<"OIC" | "SSO" | "JSO" | "LSO" | "">("");
