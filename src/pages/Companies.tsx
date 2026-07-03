@@ -369,7 +369,7 @@ export default function Companies() {
                 </div>
               </div>
               <div>
-                <h3 className="text-sm font-semibold mb-3">Amount Given to Employee per Shift (Rs.)</h3>
+                <h3 className="text-sm font-semibold mb-3">Amount Given to Employee per Shift (LKR)</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="pay_oic">OIC Pay</Label>
@@ -418,7 +418,7 @@ export default function Companies() {
                 </div>
               </div>
               <div>
-                <h3 className="text-sm font-semibold mb-3">Amount Charged to Company per Shift (Rs.)</h3>
+                <h3 className="text-sm font-semibold mb-3">Amount Charged to Company per Shift (LKR)</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="charge_oic">OIC Charge</Label>
@@ -470,7 +470,7 @@ export default function Companies() {
                 <h3 className="text-sm font-semibold mb-3">Client Overtime Billing</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="client_ot_rate">Client O/T Rate (Rs./hour)</Label>
+                    <Label htmlFor="client_ot_rate">Client O/T Rate (LKR/hour)</Label>
                     <Input
                       id="client_ot_rate"
                       type="number"
@@ -542,10 +542,10 @@ export default function Companies() {
                     <TableCell className="font-medium">{company.company_name}</TableCell>
                     <TableCell className="font-mono text-sm">{company.company_number || "-"}</TableCell>
                     <TableCell>{company.location}</TableCell>
-                    <TableCell>Rs. {company.pay_oic.toFixed(2)}</TableCell>
-                    <TableCell>Rs. {company.pay_sso.toFixed(2)}</TableCell>
-                    <TableCell>Rs. {company.pay_jso.toFixed(2)}</TableCell>
-                    <TableCell>Rs. {company.pay_lso.toFixed(2)}</TableCell>
+                    <TableCell>LKR {company.pay_oic.toFixed(2)}</TableCell>
+                    <TableCell>LKR {company.pay_sso.toFixed(2)}</TableCell>
+                    <TableCell>LKR {company.pay_jso.toFixed(2)}</TableCell>
+                    <TableCell>LKR {company.pay_lso.toFixed(2)}</TableCell>
                     <TableCell className="text-right">
                       {isSuperAdmin && (
                         <div className="flex justify-end gap-2">

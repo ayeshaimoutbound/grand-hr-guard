@@ -318,7 +318,7 @@ export default function Inventory() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Items</p><p className="text-2xl font-bold">{filtered.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Units in Stock</p><p className="text-2xl font-bold">{totalUnits}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Stock Value</p><p className="text-2xl font-bold">Rs. {totalValue.toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Stock Value</p><p className="text-2xl font-bold">LKR {totalValue.toLocaleString()}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Low Stock (&lt;5)</p><p className="text-2xl font-bold text-destructive">{filtered.filter(i => i.quantity < 5).length}</p></CardContent></Card>
       </div>
 
@@ -362,7 +362,7 @@ export default function Inventory() {
                       <TableCell className="text-right">
                         <span className={i.quantity < 5 ? "text-destructive font-semibold" : ""}>{i.quantity}</span>
                       </TableCell>
-                      <TableCell className="text-right">{i.unit_cost ? `Rs. ${Number(i.unit_cost).toFixed(2)}` : "—"}</TableCell>
+                      <TableCell className="text-right">{i.unit_cost ? `LKR ${Number(i.unit_cost).toFixed(2)}` : "—"}</TableCell>
                       <TableCell>{i.supplier || "—"}</TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button size="sm" variant="outline" onClick={() => { setMoveItem(i); setMoveQty(""); setMoveReason(""); }}>Adjust</Button>
@@ -425,7 +425,7 @@ export default function Inventory() {
               <Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Unit Cost (Rs.)</Label>
+              <Label>Unit Cost (LKR)</Label>
               <Input type="number" step="0.01" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} />
             </div>
             <div className="space-y-2 col-span-2">
@@ -497,7 +497,7 @@ export default function Inventory() {
                 <Input type="date" value={bulk.invoice_date} onChange={(e) => setBulk({ ...bulk, invoice_date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Invoice Amount (Rs.)</Label>
+                <Label>Invoice Amount (LKR)</Label>
                 <Input type="number" step="0.01" value={bulk.invoice_amount} onChange={(e) => setBulk({ ...bulk, invoice_amount: e.target.value })} />
               </div>
             </div>

@@ -162,7 +162,7 @@ export default function Invoices() {
     const received = existingPayments.reduce((s, p) => s + Number(p.amount), 0);
     const balance = paymentInvoice.amount_to_collect - received;
     if (amt > balance + 0.001) {
-      toast.error(`Amount exceeds outstanding balance (Rs. ${balance.toLocaleString()})`);
+      toast.error(`Amount exceeds outstanding balance (LKR ${balance.toLocaleString()})`);
       return;
     }
     setSavingPayment(true);
@@ -484,10 +484,10 @@ export default function Invoices() {
                     <TableCell>
                       {new Date(invoice.month_period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </TableCell>
-                    <TableCell className="text-right">Rs. {invoice.amount_to_collect.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">Rs. {received.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">LKR {invoice.amount_to_collect.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">LKR {received.toLocaleString()}</TableCell>
                     <TableCell className={`text-right ${balance > 0 ? "text-primary font-medium" : "text-muted-foreground"}`}>
-                      Rs. {balance.toLocaleString()}
+                      LKR {balance.toLocaleString()}
                       <div className="mt-1">
                         {received <= 0 ? (
                           <Badge variant="destructive">Unpaid</Badge>
@@ -650,13 +650,13 @@ export default function Invoices() {
                         <TableCell className="font-medium">{item.rank}</TableCell>
                         <TableCell>{item.officers}</TableCell>
                         <TableCell className="text-right">{item.shifts}</TableCell>
-                        <TableCell className="text-right">Rs. {item.rate.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">Rs. {item.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">LKR {item.rate.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">LKR {item.amount.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                     <TableRow className="font-bold bg-muted/50">
                       <TableCell colSpan={4} className="text-right">Total Amount</TableCell>
-                      <TableCell className="text-right">Rs. {previewData.totalAmount.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">LKR {previewData.totalAmount.toLocaleString()}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
@@ -698,15 +698,15 @@ export default function Invoices() {
                 <div className="grid grid-cols-3 gap-3 text-sm">
                   <div className="rounded-lg border p-3">
                     <p className="text-muted-foreground">Total</p>
-                    <p className="font-semibold">Rs. {paymentInvoice.amount_to_collect.toLocaleString()}</p>
+                    <p className="font-semibold">LKR {paymentInvoice.amount_to_collect.toLocaleString()}</p>
                   </div>
                   <div className="rounded-lg border p-3">
                     <p className="text-muted-foreground">Received</p>
-                    <p className="font-semibold">Rs. {received.toLocaleString()}</p>
+                    <p className="font-semibold">LKR {received.toLocaleString()}</p>
                   </div>
                   <div className="rounded-lg border p-3">
                     <p className="text-muted-foreground">Balance</p>
-                    <p className="font-semibold text-primary">Rs. {balance.toLocaleString()}</p>
+                    <p className="font-semibold text-primary">LKR {balance.toLocaleString()}</p>
                   </div>
                 </div>
 
@@ -727,7 +727,7 @@ export default function Invoices() {
                             <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
                             <TableCell className="capitalize">{p.payment_method.replace("_", " ")}</TableCell>
                             <TableCell>{p.reference_number || "—"}</TableCell>
-                            <TableCell className="text-right">Rs. {Number(p.amount).toLocaleString()}</TableCell>
+                            <TableCell className="text-right">LKR {Number(p.amount).toLocaleString()}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

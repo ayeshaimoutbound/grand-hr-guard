@@ -158,8 +158,8 @@ export default function OvertimeSection({ companyId, selectedMonth, employees }:
                   <TableCell>{new Date(e.ot_date).toLocaleDateString()}</TableCell>
                   <TableCell>{e.start_time?.slice(0,5)}–{e.end_time?.slice(0,5)}</TableCell>
                   <TableCell className="text-right">{e.hours}</TableCell>
-                  <TableCell className="text-right">Rs. {Number(e.ot_rate).toFixed(2)}</TableCell>
-                  <TableCell className="text-right font-semibold">Rs. {Number(e.amount).toFixed(2)}</TableCell>
+                  <TableCell className="text-right">LKR {Number(e.ot_rate).toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-semibold">LKR {Number(e.amount).toFixed(2)}</TableCell>
                   <TableCell className="max-w-[200px] truncate" title={e.reason}>{e.reason}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
@@ -210,7 +210,7 @@ export default function OvertimeSection({ companyId, selectedMonth, employees }:
                 <Input value={hoursPreview} readOnly className="bg-muted" />
               </div>
               <div className="space-y-2">
-                <Label>O/T Rate (Rs./hour)</Label>
+                <Label>O/T Rate (LKR/hour)</Label>
                 <Input type="number" step="0.01" value={form.ot_rate} onChange={e => setForm({ ...form, ot_rate: e.target.value })} />
               </div>
             </div>
