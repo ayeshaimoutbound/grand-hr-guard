@@ -203,19 +203,12 @@ export default function Inventory() {
   };
 
   const downloadUniformTemplate = () => {
-    const sample = [
-      { Category: "Shirt (Men)", "Item Name": "Uniform Shirt", Size: "15", Color: "White", Quantity: 10, "Unit Cost": 1500 },
-      { Category: "Trouser (Men)", "Item Name": "Uniform Trouser", Size: "32", Color: "Black", Quantity: 10, "Unit Cost": 2000 },
-      { Category: "Blouse (Women)", "Item Name": "Uniform Blouse", Size: "M", Color: "White", Quantity: 5, "Unit Cost": 1500 },
-      { Category: "Skirt (Women)", "Item Name": "Uniform Skirt", Size: "30", Color: "Black", Quantity: 5, "Unit Cost": 1800 },
-      { Category: "Epaulet", "Item Name": "Epaulet - OIC", Size: "", Color: "", Quantity: 4, "Unit Cost": 300, "Epaulet Rank": "OIC" },
-      { Category: "Lanyard", "Item Name": "Lanyard", Size: "", Color: "Black", Quantity: 20, "Unit Cost": 200 },
-      { Category: "Shoes", "Item Name": "Uniform Shoes", Size: "9", Color: "Black", Quantity: 6, "Unit Cost": 3500 },
-    ];
-    const ws = XLSX.utils.json_to_sheet(sample);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Uniforms");
-    XLSX.writeFile(wb, "Uniform_Bulk_Upload_Template.xlsx");
+    const a = document.createElement("a");
+    a.href = "/Uniform_Bulk_Upload_Template.xlsx";
+    a.download = "Uniform_Bulk_Upload_Template.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     toast.success("Template downloaded");
   };
 
@@ -231,8 +224,32 @@ export default function Inventory() {
       const buf = await bulk.file.arrayBuffer();
       const wb = XLSX.read(buf);
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      if (!rows.length) { toast.error("Sheet is empty"); return; }
+      // Support two layouts:
+      //  A) Simple: row-1 headers = Category, Item/Item Name, Size, Color, Quantity, Unit Cost, [Epaulet Rank]
+      //  B) Provided template: reference tables on left; entry columns start at col Q (index 16)
+      //     with headers row1: Q=Category-not-really; actual data cols 16..24 =
+      //     Category, Item, Size, Color, _, _, Quantity, Unit Cost, Epaulet Rank
+      const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      let rows: any[] = [];
+      // Detect template B by checking if col16 of row1 is "Quantity"
+      const header = aoa[0] || [];
+      const isTemplateB = String(header[16] || "").toLowerCase() === "quantity";
+      if (isTemplateB) {
+        for (let i = 2; i < aoa.length; i++) {
+          const r = aoa[i] || [];
+          const cat = String(r[16] || "").trim();
+          const item = String(r[17] || "").trim();
+          if (!cat || !item) continue;
+          rows.push({
+            Category: cat, "Item Name": item,
+            Size: r[18] ?? "", Color: r[19] ?? "",
+            Quantity: r[22], "Unit Cost": r[23], "Epaulet Rank": r[24] ?? "",
+          });
+        }
+      } else {
+        rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      }
+      if (!rows.length) { toast.error("No valid rows found in file"); return; }
 
       const { data: u } = await supabase.auth.getUser();
 
@@ -256,7 +273,7 @@ export default function Inventory() {
       let added = 0, updated = 0;
       for (const r of rows) {
         const category = String(r.Category || r.category || "").trim();
-        const item_name = String(r["Item Name"] || r.item_name || "").trim();
+        const item_name = String(r["Item Name"] || r.item_name || r.Item || r.item || "").trim();
         const size = String(r.Size || r.size || "").trim() || null;
         const color = String(r.Color || r.color || "").trim() || null;
         const gender = String(r.Gender || r.gender || "").trim() || null;
@@ -318,7 +335,7 @@ export default function Inventory() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Items</p><p className="text-2xl font-bold">{filtered.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Units in Stock</p><p className="text-2xl font-bold">{totalUnits}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Stock Value</p><p className="text-2xl font-bold">Rs. {totalValue.toLocaleString()}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Stock Value</p><p className="text-2xl font-bold">LKR {totalValue.toLocaleString()}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Low Stock (&lt;5)</p><p className="text-2xl font-bold text-destructive">{filtered.filter(i => i.quantity < 5).length}</p></CardContent></Card>
       </div>
 
@@ -362,7 +379,7 @@ export default function Inventory() {
                       <TableCell className="text-right">
                         <span className={i.quantity < 5 ? "text-destructive font-semibold" : ""}>{i.quantity}</span>
                       </TableCell>
-                      <TableCell className="text-right">{i.unit_cost ? `Rs. ${Number(i.unit_cost).toFixed(2)}` : "—"}</TableCell>
+                      <TableCell className="text-right">{i.unit_cost ? `LKR ${Number(i.unit_cost).toFixed(2)}` : "—"}</TableCell>
                       <TableCell>{i.supplier || "—"}</TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button size="sm" variant="outline" onClick={() => { setMoveItem(i); setMoveQty(""); setMoveReason(""); }}>Adjust</Button>
@@ -425,7 +442,7 @@ export default function Inventory() {
               <Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Unit Cost (Rs.)</Label>
+              <Label>Unit Cost (LKR)</Label>
               <Input type="number" step="0.01" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} />
             </div>
             <div className="space-y-2 col-span-2">
@@ -497,7 +514,7 @@ export default function Inventory() {
                 <Input type="date" value={bulk.invoice_date} onChange={(e) => setBulk({ ...bulk, invoice_date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Invoice Amount (Rs.)</Label>
+                <Label>Invoice Amount (LKR)</Label>
                 <Input type="number" step="0.01" value={bulk.invoice_amount} onChange={(e) => setBulk({ ...bulk, invoice_amount: e.target.value })} />
               </div>
             </div>

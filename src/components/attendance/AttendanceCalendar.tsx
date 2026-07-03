@@ -52,6 +52,7 @@ interface AttendanceCalendarProps {
   attendanceRecords: AttendanceRecord[];
   onRefresh: () => void;
   isSuperAdmin: boolean;
+  isAdmin?: boolean;
 }
 
 export default function AttendanceCalendar({
@@ -61,7 +62,9 @@ export default function AttendanceCalendar({
   attendanceRecords,
   onRefresh,
   isSuperAdmin,
+  isAdmin = false,
 }: AttendanceCalendarProps) {
+  const canEdit = isSuperAdmin || isAdmin;
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedRank, setSelectedRank] = useState<"OIC" | "SSO" | "JSO" | "LSO" | "">("");
@@ -143,6 +146,43 @@ export default function AttendanceCalendar({
 
     onRefresh();
   };
+
+  const monthDateRange = () => {
+    const start = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}-01`;
+    const lastDay = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate();
+    const end = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    return { start, end };
+  };
+
+  const handleRemoveEmployeeFromMonth = async (employeeId: string, name: string) => {
+    if (!confirm(`Remove ALL attendance for ${name} in this month at ${selectedCompany.company_name}? This cannot be undone.`)) return;
+    const { start, end } = monthDateRange();
+    const { error } = await supabase
+      .from("attendance")
+      .delete()
+      .eq("company_id", selectedCompany.id)
+      .eq("employee_id", employeeId)
+      .gte("attendance_date", start)
+      .lte("attendance_date", end);
+    if (error) { toast.error("Error removing employee: " + error.message); return; }
+    toast.success("Employee attendance removed for this month");
+    onRefresh();
+  };
+
+  const handleChangeRank = async (employeeId: string, newRank: "OIC" | "SSO" | "JSO" | "LSO") => {
+    const { start, end } = monthDateRange();
+    const { error } = await supabase
+      .from("attendance")
+      .update({ rank: newRank })
+      .eq("company_id", selectedCompany.id)
+      .eq("employee_id", employeeId)
+      .gte("attendance_date", start)
+      .lte("attendance_date", end);
+    if (error) { toast.error("Error updating rank: " + error.message); return; }
+    toast.success(`Rank updated to ${newRank}`);
+    onRefresh();
+  };
+
 
   const calculateEmployeeStats = (employeeId: string) => {
     const records = attendanceRecords.filter(
@@ -484,7 +524,7 @@ export default function AttendanceCalendar({
           </div>
         </div>
         <div className="flex gap-2">
-          {isSuperAdmin && (
+          {canEdit && (
             <Button onClick={handleSaveAllAttendance} variant="default">
               <Save className="h-4 w-4 mr-2" />
               Save All Attendance
@@ -689,10 +729,40 @@ export default function AttendanceCalendar({
                         {employee.employee_id}
                       </td>
                       <td className="bg-background p-2 font-medium border-r">
-                        {employee.full_name}
+                        <div className="flex items-center gap-2">
+                          <span>{employee.full_name}</span>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0 text-destructive hover:text-destructive"
+                              title="Remove this employee's attendance for this month"
+                              onClick={() => handleRemoveEmployeeFromMonth(employee.id, employee.full_name)}
+                            >
+                              ×
+                            </Button>
+                          )}
+                        </div>
                       </td>
                       <td className="bg-background p-2 text-center font-medium border-r">
-                        <Badge variant="secondary">{employeeRank}</Badge>
+                        {canEdit ? (
+                          <Select
+                            value={employeeRank !== "-" ? employeeRank : undefined}
+                            onValueChange={(v) => handleChangeRank(employee.id, v as any)}
+                          >
+                            <SelectTrigger className="h-7 w-[80px] mx-auto">
+                              <SelectValue placeholder="-" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="OIC">OIC</SelectItem>
+                              <SelectItem value="SSO">SSO</SelectItem>
+                              <SelectItem value="JSO">JSO</SelectItem>
+                              <SelectItem value="LSO">LSO</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge variant="secondary">{employeeRank}</Badge>
+                        )}
                       </td>
                       {dates.map((date) =>
                         ["Day", "Night"].map((shift) => {
@@ -706,7 +776,7 @@ export default function AttendanceCalendar({
                               {attendance?.present ? (
                                 <div className="flex flex-col items-center gap-1">
                                   <span className="text-lg font-semibold">1</span>
-                                  {isSuperAdmin && (
+                                  {canEdit && (
                                     <Button
                                       variant="ghost"
                                       size="sm"

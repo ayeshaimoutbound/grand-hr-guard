@@ -49,7 +49,7 @@ export default function Attendance() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isAdmin } = useAuth();
 
   useEffect(() => {
     fetchCompaniesAndEmployees();
@@ -175,6 +175,7 @@ export default function Attendance() {
           attendanceRecords={attendanceRecords}
           onRefresh={fetchAttendanceData}
           isSuperAdmin={isSuperAdmin}
+          isAdmin={isAdmin}
         />
       )}
 

@@ -110,9 +110,9 @@ function PaymentsTab() {
                   <TableCell className="font-mono">{inv.invoice_number}</TableCell>
                   <TableCell>{inv.companies?.company_name}</TableCell>
                   <TableCell>{new Date(inv.invoice_date).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">Rs. {Number(inv.amount_to_collect).toLocaleString()}</TableCell>
-                  <TableCell className="text-right">Rs. {received.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">Rs. {balance.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">LKR {Number(inv.amount_to_collect).toLocaleString()}</TableCell>
+                  <TableCell className="text-right">LKR {received.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">LKR {balance.toLocaleString()}</TableCell>
                   <TableCell>
                     <Badge variant={status === "Paid" ? "default" : status === "Partial" ? "secondary" : "destructive"}>
                       {status === "Partial" ? "Partially Paid" : status}
@@ -215,7 +215,7 @@ function AdvancesTab() {
                 <TableCell>{new Date(r.advance_date).toLocaleDateString()}</TableCell>
                 <TableCell>{r.employees?.full_name} ({r.employees?.employee_id})</TableCell>
                 {kind === "food" && <TableCell>{r.companies?.company_name || "—"}</TableCell>}
-                <TableCell className="text-right">Rs. {Number(r.amount).toFixed(2)}</TableCell>
+                <TableCell className="text-right">LKR {Number(r.amount).toFixed(2)}</TableCell>
                 <TableCell className="max-w-[240px] truncate">{r.notes || "—"}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="sm" onClick={() => remove(r.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
@@ -259,7 +259,7 @@ function AdvancesTab() {
                 <Input type="date" value={form.advance_date} onChange={(e) => setForm({ ...form, advance_date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Amount (Rs.)</Label>
+                <Label>Amount (LKR)</Label>
                 <Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
               </div>
             </div>
@@ -447,7 +447,7 @@ function ExpensesTab() {
                       ? <Badge className="bg-emerald-600 hover:bg-emerald-600">Paid</Badge>
                       : <Badge variant="destructive">Credit</Badge>}
                   </TableCell>
-                  <TableCell className="text-right">Rs. {Number(r.amount).toFixed(2)}</TableCell>
+                  <TableCell className="text-right">LKR {Number(r.amount).toFixed(2)}</TableCell>
                   <TableCell className="flex gap-1 justify-end">
                     {!r.is_paid && <Button variant="outline" size="sm" onClick={() => markPaid(r.id)}>Mark Paid</Button>}
                     <Button variant="ghost" size="sm" onClick={() => remove(r.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
@@ -455,8 +455,8 @@ function ExpensesTab() {
                 </TableRow>
               ))}
               <TableRow className="font-semibold bg-muted/30">
-                <TableCell colSpan={7} className="text-right">Total (Unpaid: Rs. {unpaidTotal.toFixed(2)})</TableCell>
-                <TableCell className="text-right">Rs. {total.toFixed(2)}</TableCell>
+                <TableCell colSpan={7} className="text-right">Total (Unpaid: LKR {unpaidTotal.toFixed(2)})</TableCell>
+                <TableCell className="text-right">LKR {total.toFixed(2)}</TableCell>
                 <TableCell></TableCell>
               </TableRow>
             </TableBody>
@@ -474,7 +474,7 @@ function ExpensesTab() {
                 <Input type="date" value={form.expense_date} onChange={e => setForm({ ...form, expense_date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Amount (Rs.)</Label>
+                <Label>Amount (LKR)</Label>
                 <Input type="number" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
               </div>
             </div>
@@ -592,12 +592,12 @@ function OverviewTab() {
           {cards.map(c => (
             <div key={c.label} className="rounded-lg border p-4">
               <p className="text-xs text-muted-foreground">{c.label}</p>
-              <p className="text-xl font-bold">Rs. {c.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-xl font-bold">LKR {c.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
           ))}
           <div className={`rounded-lg border-2 p-4 ${net >= 0 ? "border-emerald-500" : "border-destructive"}`}>
             <p className="text-xs text-muted-foreground">Net (Received − Salaries − Expenses)</p>
-            <p className={`text-2xl font-bold ${net < 0 ? "text-destructive" : "text-emerald-600"}`}>Rs. {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className={`text-2xl font-bold ${net < 0 ? "text-destructive" : "text-emerald-600"}`}>LKR {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
         </div>
       </CardContent>

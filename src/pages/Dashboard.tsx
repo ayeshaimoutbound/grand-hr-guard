@@ -100,13 +100,13 @@ export default function Dashboard() {
     },
     {
       title: "Total Monthly Revenue",
-      value: `Rs. ${stats.monthlyRevenue.toLocaleString()}`,
+      value: `LKR ${stats.monthlyRevenue.toLocaleString()}`,
       icon: DollarSign,
       gradient: "from-accent to-accent",
     },
     {
       title: "Total Monthly Salary",
-      value: `Rs. ${stats.monthlySalary.toLocaleString()}`,
+      value: `LKR ${stats.monthlySalary.toLocaleString()}`,
       icon: Calendar,
       gradient: "from-primary to-secondary",
     },

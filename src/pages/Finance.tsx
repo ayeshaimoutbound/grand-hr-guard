@@ -403,7 +403,7 @@ export default function Finance() {
             <p className="text-sm text-muted-foreground">Total to Collect</p>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">Rs. {totals.totalToCollect.toLocaleString()}</p>
+            <p className="text-2xl font-bold">LKR {totals.totalToCollect.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
@@ -411,7 +411,7 @@ export default function Finance() {
             <p className="text-sm text-muted-foreground">Total Received</p>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-600">Rs. {totals.totalReceived.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-green-600">LKR {totals.totalReceived.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
@@ -419,7 +419,7 @@ export default function Finance() {
             <p className="text-sm text-muted-foreground">Outstanding Balance</p>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-destructive">Rs. {totals.outstanding.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-destructive">LKR {totals.outstanding.toLocaleString()}</p>
           </CardContent>
         </Card>
       </div>
@@ -519,10 +519,10 @@ export default function Finance() {
                     <TableCell>{invoice.companies.company_name}</TableCell>
                     <TableCell>{new Date(invoice.invoice_date).toLocaleDateString()}</TableCell>
                     <TableCell>{new Date(invoice.month_period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</TableCell>
-                    <TableCell>Rs. {invoice.amount_to_collect.toLocaleString()}</TableCell>
-                    <TableCell>Rs. {invoice.amount_received.toLocaleString()}</TableCell>
+                    <TableCell>LKR {invoice.amount_to_collect.toLocaleString()}</TableCell>
+                    <TableCell>LKR {invoice.amount_received.toLocaleString()}</TableCell>
                     <TableCell className={invoice.amount_to_collect > invoice.amount_received ? "text-destructive font-semibold" : "text-green-600"}>
-                      Rs. {(invoice.amount_to_collect - invoice.amount_received).toLocaleString()}
+                      LKR {(invoice.amount_to_collect - invoice.amount_received).toLocaleString()}
                     </TableCell>
                     <TableCell>
                       {getPaymentStatusBadge(invoice)}
@@ -599,16 +599,16 @@ export default function Finance() {
               <div className="border rounded-lg p-4 space-y-2 bg-muted/50">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Amount to Collect:</span>
-                  <span className="font-semibold">Rs. {currentInvoice.amount_to_collect.toLocaleString()}</span>
+                  <span className="font-semibold">LKR {currentInvoice.amount_to_collect.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Amount Received:</span>
-                  <span className="font-semibold text-green-600">Rs. {currentInvoice.amount_received.toLocaleString()}</span>
+                  <span className="font-semibold text-green-600">LKR {currentInvoice.amount_received.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between border-t pt-2">
                   <span className="text-sm text-muted-foreground">Outstanding:</span>
                   <span className="font-semibold text-destructive">
-                    Rs. {(currentInvoice.amount_to_collect - currentInvoice.amount_received).toLocaleString()}
+                    LKR {(currentInvoice.amount_to_collect - currentInvoice.amount_received).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -632,7 +632,7 @@ export default function Finance() {
                       {payments.map((payment) => (
                         <TableRow key={payment.id}>
                           <TableCell>{new Date(payment.payment_date).toLocaleDateString()}</TableCell>
-                          <TableCell>Rs. {payment.amount.toLocaleString()}</TableCell>
+                          <TableCell>LKR {payment.amount.toLocaleString()}</TableCell>
                           <TableCell>
                             <Badge variant="secondary">{payment.payment_method}</Badge>
                           </TableCell>
@@ -719,16 +719,16 @@ export default function Finance() {
             <div className="border rounded-lg p-4 space-y-2 bg-muted/50 mb-4">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Amount to Collect:</span>
-                <span className="font-semibold">Rs. {currentInvoice.amount_to_collect.toLocaleString()}</span>
+                <span className="font-semibold">LKR {currentInvoice.amount_to_collect.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Amount Received:</span>
-                <span className="font-semibold text-green-600">Rs. {currentInvoice.amount_received.toLocaleString()}</span>
+                <span className="font-semibold text-green-600">LKR {currentInvoice.amount_received.toLocaleString()}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="text-sm text-muted-foreground">Outstanding:</span>
                 <span className="font-semibold text-destructive">
-                  Rs. {(currentInvoice.amount_to_collect - currentInvoice.amount_received).toLocaleString()}
+                  LKR {(currentInvoice.amount_to_collect - currentInvoice.amount_received).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -747,7 +747,7 @@ export default function Finance() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="amount">Amount (Rs.)</Label>
+                <Label htmlFor="amount">Amount (LKR)</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -823,7 +823,7 @@ export default function Finance() {
                       {payments.slice(0, 3).map((payment) => (
                         <TableRow key={payment.id}>
                           <TableCell className="text-sm">{new Date(payment.payment_date).toLocaleDateString()}</TableCell>
-                          <TableCell className="text-sm">Rs. {payment.amount.toLocaleString()}</TableCell>
+                          <TableCell className="text-sm">LKR {payment.amount.toLocaleString()}</TableCell>
                           <TableCell><Badge variant="secondary" className="text-xs">{payment.payment_method}</Badge></TableCell>
                           <TableCell className="text-sm">{payment.reference_number || "-"}</TableCell>
                         </TableRow>
@@ -874,7 +874,7 @@ export default function Finance() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount (Rs.)</Label>
+              <Label htmlFor="amount">Amount (LKR)</Label>
               <Input
                 id="amount"
                 type="number"
@@ -930,16 +930,16 @@ export default function Finance() {
               <div className="p-3 bg-muted rounded-lg text-sm">
                 <div className="flex justify-between mb-1">
                   <span>Total Amount:</span>
-                  <span className="font-semibold">Rs. {currentInvoice.amount_to_collect.toLocaleString()}</span>
+                  <span className="font-semibold">LKR {currentInvoice.amount_to_collect.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between mb-1">
                   <span>Already Received:</span>
-                  <span className="font-semibold text-green-600">Rs. {currentInvoice.amount_received.toLocaleString()}</span>
+                  <span className="font-semibold text-green-600">LKR {currentInvoice.amount_received.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between border-t pt-1 mt-1">
                   <span className="font-semibold">Outstanding:</span>
                   <span className="font-semibold text-destructive">
-                    Rs. {(currentInvoice.amount_to_collect - currentInvoice.amount_received).toLocaleString()}
+                    LKR {(currentInvoice.amount_to_collect - currentInvoice.amount_received).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -961,7 +961,7 @@ export default function Finance() {
                             {payment.reference_number && ` - ${payment.reference_number}`}
                           </div>
                         </div>
-                        <div className="font-semibold">Rs. {payment.amount.toLocaleString()}</div>
+                        <div className="font-semibold">LKR {payment.amount.toLocaleString()}</div>
                       </div>
                     ))}
                   </div>

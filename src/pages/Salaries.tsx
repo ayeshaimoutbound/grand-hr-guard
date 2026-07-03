@@ -207,14 +207,14 @@ export default function Salaries() {
       <p>${monthLabel}</p></div>
       <p><b>Employee:</b> ${e.full_name} (${e.employee_id})${e.epf_no ? ` &nbsp; <b>EPF:</b> ${e.epf_no}` : ""}</p>
       <p><b>Bank:</b> ${e.bank_name || "-"} – ${e.branch || "-"} &nbsp; <b>A/C:</b> ${e.account_number || "-"}</p>
-      <table><tr><th>Description</th><th style="text-align:right">Amount (Rs.)</th></tr>
-      ${p.breakdown.map(b => `<tr><td colspan="2" style="background:#f9f9f9"><b>${b.company_name} – ${b.rank}</b> (${b.shifts} shifts @ Rs. ${b.rate.toFixed(2)})</td></tr>
+      <table><tr><th>Description</th><th style="text-align:right">Amount (LKR)</th></tr>
+      ${p.breakdown.map(b => `<tr><td colspan="2" style="background:#f9f9f9"><b>${b.company_name} – ${b.rank}</b> (${b.shifts} shifts @ LKR ${b.rate.toFixed(2)})</td></tr>
         <tr><td style="padding-left:24px">Earnings</td><td style="text-align:right">${b.amount.toFixed(2)}</td></tr>`).join("")}
       <tr class="tot"><td>Total Shifts</td><td style="text-align:right">${p.total_shifts}</td></tr>
       <tr class="tot"><td>Gross Pay</td><td style="text-align:right">${p.gross_pay.toFixed(2)}</td></tr>
       <tr><td>EPF Days</td><td style="text-align:right">${p.epf_days}</td></tr>
       <tr><td>Extra Days</td><td style="text-align:right">${p.extra_days}</td></tr>
-      <tr><td>EPF Basic (${p.epf_days} × Rs.${dailyMinWage})</td><td style="text-align:right">${p.epf_basic.toFixed(2)}</td></tr>
+      <tr><td>EPF Basic (${p.epf_days} × LKR${dailyMinWage})</td><td style="text-align:right">${p.epf_basic.toFixed(2)}</td></tr>
       <tr><td>Basic + OT</td><td style="text-align:right">${p.basic_plus_ot.toFixed(2)}</td></tr>
       <tr><td>OT for Extended Days</td><td style="text-align:right">${p.ot_extended.toFixed(2)}</td></tr>
       <tr><td>Annual Leave + Allowance</td><td style="text-align:right">${p.allowance.toFixed(2)}</td></tr>
@@ -230,7 +230,7 @@ export default function Salaries() {
       ${p.manual_transport ? `<tr><td>Transport</td><td style="text-align:right">${p.manual_transport.toFixed(2)}</td></tr>` : ""}
       ${p.manual_other ? `<tr><td>Other Deductions</td><td style="text-align:right">${p.manual_other.toFixed(2)}</td></tr>` : ""}
       <tr class="tot"><td>Total Deductions</td><td style="text-align:right">${p.total_deductions.toFixed(2)}</td></tr>
-      <tr class="net ${p.net_pay < 0 ? 'neg' : ''}"><td>NET PAY</td><td style="text-align:right">Rs. ${p.net_pay.toFixed(2)}</td></tr>
+      <tr class="net ${p.net_pay < 0 ? 'neg' : ''}"><td>NET PAY</td><td style="text-align:right">LKR ${p.net_pay.toFixed(2)}</td></tr>
       </table></body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 300);
@@ -244,7 +244,7 @@ export default function Salaries() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Salaries</h1>
-          <p className="text-muted-foreground">Auto-calculated payroll · Daily min wage: Rs. {dailyMinWage}</p>
+          <p className="text-muted-foreground">Auto-calculated payroll · Daily min wage: LKR {dailyMinWage}</p>
         </div>
         <Button variant="outline" onClick={exportExcel}>
           <FileDown className="h-4 w-4 mr-2" /> Export to Excel
@@ -261,11 +261,11 @@ export default function Salaries() {
             <div className="flex gap-6 items-end">
               <div>
                 <p className="text-sm text-muted-foreground">Total Gross</p>
-                <p className="text-2xl font-bold">Rs. {totalGross.toFixed(2)}</p>
+                <p className="text-2xl font-bold">LKR {totalGross.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Net</p>
-                <p className="text-2xl font-bold text-emerald-600">Rs. {totalNet.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-emerald-600">LKR {totalNet.toFixed(2)}</p>
               </div>
             </div>
           </div>
@@ -312,15 +312,15 @@ export default function Salaries() {
                       <TableCell className="text-right">{p.total_shifts}</TableCell>
                       <TableCell className="text-right">{p.epf_days}</TableCell>
                       <TableCell className="text-right">{p.extra_days}</TableCell>
-                      <TableCell className="text-right">Rs. {p.gross_pay.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">Rs. {p.epf_8.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">Rs. {p.ot_pay.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">Rs. {p.total_deductions.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">LKR {p.gross_pay.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">LKR {p.epf_8.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">LKR {p.ot_pay.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">LKR {p.total_deductions.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-semibold">
                         {p.net_pay < 0 ? (
-                          <Badge variant="destructive">Rs. {p.net_pay.toFixed(2)}</Badge>
+                          <Badge variant="destructive">LKR {p.net_pay.toFixed(2)}</Badge>
                         ) : (
-                          <span>Rs. {p.net_pay.toFixed(2)}</span>
+                          <span>LKR {p.net_pay.toFixed(2)}</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -343,18 +343,18 @@ export default function Salaries() {
                         <TableCell colSpan={11} className="bg-muted/40">
                           <div className="p-4 space-y-3">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              <div><span className="text-muted-foreground">EPF Basic:</span> <b>Rs. {p.epf_basic.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Basic+OT:</span> <b>Rs. {p.basic_plus_ot.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">OT (Extended):</span> <b>Rs. {p.ot_extended.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Annual Leave+Allowance:</span> <b>Rs. {p.allowance.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Cash Adv:</span> <b>Rs. {p.cash_advance.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Food Adv:</span> <b>Rs. {p.food_advance.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Uniform Adv:</span> <b>Rs. {p.uniform_advance.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Manual Food:</span> <b>Rs. {p.manual_food.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Manual Uniforms:</span> <b>Rs. {p.manual_uniforms.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Accommodation:</span> <b>Rs. {p.manual_accommodation.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Transport:</span> <b>Rs. {p.manual_transport.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Other:</span> <b>Rs. {p.manual_other.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">EPF Basic:</span> <b>LKR {p.epf_basic.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Basic+OT:</span> <b>LKR {p.basic_plus_ot.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">OT (Extended):</span> <b>LKR {p.ot_extended.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Annual Leave+Allowance:</span> <b>LKR {p.allowance.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Cash Adv:</span> <b>LKR {p.cash_advance.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Food Adv:</span> <b>LKR {p.food_advance.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Uniform Adv:</span> <b>LKR {p.uniform_advance.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Manual Food:</span> <b>LKR {p.manual_food.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Manual Uniforms:</span> <b>LKR {p.manual_uniforms.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Accommodation:</span> <b>LKR {p.manual_accommodation.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Transport:</span> <b>LKR {p.manual_transport.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Other:</span> <b>LKR {p.manual_other.toFixed(2)}</b></div>
                             </div>
                             {p.breakdown.length > 1 && (
                               <div>
@@ -363,7 +363,7 @@ export default function Salaries() {
                                   {p.breakdown.map(b => (
                                     <div key={b.company_id + b.rank} className="flex justify-between text-sm bg-background p-2 rounded">
                                       <span>{b.company_name} ({b.rank})</span>
-                                      <span>{b.shifts} × Rs. {b.rate.toFixed(2)} = <b>Rs. {b.amount.toFixed(2)}</b></span>
+                                      <span>{b.shifts} × LKR {b.rate.toFixed(2)} = <b>LKR {b.amount.toFixed(2)}</b></span>
                                     </div>
                                   ))}
                                 </div>
@@ -394,7 +394,7 @@ export default function Salaries() {
           <div className="grid grid-cols-2 gap-3">
             {(["food","uniforms","accommodation","transport","other"] as const).map((k) => (
               <div key={k}>
-                <Label className="capitalize">{k} (Rs.)</Label>
+                <Label className="capitalize">{k} (LKR)</Label>
                 <Input
                   type="number" step="0.01" min="0"
                   value={(editForm as any)[k] ?? ""}
