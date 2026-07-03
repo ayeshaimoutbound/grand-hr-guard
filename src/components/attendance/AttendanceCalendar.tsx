@@ -524,7 +524,7 @@ export default function AttendanceCalendar({
           </div>
         </div>
         <div className="flex gap-2">
-          {isSuperAdmin && (
+          {canEdit && (
             <Button onClick={handleSaveAllAttendance} variant="default">
               <Save className="h-4 w-4 mr-2" />
               Save All Attendance
@@ -746,7 +746,7 @@ export default function AttendanceCalendar({
                               {attendance?.present ? (
                                 <div className="flex flex-col items-center gap-1">
                                   <span className="text-lg font-semibold">1</span>
-                                  {isSuperAdmin && (
+                                  {canEdit && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
