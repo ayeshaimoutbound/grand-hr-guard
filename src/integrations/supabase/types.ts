@@ -965,17 +965,6 @@ export type Database = {
     }
     Functions: {
       get_email_by_username: { Args: { p_username: string }; Returns: string }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      is_admin_or_super: { Args: { _user_id: string }; Returns: boolean }
-      is_office: { Args: { _user_id: string }; Returns: boolean }
-      is_regular_admin: { Args: { _user_id: string }; Returns: boolean }
-      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:
