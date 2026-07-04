@@ -224,32 +224,62 @@ export default function Inventory() {
       const buf = await bulk.file.arrayBuffer();
       const wb = XLSX.read(buf);
       const ws = wb.Sheets[wb.SheetNames[0]];
-      // Support two layouts:
-      //  A) Simple: row-1 headers = Category, Item/Item Name, Size, Color, Quantity, Unit Cost, [Epaulet Rank]
-      //  B) Provided template: reference tables on left; entry columns start at col Q (index 16)
-      //     with headers row1: Q=Category-not-really; actual data cols 16..24 =
-      //     Category, Item, Size, Color, _, _, Quantity, Unit Cost, Epaulet Rank
+      // Parse the pivoted uniform template: multiple blocks with header rows
+      // containing "Category", "Item", optional "Size", then color columns.
+      // Quantities live at the intersection of a size row and a color column.
       const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-      let rows: any[] = [];
-      // Detect template B by checking if col16 of row1 is "Quantity"
-      const header = aoa[0] || [];
-      const isTemplateB = String(header[16] || "").toLowerCase() === "quantity";
-      if (isTemplateB) {
-        for (let i = 2; i < aoa.length; i++) {
-          const r = aoa[i] || [];
-          const cat = String(r[16] || "").trim();
-          const item = String(r[17] || "").trim();
-          if (!cat || !item) continue;
-          rows.push({
-            Category: cat, "Item Name": item,
-            Size: r[18] ?? "", Color: r[19] ?? "",
-            Quantity: r[22], "Unit Cost": r[23], "Epaulet Rank": r[24] ?? "",
-          });
+      type Hdr = { row: number; cat: number; item: number; size: number | null; colors: { col: number; name: string }[] };
+      const headers: Hdr[] = [];
+      for (let ri = 0; ri < aoa.length; ri++) {
+        const r = aoa[ri] || [];
+        for (let ci = 0; ci < r.length; ci++) {
+          if (String(r[ci] ?? "").trim().toLowerCase() !== "category") continue;
+          let itemCol = -1;
+          for (let cj = ci + 1; cj < r.length; cj++) {
+            if (String(r[cj] ?? "").trim().toLowerCase() === "item") { itemCol = cj; break; }
+            if (String(r[cj] ?? "").trim()) break;
+          }
+          if (itemCol < 0) continue;
+          let sizeCol: number | null = null;
+          let colorStart = itemCol + 1;
+          if (String(r[itemCol + 1] ?? "").trim().toLowerCase() === "size") {
+            sizeCol = itemCol + 1;
+            colorStart = itemCol + 2;
+          }
+          const colors: { col: number; name: string }[] = [];
+          for (let cj = colorStart; cj < r.length; cj++) {
+            const v = String(r[cj] ?? "").trim();
+            if (!v) break;
+            if (v.toLowerCase() === "category") break;
+            colors.push({ col: cj, name: v });
+          }
+          if (colors.length) headers.push({ row: ri, cat: ci, item: itemCol, size: sizeCol, colors });
         }
-      } else {
-        rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
       }
-      if (!rows.length) { toast.error("No valid rows found in file"); return; }
+      const headerRowSet = new Set(headers.map((h) => h.row));
+      const rows: any[] = [];
+      for (const h of headers) {
+        let curCat = "", curItem = "";
+        for (let dr = h.row + 1; dr < aoa.length; dr++) {
+          if (headerRowSet.has(dr)) break;
+          const row = aoa[dr] || [];
+          const cat = String(row[h.cat] ?? "").trim();
+          const item = String(row[h.item] ?? "").trim();
+          if (cat) curCat = cat;
+          if (item) curItem = item;
+          const size = h.size !== null ? String(row[h.size] ?? "").trim() : "";
+          if (!curCat || !curItem) continue;
+          for (const c of h.colors) {
+            const qty = parseInt(row[c.col] as any);
+            if (!qty || qty <= 0) continue;
+            rows.push({
+              Category: curCat, "Item Name": curItem,
+              Size: size, Color: c.name, Quantity: qty,
+            });
+          }
+        }
+      }
+      if (!rows.length) { toast.error("No quantities found in template. Fill quantity cells under color columns."); return; }
 
       const { data: u } = await supabase.auth.getUser();
 
