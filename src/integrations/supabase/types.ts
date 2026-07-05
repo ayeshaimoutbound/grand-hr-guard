@@ -390,6 +390,186 @@ export type Database = {
           },
         ]
       }
+      food_charges: {
+        Row: {
+          breakfast_count: number
+          breakfast_rate: number
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          dinner_count: number
+          dinner_rate: number
+          employee_id: string
+          id: string
+          location: string | null
+          lunch_count: number
+          lunch_rate: number
+          manual_entry: boolean
+          month: string
+          notes: string | null
+          total_amount: number
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          breakfast_count?: number
+          breakfast_rate?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dinner_count?: number
+          dinner_rate?: number
+          employee_id: string
+          id?: string
+          location?: string | null
+          lunch_count?: number
+          lunch_rate?: number
+          manual_entry?: boolean
+          month: string
+          notes?: string | null
+          total_amount?: number
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          breakfast_count?: number
+          breakfast_rate?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dinner_count?: number
+          dinner_rate?: number
+          employee_id?: string
+          id?: string
+          location?: string | null
+          lunch_count?: number
+          lunch_rate?: number
+          manual_entry?: boolean
+          month?: string
+          notes?: string | null
+          total_amount?: number
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_charges_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_charges_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_charges_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_limited"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_charges_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "food_vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      food_rates: {
+        Row: {
+          breakfast_rate: number
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          dinner_rate: number
+          effective_from: string
+          id: string
+          location: string | null
+          lunch_rate: number
+          updated_at: string
+        }
+        Insert: {
+          breakfast_rate?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dinner_rate?: number
+          effective_from?: string
+          id?: string
+          location?: string | null
+          lunch_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          breakfast_rate?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dinner_rate?: number
+          effective_from?: string
+          id?: string
+          location?: string | null
+          lunch_rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_rates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      food_vendors: {
+        Row: {
+          company_id: string | null
+          contact: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          updated_at: string
+          vendor_name: string
+        }
+        Insert: {
+          company_id?: string | null
+          contact?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          vendor_name: string
+        }
+        Update: {
+          company_id?: string | null
+          contact?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_vendors_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           category: string
@@ -443,39 +623,69 @@ export type Database = {
       }
       inventory_movements: {
         Row: {
+          batch_id: string | null
           change: number
           created_at: string
           created_by: string | null
+          employee_id: string | null
           expense_id: string | null
           id: string
           item_id: string
           moved_at: string
           reason: string | null
           reference: string | null
+          unit_cost: number | null
         }
         Insert: {
+          batch_id?: string | null
           change: number
           created_at?: string
           created_by?: string | null
+          employee_id?: string | null
           expense_id?: string | null
           id?: string
           item_id: string
           moved_at?: string
           reason?: string | null
           reference?: string | null
+          unit_cost?: number | null
         }
         Update: {
+          batch_id?: string | null
           change?: number
           created_at?: string
           created_by?: string | null
+          employee_id?: string | null
           expense_id?: string | null
           id?: string
           item_id?: string
           moved_at?: string
           reason?: string | null
           reference?: string | null
+          unit_cost?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_movements_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "uniform_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_limited"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_movements_expense_id_fkey"
             columns: ["expense_id"]
@@ -844,34 +1054,53 @@ export type Database = {
         Row: {
           advance_date: string
           amount: number
+          batch_id: string | null
           created_at: string
           created_by: string | null
           employee_id: string
           id: string
+          installment_index: number
+          installment_months: number
           notes: string | null
+          total_amount: number | null
           updated_at: string
         }
         Insert: {
           advance_date: string
           amount: number
+          batch_id?: string | null
           created_at?: string
           created_by?: string | null
           employee_id: string
           id?: string
+          installment_index?: number
+          installment_months?: number
           notes?: string | null
+          total_amount?: number | null
           updated_at?: string
         }
         Update: {
           advance_date?: string
           amount?: number
+          batch_id?: string | null
           created_at?: string
           created_by?: string | null
           employee_id?: string
           id?: string
+          installment_index?: number
+          installment_months?: number
           notes?: string | null
+          total_amount?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "uniform_advances_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "uniform_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "uniform_advances_employee_id_fkey"
             columns: ["employee_id"]
@@ -887,6 +1116,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      uniform_batches: {
+        Row: {
+          batch_number: string
+          created_at: string
+          created_by: string | null
+          grand_total: number
+          id: string
+          invoice_number: string | null
+          notes: string | null
+          supplier: string | null
+          updated_at: string
+          upload_date: string
+        }
+        Insert: {
+          batch_number: string
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          supplier?: string | null
+          updated_at?: string
+          upload_date?: string
+        }
+        Update: {
+          batch_number?: string
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          supplier?: string | null
+          updated_at?: string
+          upload_date?: string
+        }
+        Relationships: []
       }
       user_module_access: {
         Row: {
@@ -965,6 +1233,7 @@ export type Database = {
     }
     Functions: {
       get_email_by_username: { Args: { p_username: string }; Returns: string }
+      next_uniform_batch_number: { Args: never; Returns: string }
     }
     Enums: {
       app_role:
