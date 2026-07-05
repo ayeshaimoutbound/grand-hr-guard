@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Plus, Upload, Download, Trash2, Package, Minus, PlusCircle } from "lucide-react";
+import { Plus, Upload, Download, Trash2, Package, Minus, PlusCircle, UserCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const CATEGORIES = [
@@ -76,6 +76,12 @@ export default function Inventory() {
   const [moveQty, setMoveQty] = useState<string>("");
   const [moveReason, setMoveReason] = useState<string>("");
 
+  const [issueItem, setIssueItem] = useState<Item | null>(null);
+  const [issueQty, setIssueQty] = useState<string>("1");
+  const [issueEmployeeId, setIssueEmployeeId] = useState<string>("");
+  const [issueMonths, setIssueMonths] = useState<string>("3");
+  const [employees, setEmployees] = useState<{ id: string; employee_id: string; full_name: string }[]>([]);
+
   const [form, setForm] = useState({
     category: "Shirt (Men)",
     item_name: "",
@@ -92,15 +98,14 @@ export default function Inventory() {
   const [bulk, setBulk] = useState({
     file: null as File | null,
     supplier: "",
-    invoice_ref: "",
-    invoice_date: format(new Date(), "yyyy-MM-dd"),
-    invoice_amount: "",
-    is_paid: false,
+    notes: "",
   });
 
   const load = async () => {
     const { data } = await supabase.from("inventory_items").select("*").order("category").order("item_name");
     setItems((data as any) || []);
+    const { data: emps } = await supabase.from("employees").select("id, employee_id, full_name").order("full_name");
+    setEmployees((emps as any) || []);
   };
   useEffect(() => { load(); }, []);
 
@@ -214,21 +219,37 @@ export default function Inventory() {
 
   const processBulkUpload = async () => {
     if (!bulk.file) { toast.error("Choose a file"); return; }
-    if (!bulk.supplier || !bulk.invoice_ref || !bulk.invoice_amount) {
-      toast.error("Supplier, invoice ref, and invoice amount are required");
-      return;
-    }
-    const amt = parseFloat(bulk.invoice_amount);
-    if (!amt || amt <= 0) { toast.error("Invoice amount invalid"); return; }
     try {
       const buf = await bulk.file.arrayBuffer();
-      const wb = XLSX.read(buf);
+      const wb = XLSX.read(buf, { cellFormula: false });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      // Parse the pivoted uniform template: multiple blocks with header rows
-      // containing "Category", "Item", optional "Size", then color columns.
-      // Quantities live at the intersection of a size row and a color column.
       const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-      type Hdr = { row: number; cat: number; item: number; size: number | null; colors: { col: number; name: string }[] };
+
+      // Extract Invoice No: find cell whose adjacent (or same-row next) value is the number.
+      let invoiceNumber = "";
+      let grandTotal = 0;
+      for (let ri = 0; ri < aoa.length; ri++) {
+        const r = aoa[ri] || [];
+        for (let ci = 0; ci < r.length; ci++) {
+          const cell = String(r[ci] ?? "").trim().toLowerCase();
+          if (cell === "invoice no" || cell === "invoice no.") {
+            for (let cj = ci + 1; cj < r.length; cj++) {
+              const v = String(r[cj] ?? "").trim();
+              if (v) { invoiceNumber = v; break; }
+            }
+          }
+          if (cell === "grand total") {
+            for (let cj = ci + 1; cj < r.length; cj++) {
+              const v = r[cj];
+              const n = parseFloat(String(v));
+              if (Number.isFinite(n) && n > 0) { grandTotal = n; break; }
+            }
+          }
+        }
+      }
+
+      // Parse pivoted blocks; capture per-row unit cost via "Amount/unit" column.
+      type Hdr = { row: number; cat: number; item: number; size: number | null; colors: { col: number; name: string }[]; amt: number | null };
       const headers: Hdr[] = [];
       for (let ri = 0; ri < aoa.length; ri++) {
         const r = aoa[ri] || [];
@@ -247,17 +268,22 @@ export default function Inventory() {
             colorStart = itemCol + 2;
           }
           const colors: { col: number; name: string }[] = [];
+          let amtCol: number | null = null;
           for (let cj = colorStart; cj < r.length; cj++) {
             const v = String(r[cj] ?? "").trim();
             if (!v) break;
-            if (v.toLowerCase() === "category") break;
+            const vl = v.toLowerCase();
+            if (vl === "category") break;
+            if (vl === "amount/unit" || vl === "amount per unit" || vl === "unit price" || vl === "amount") { amtCol = cj; break; }
+            if (vl === "total") break;
             colors.push({ col: cj, name: v });
           }
-          if (colors.length) headers.push({ row: ri, cat: ci, item: itemCol, size: sizeCol, colors });
+          if (colors.length) headers.push({ row: ri, cat: ci, item: itemCol, size: sizeCol, colors, amt: amtCol });
         }
       }
       const headerRowSet = new Set(headers.map((h) => h.row));
-      const rows: any[] = [];
+      const rows: { category: string; item_name: string; size: string; color: string; quantity: number; unit_cost: number }[] = [];
+      let computedGrand = 0;
       for (const h of headers) {
         let curCat = "", curItem = "";
         for (let dr = h.row + 1; dr < aoa.length; dr++) {
@@ -265,87 +291,136 @@ export default function Inventory() {
           const row = aoa[dr] || [];
           const cat = String(row[h.cat] ?? "").trim();
           const item = String(row[h.item] ?? "").trim();
-          if (cat) curCat = cat;
+          if (cat && cat.toLowerCase() !== "total" && cat.toLowerCase() !== "grand total") curCat = cat;
           if (item) curItem = item;
           const size = h.size !== null ? String(row[h.size] ?? "").trim() : "";
           if (!curCat || !curItem) continue;
+          const unitCost = h.amt !== null ? parseFloat(String(row[h.amt] ?? "")) || 0 : 0;
           for (const c of h.colors) {
             const qty = parseInt(row[c.col] as any);
             if (!qty || qty <= 0) continue;
-            rows.push({
-              Category: curCat, "Item Name": curItem,
-              Size: size, Color: c.name, Quantity: qty,
-            });
+            rows.push({ category: curCat, item_name: curItem, size, color: c.name, quantity: qty, unit_cost: unitCost });
+            computedGrand += qty * unitCost;
           }
         }
       }
-      if (!rows.length) { toast.error("No quantities found in template. Fill quantity cells under color columns."); return; }
+      if (!rows.length) { toast.error("No quantities found in template."); return; }
+      if (!grandTotal) grandTotal = computedGrand;
+      if (!invoiceNumber) { toast.error("Invoice No is missing from the template (cell B2)."); return; }
 
       const { data: u } = await supabase.auth.getUser();
 
-      // 1) Create expense (Uniforms)
-      const { data: exp, error: expErr } = await supabase.from("expenses").insert({
-        expense_date: bulk.invoice_date,
-        category: "Uniforms",
-        subcategory: "Bulk Upload",
-        amount: amt,
-        description: `Uniform bulk upload (${rows.length} lines)`,
-        supplier: bulk.supplier,
-        vendor: bulk.supplier,
-        invoice_ref: bulk.invoice_ref,
-        is_paid: bulk.is_paid,
-        payment_date: bulk.is_paid ? bulk.invoice_date : null,
+      // 1) Create batch
+      const { data: batchNoRes, error: bnErr } = await supabase.rpc("next_uniform_batch_number");
+      if (bnErr) { toast.error("Batch # error: " + bnErr.message); return; }
+      const batchNumber = batchNoRes as unknown as string;
+      const { data: batch, error: batchErr } = await supabase.from("uniform_batches").insert({
+        batch_number: batchNumber,
+        invoice_number: invoiceNumber,
+        grand_total: grandTotal,
+        upload_date: format(new Date(), "yyyy-MM-dd"),
+        supplier: bulk.supplier || null,
+        notes: bulk.notes || null,
         created_by: u.user?.id,
       } as any).select().single();
-      if (expErr) { toast.error("Expense error: " + expErr.message); return; }
+      if (batchErr) { toast.error("Batch error: " + batchErr.message); return; }
 
-      // 2) Insert / increment inventory rows
+      // 2) Also create an expense entry so accounts reflects the payable
+      const { data: exp } = await supabase.from("expenses").insert({
+        expense_date: format(new Date(), "yyyy-MM-dd"),
+        category: "Uniforms",
+        subcategory: "Bulk Upload",
+        amount: grandTotal,
+        description: `Uniform batch ${batchNumber} (Invoice ${invoiceNumber})`,
+        supplier: bulk.supplier || null,
+        vendor: bulk.supplier || null,
+        invoice_ref: invoiceNumber,
+        is_paid: false,
+        created_by: u.user?.id,
+      } as any).select().single();
+
+      // 3) Upsert inventory items + movements
       let added = 0, updated = 0;
       for (const r of rows) {
-        const category = String(r.Category || r.category || "").trim();
-        const item_name = String(r["Item Name"] || r.item_name || r.Item || r.item || "").trim();
-        const size = String(r.Size || r.size || "").trim() || null;
-        const color = String(r.Color || r.color || "").trim() || null;
-        const gender = String(r.Gender || r.gender || "").trim() || null;
-        const epaulet_rank = String(r["Epaulet Rank"] || r.epaulet_rank || "").trim() || null;
-        const quantity = parseInt(r.Quantity || r.quantity || 0) || 0;
-        const unit_cost = r["Unit Cost"] ? parseFloat(r["Unit Cost"]) : null;
-        if (!category || !item_name || quantity <= 0) continue;
-
-        // Try to find matching existing item
         let query = supabase.from("inventory_items").select("id, quantity")
-          .eq("category", category).eq("item_name", item_name);
-        if (size) query = query.eq("size", size); else query = query.is("size", null);
-        if (color) query = query.eq("color", color); else query = query.is("color", null);
+          .eq("category", r.category).eq("item_name", r.item_name);
+        if (r.size) query = query.eq("size", r.size); else query = query.is("size", null);
+        if (r.color) query = query.eq("color", r.color); else query = query.is("color", null);
         const { data: existing } = await query.limit(1);
         let itemId: string;
         if (existing && existing.length) {
           itemId = existing[0].id;
-          const newQty = (existing[0].quantity || 0) + quantity;
-          await supabase.from("inventory_items").update({ quantity: newQty, unit_cost, supplier: bulk.supplier } as any).eq("id", itemId);
+          const newQty = (existing[0].quantity || 0) + r.quantity;
+          await supabase.from("inventory_items").update({ quantity: newQty, unit_cost: r.unit_cost || null, supplier: bulk.supplier || null } as any).eq("id", itemId);
           updated++;
         } else {
           const { data: created } = await supabase.from("inventory_items").insert({
-            category, item_name, size, color, gender, epaulet_rank, quantity,
-            unit_cost, supplier: bulk.supplier, created_by: u.user?.id,
+            category: r.category, item_name: r.item_name, size: r.size || null, color: r.color || null,
+            quantity: r.quantity, unit_cost: r.unit_cost || null, supplier: bulk.supplier || null, created_by: u.user?.id,
           } as any).select("id").single();
           itemId = (created as any).id;
           added++;
         }
         await supabase.from("inventory_movements").insert({
-          item_id: itemId, change: quantity, reason: "bulk_upload",
-          reference: bulk.invoice_ref, expense_id: (exp as any).id,
+          item_id: itemId, change: r.quantity, reason: "bulk_upload",
+          reference: invoiceNumber, expense_id: (exp as any)?.id ?? null,
+          batch_id: (batch as any).id, unit_cost: r.unit_cost || null,
           created_by: u.user?.id,
         } as any);
       }
-      toast.success(`Bulk upload done: ${added} new, ${updated} updated. Expense recorded (${bulk.is_paid ? "Paid" : "Credit"}).`);
+      toast.success(`Batch ${batchNumber} recorded — LKR ${grandTotal.toLocaleString()} (${added} new, ${updated} updated).`);
       setBulkOpen(false);
-      setBulk({ file: null, supplier: "", invoice_ref: "", invoice_date: format(new Date(), "yyyy-MM-dd"), invoice_amount: "", is_paid: false });
+      setBulk({ file: null, supplier: "", notes: "" });
       load();
     } catch (e: any) {
       toast.error("Upload failed: " + e.message);
     }
   };
+
+  const issueToEmployee = async () => {
+    if (!issueItem || !issueEmployeeId) { toast.error("Select an employee"); return; }
+    const qty = parseInt(issueQty);
+    if (!qty || qty <= 0) { toast.error("Enter a positive quantity"); return; }
+    if (qty > issueItem.quantity) { toast.error("Not enough stock"); return; }
+    const months = Math.max(1, parseInt(issueMonths) || 3);
+    const unitCost = Number(issueItem.unit_cost || 0);
+    if (unitCost <= 0) { toast.error("Item has no unit cost — set one before issuing."); return; }
+    const total = unitCost * qty;
+    const installment = Math.round((total / months) * 100) / 100;
+
+    const { data: u } = await supabase.auth.getUser();
+    const newQty = issueItem.quantity - qty;
+    const { error: upErr } = await supabase.from("inventory_items").update({ quantity: newQty } as any).eq("id", issueItem.id);
+    if (upErr) { toast.error(upErr.message); return; }
+    await supabase.from("inventory_movements").insert({
+      item_id: issueItem.id, change: -qty, reason: "issued_to_employee",
+      employee_id: issueEmployeeId, unit_cost: unitCost, created_by: u.user?.id,
+    } as any);
+
+    // Create N monthly installment advances
+    const today = new Date();
+    const rowsToInsert: any[] = [];
+    for (let i = 0; i < months; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+      rowsToInsert.push({
+        employee_id: issueEmployeeId,
+        advance_date: dateStr,
+        amount: installment,
+        total_amount: total,
+        installment_months: months,
+        installment_index: i + 1,
+        notes: `Uniform: ${issueItem.item_name}${issueItem.size ? " " + issueItem.size : ""}${issueItem.color ? " " + issueItem.color : ""} × ${qty} (installment ${i + 1}/${months})`,
+        created_by: u.user?.id,
+      });
+    }
+    const { error: advErr } = await supabase.from("uniform_advances").insert(rowsToInsert as any);
+    if (advErr) { toast.error("Advance error: " + advErr.message); return; }
+    toast.success(`Issued ${qty} × ${issueItem.item_name}. LKR ${total.toLocaleString()} split over ${months} months (LKR ${installment.toLocaleString()}/mo).`);
+    setIssueItem(null); setIssueQty("1"); setIssueEmployeeId(""); setIssueMonths("3");
+    load();
+  };
+
 
   return (
     <div className="space-y-6">
@@ -413,6 +488,9 @@ export default function Inventory() {
                       <TableCell>{i.supplier || "—"}</TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button size="sm" variant="outline" onClick={() => { setMoveItem(i); setMoveQty(""); setMoveReason(""); }}>Adjust</Button>
+                        <Button size="sm" variant="secondary" onClick={() => { setIssueItem(i); setIssueQty("1"); setIssueEmployeeId(""); setIssueMonths("3"); }}>
+                          <UserCheck className="h-3.5 w-3.5 mr-1" />Issue
+                        </Button>
                         {isSuperAdmin && <Button size="icon" variant="ghost" onClick={() => deleteItem(i.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                       </TableCell>
                     </TableRow>
@@ -521,7 +599,7 @@ export default function Inventory() {
           <DialogHeader>
             <DialogTitle>Bulk Upload Uniforms</DialogTitle>
             <DialogDescription>
-              Upload an .xlsx file. An expense entry (category: Uniforms) will be created automatically.
+              Upload the .xlsx template. Invoice No and Grand Total are read from the file. A batch entry and an accounts payable are created automatically.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -530,31 +608,64 @@ export default function Inventory() {
               <Input type="file" accept=".xlsx,.xls" onChange={(e) => setBulk({ ...bulk, file: e.target.files?.[0] || null })} />
               <Button variant="link" className="h-auto p-0 text-xs" onClick={downloadUniformTemplate}>Download template</Button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Supplier</Label>
-                <Input value={bulk.supplier} onChange={(e) => setBulk({ ...bulk, supplier: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Invoice Reference</Label>
-                <Input value={bulk.invoice_ref} onChange={(e) => setBulk({ ...bulk, invoice_ref: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Invoice Date</Label>
-                <Input type="date" value={bulk.invoice_date} onChange={(e) => setBulk({ ...bulk, invoice_date: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Invoice Amount (LKR)</Label>
-                <Input type="number" step="0.01" value={bulk.invoice_amount} onChange={(e) => setBulk({ ...bulk, invoice_amount: e.target.value })} />
-              </div>
+            <div className="space-y-2">
+              <Label>Supplier (optional)</Label>
+              <Input value={bulk.supplier} onChange={(e) => setBulk({ ...bulk, supplier: e.target.value })} />
             </div>
-            <div className="flex items-center gap-3 rounded-lg border p-3">
-              <input id="bulk_paid" type="checkbox" checked={bulk.is_paid} onChange={(e) => setBulk({ ...bulk, is_paid: e.target.checked })} />
-              <Label htmlFor="bulk_paid" className="cursor-pointer">Payment already made (uncheck if taken on credit)</Label>
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Input value={bulk.notes} onChange={(e) => setBulk({ ...bulk, notes: e.target.value })} />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setBulkOpen(false)}>Cancel</Button>
               <Button onClick={processBulkUpload}><Upload className="h-4 w-4 mr-1" />Upload</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ISSUE TO EMPLOYEE DIALOG */}
+      <Dialog open={!!issueItem} onOpenChange={(v) => !v && setIssueItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Issue Uniform — {issueItem?.item_name}</DialogTitle>
+            <DialogDescription>
+              Charge is auto-split across N months and posted to uniform advances.
+              {issueItem?.unit_cost ? ` Unit cost: LKR ${Number(issueItem.unit_cost).toFixed(2)}` : " No unit cost set — set one first."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Employee</Label>
+              <Select value={issueEmployeeId} onValueChange={setIssueEmployeeId}>
+                <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                <SelectContent>
+                  {employees.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.employee_id} — {e.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input type="number" min="1" value={issueQty} onChange={(e) => setIssueQty(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Deduct over (months)</Label>
+                <Input type="number" min="1" value={issueMonths} onChange={(e) => setIssueMonths(e.target.value)} />
+              </div>
+            </div>
+            {issueItem?.unit_cost && parseInt(issueQty) > 0 && (
+              <div className="rounded-md border p-3 text-sm bg-muted/30">
+                Total: <strong>LKR {(Number(issueItem.unit_cost) * (parseInt(issueQty) || 0)).toLocaleString()}</strong>
+                {" · "}Monthly: <strong>LKR {(Number(issueItem.unit_cost) * (parseInt(issueQty) || 0) / (Math.max(1, parseInt(issueMonths) || 3))).toFixed(2)}</strong>
+                {" × "}{Math.max(1, parseInt(issueMonths) || 3)} months
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIssueItem(null)}>Cancel</Button>
+              <Button onClick={issueToEmployee}><UserCheck className="h-4 w-4 mr-1" />Issue</Button>
             </div>
           </div>
         </DialogContent>
