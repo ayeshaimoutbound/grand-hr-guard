@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Plus, Upload, Download, Trash2, Package, Minus, PlusCircle } from "lucide-react";
+import { Plus, Upload, Download, Trash2, Package, Minus, PlusCircle, UserCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const CATEGORIES = [
@@ -76,6 +76,12 @@ export default function Inventory() {
   const [moveQty, setMoveQty] = useState<string>("");
   const [moveReason, setMoveReason] = useState<string>("");
 
+  const [issueItem, setIssueItem] = useState<Item | null>(null);
+  const [issueQty, setIssueQty] = useState<string>("1");
+  const [issueEmployeeId, setIssueEmployeeId] = useState<string>("");
+  const [issueMonths, setIssueMonths] = useState<string>("3");
+  const [employees, setEmployees] = useState<{ id: string; employee_id: string; full_name: string }[]>([]);
+
   const [form, setForm] = useState({
     category: "Shirt (Men)",
     item_name: "",
@@ -92,15 +98,14 @@ export default function Inventory() {
   const [bulk, setBulk] = useState({
     file: null as File | null,
     supplier: "",
-    invoice_ref: "",
-    invoice_date: format(new Date(), "yyyy-MM-dd"),
-    invoice_amount: "",
-    is_paid: false,
+    notes: "",
   });
 
   const load = async () => {
     const { data } = await supabase.from("inventory_items").select("*").order("category").order("item_name");
     setItems((data as any) || []);
+    const { data: emps } = await supabase.from("employees").select("id, employee_id, full_name").order("full_name");
+    setEmployees((emps as any) || []);
   };
   useEffect(() => { load(); }, []);
 
