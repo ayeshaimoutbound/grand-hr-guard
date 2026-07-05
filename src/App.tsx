@@ -16,6 +16,7 @@ import Salaries from "./pages/Salaries";
 import Invoices from "./pages/Invoices";
 import Accounts from "./pages/Accounts";
 import Inventory from "./pages/Inventory";
+import Food from "./pages/Food";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/inventory" element={<Inventory />} />
+              <Route path="/food" element={<Food />} />
               <Route path="/settings" element={<ProtectedRoute requireSuperAdmin><Settings /></ProtectedRoute>} />
             </Route>
 

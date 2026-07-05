@@ -9,6 +9,7 @@ import {
   FileText,
   Wallet,
   Package,
+  Utensils,
   Settings as SettingsIcon,
   LogOut,
 } from "lucide-react";
@@ -36,6 +37,7 @@ const menuItems = [
   { title: "Invoices", url: "/invoices", icon: FileText, key: "invoices", roles: ["admin", "super_admin"] },
   { title: "Accounts", url: "/accounts", icon: Wallet, key: "accounts", roles: ["admin", "super_admin"] },
   { title: "Inventory", url: "/inventory", icon: Package, key: "inventory", roles: ["admin", "super_admin", "office"] },
+  { title: "Food", url: "/food", icon: Utensils, key: "food", roles: ["admin", "super_admin", "office"] },
   { title: "Settings", url: "/settings", icon: SettingsIcon, key: "settings", roles: ["super_admin"] },
 ];
 
