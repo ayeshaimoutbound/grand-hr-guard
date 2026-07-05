@@ -488,6 +488,9 @@ export default function Inventory() {
                       <TableCell>{i.supplier || "—"}</TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button size="sm" variant="outline" onClick={() => { setMoveItem(i); setMoveQty(""); setMoveReason(""); }}>Adjust</Button>
+                        <Button size="sm" variant="secondary" onClick={() => { setIssueItem(i); setIssueQty("1"); setIssueEmployeeId(""); setIssueMonths("3"); }}>
+                          <UserCheck className="h-3.5 w-3.5 mr-1" />Issue
+                        </Button>
                         {isSuperAdmin && <Button size="icon" variant="ghost" onClick={() => deleteItem(i.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                       </TableCell>
                     </TableRow>
@@ -596,7 +599,7 @@ export default function Inventory() {
           <DialogHeader>
             <DialogTitle>Bulk Upload Uniforms</DialogTitle>
             <DialogDescription>
-              Upload an .xlsx file. An expense entry (category: Uniforms) will be created automatically.
+              Upload the .xlsx template. Invoice No and Grand Total are read from the file. A batch entry and an accounts payable are created automatically.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -605,31 +608,64 @@ export default function Inventory() {
               <Input type="file" accept=".xlsx,.xls" onChange={(e) => setBulk({ ...bulk, file: e.target.files?.[0] || null })} />
               <Button variant="link" className="h-auto p-0 text-xs" onClick={downloadUniformTemplate}>Download template</Button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Supplier</Label>
-                <Input value={bulk.supplier} onChange={(e) => setBulk({ ...bulk, supplier: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Invoice Reference</Label>
-                <Input value={bulk.invoice_ref} onChange={(e) => setBulk({ ...bulk, invoice_ref: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Invoice Date</Label>
-                <Input type="date" value={bulk.invoice_date} onChange={(e) => setBulk({ ...bulk, invoice_date: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Invoice Amount (LKR)</Label>
-                <Input type="number" step="0.01" value={bulk.invoice_amount} onChange={(e) => setBulk({ ...bulk, invoice_amount: e.target.value })} />
-              </div>
+            <div className="space-y-2">
+              <Label>Supplier (optional)</Label>
+              <Input value={bulk.supplier} onChange={(e) => setBulk({ ...bulk, supplier: e.target.value })} />
             </div>
-            <div className="flex items-center gap-3 rounded-lg border p-3">
-              <input id="bulk_paid" type="checkbox" checked={bulk.is_paid} onChange={(e) => setBulk({ ...bulk, is_paid: e.target.checked })} />
-              <Label htmlFor="bulk_paid" className="cursor-pointer">Payment already made (uncheck if taken on credit)</Label>
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Input value={bulk.notes} onChange={(e) => setBulk({ ...bulk, notes: e.target.value })} />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setBulkOpen(false)}>Cancel</Button>
               <Button onClick={processBulkUpload}><Upload className="h-4 w-4 mr-1" />Upload</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ISSUE TO EMPLOYEE DIALOG */}
+      <Dialog open={!!issueItem} onOpenChange={(v) => !v && setIssueItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Issue Uniform — {issueItem?.item_name}</DialogTitle>
+            <DialogDescription>
+              Charge is auto-split across N months and posted to uniform advances.
+              {issueItem?.unit_cost ? ` Unit cost: LKR ${Number(issueItem.unit_cost).toFixed(2)}` : " No unit cost set — set one first."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Employee</Label>
+              <Select value={issueEmployeeId} onValueChange={setIssueEmployeeId}>
+                <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                <SelectContent>
+                  {employees.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.employee_id} — {e.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input type="number" min="1" value={issueQty} onChange={(e) => setIssueQty(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Deduct over (months)</Label>
+                <Input type="number" min="1" value={issueMonths} onChange={(e) => setIssueMonths(e.target.value)} />
+              </div>
+            </div>
+            {issueItem?.unit_cost && parseInt(issueQty) > 0 && (
+              <div className="rounded-md border p-3 text-sm bg-muted/30">
+                Total: <strong>LKR {(Number(issueItem.unit_cost) * (parseInt(issueQty) || 0)).toLocaleString()}</strong>
+                {" · "}Monthly: <strong>LKR {(Number(issueItem.unit_cost) * (parseInt(issueQty) || 0) / (Math.max(1, parseInt(issueMonths) || 3))).toFixed(2)}</strong>
+                {" × "}{Math.max(1, parseInt(issueMonths) || 3)} months
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIssueItem(null)}>Cancel</Button>
+              <Button onClick={issueToEmployee}><UserCheck className="h-4 w-4 mr-1" />Issue</Button>
             </div>
           </div>
         </DialogContent>
