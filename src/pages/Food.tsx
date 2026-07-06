@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Utensils, Plus, Save, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { CompanyCombobox } from "@/components/CompanyCombobox";
 
 interface Company { id: string; company_name: string; location: string; }
 interface Employee { id: string; employee_id: string; full_name: string; }
