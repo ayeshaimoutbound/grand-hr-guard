@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "lucide-react";
 import AttendanceCalendar from "@/components/attendance/AttendanceCalendar";
+import { CompanyCombobox } from "@/components/CompanyCombobox";
 
 interface AttendanceRecord {
   id: string;
