@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CompanyCombobox } from "@/components/CompanyCombobox";
 import {
   Table,
   TableBody,
@@ -567,18 +568,14 @@ export default function Invoices() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="company_select">Company</Label>
-                <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                  <SelectTrigger id="company_select">
-                    <SelectValue placeholder="Select a company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.company_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CompanyCombobox
+                  id="company_select"
+                  value={selectedCompany}
+                  onChange={setSelectedCompany}
+                  companies={companies}
+                  placeholder="Select a company"
+                />
+
               </div>
               <div className="space-y-2">
                 <Label htmlFor="invoice_month">Invoice Month</Label>

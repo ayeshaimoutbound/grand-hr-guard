@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Utensils, Plus, Save, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { CompanyCombobox } from "@/components/CompanyCombobox";
 
 interface Company { id: string; company_name: string; location: string; }
 interface Employee { id: string; employee_id: string; full_name: string; }
@@ -243,10 +244,17 @@ export default function Food() {
         <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="space-y-2">
             <Label>Company</Label>
-            <Select value={companyId} onValueChange={(v) => { setCompanyId(v); setLocation(""); }}>
-              <SelectTrigger><SelectValue placeholder="Select company" /></SelectTrigger>
-              <SelectContent>{companies.map(c => <SelectItem key={c.id} value={c.id}>{c.company_name}</SelectItem>)}</SelectContent>
-            </Select>
+            <CompanyCombobox
+              value={companyId}
+              onChange={(v) => {
+                setCompanyId(v);
+                const c = companies.find((x) => x.id === v);
+                setLocation(c?.location || "");
+              }}
+              companies={companies}
+              placeholder="Select company"
+              showLocation
+            />
           </div>
           <div className="space-y-2">
             <Label>Location</Label>

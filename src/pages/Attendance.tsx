@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "lucide-react";
 import AttendanceCalendar from "@/components/attendance/AttendanceCalendar";
+import { CompanyCombobox } from "@/components/CompanyCombobox";
 
 interface AttendanceRecord {
   id: string;
@@ -122,18 +123,13 @@ export default function Attendance() {
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[250px] space-y-2">
               <label className="text-sm font-medium">Company</label>
-              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.company_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CompanyCombobox
+                value={selectedCompany}
+                onChange={setSelectedCompany}
+                companies={companies}
+                placeholder="Select a company"
+              />
+
             </div>
 
             {selectedCompany && (
