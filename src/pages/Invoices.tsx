@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CompanyCombobox } from "@/components/CompanyCombobox";
 import {
   Table,
   TableBody,
