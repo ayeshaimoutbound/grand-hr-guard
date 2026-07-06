@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 // Routes "office" role can access (Salaries removed; Inventory added)
-const OFFICE_ALLOWED = ["/employees", "/attendance", "/inventory"];
+const OFFICE_ALLOWED = ["/employees", "/attendance", "/inventory", "/food"];
 // Routes admin+ can access (blocked for office)
 const ADMIN_ONLY = ["/accounts", "/invoices", "/companies", "/salaries", "/dashboard"];
 // Super-admin only
