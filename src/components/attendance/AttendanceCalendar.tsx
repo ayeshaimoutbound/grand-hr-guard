@@ -9,7 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Download, Save, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
@@ -68,6 +69,7 @@ export default function AttendanceCalendar({
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedRank, setSelectedRank] = useState<"OIC" | "SSO" | "JSO" | "LSO" | "">("");
+  const [employeeSearch, setEmployeeSearch] = useState("");
 
   const daysInMonth = new Date(
     selectedMonth.getFullYear(),
@@ -296,6 +298,13 @@ export default function AttendanceCalendar({
   const activeEmployees = employees.filter((emp) =>
     attendanceRecords.some((record) => record.employee_id === emp.id)
   );
+
+  const filteredActiveEmployees = activeEmployees.filter((emp) => {
+    const q = employeeSearch.trim().toLowerCase();
+    if (!q) return true;
+    return emp.full_name.toLowerCase().includes(q) ||
+      emp.employee_id.toLowerCase().includes(q);
+  });
 
   const handleAddEmployeeToCalendar = async () => {
     if (!selectedEmployee || !selectedRank) {
@@ -667,6 +676,17 @@ export default function AttendanceCalendar({
       )}
 
       <Card>
+        <CardContent className="p-3 pb-0">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Search employees by name or ID"
+              value={employeeSearch}
+              onChange={(e) => setEmployeeSearch(e.target.value)}
+            />
+          </div>
+        </CardContent>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
@@ -720,7 +740,7 @@ export default function AttendanceCalendar({
                 </tr>
               </thead>
               <tbody>
-                {activeEmployees.map((employee) => {
+                {filteredActiveEmployees.map((employee) => {
                   const stats = calculateEmployeeStats(employee.id);
                   const employeeRank = getEmployeeRank(employee.id);
                   return (
