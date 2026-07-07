@@ -10,6 +10,7 @@ import {
   Wallet,
   Package,
   Utensils,
+  HandCoins,
   Settings as SettingsIcon,
   LogOut,
 } from "lucide-react";
@@ -33,7 +34,8 @@ const menuItems = [
   { title: "Employees", url: "/employees", icon: Users, key: "employees", roles: ["admin", "super_admin", "office"] },
   { title: "Companies", url: "/companies", icon: Building2, key: "companies", roles: ["admin", "super_admin"] },
   { title: "Attendance", url: "/attendance", icon: Calendar, key: "attendance", roles: ["admin", "super_admin", "office"] },
-  { title: "Salaries", url: "/salaries", icon: DollarSign, key: "salaries", roles: ["admin", "super_admin"] },
+  { title: "Salaries", url: "/salaries", icon: DollarSign, key: "salaries", roles: ["admin", "super_admin", "office"] },
+  { title: "Advances", url: "/advances", icon: HandCoins, key: "advances", roles: ["admin", "super_admin", "office"] },
   { title: "Invoices", url: "/invoices", icon: FileText, key: "invoices", roles: ["admin", "super_admin"] },
   { title: "Accounts", url: "/accounts", icon: Wallet, key: "accounts", roles: ["admin", "super_admin"] },
   { title: "Inventory", url: "/inventory", icon: Package, key: "inventory", roles: ["admin", "super_admin", "office"] },

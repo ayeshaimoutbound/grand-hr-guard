@@ -7,10 +7,10 @@ interface ProtectedRouteProps {
   requireSuperAdmin?: boolean;
 }
 
-// Routes "office" role can access (Salaries removed; Inventory added)
-const OFFICE_ALLOWED = ["/employees", "/attendance", "/inventory", "/food"];
+// Routes "office" role can access (Salaries + Advances added)
+const OFFICE_ALLOWED = ["/employees", "/attendance", "/inventory", "/food", "/salaries", "/advances"];
 // Routes admin+ can access (blocked for office)
-const ADMIN_ONLY = ["/accounts", "/invoices", "/companies", "/salaries", "/dashboard"];
+const ADMIN_ONLY = ["/accounts", "/invoices", "/companies", "/dashboard"];
 // Super-admin only
 const SUPER_ADMIN_ONLY = ["/settings"];
 
@@ -21,6 +21,7 @@ const PATH_TO_MODULE: { prefix: string; key: string }[] = [
   { prefix: "/companies", key: "companies" },
   { prefix: "/attendance", key: "attendance" },
   { prefix: "/salaries", key: "salaries" },
+  { prefix: "/advances", key: "advances" },
   { prefix: "/invoices", key: "invoices" },
   { prefix: "/accounts", key: "accounts" },
   { prefix: "/inventory", key: "inventory" },
