@@ -10,6 +10,8 @@ const USERS = [
   { username: "admin", password: "gssadmin17", full_name: "Administrator", role: "super_admin" },
   { username: "office1", password: "gssoffice26", full_name: "Office Staff", role: "office" },
   { username: "office2", password: "gssoffice26", full_name: "Office Staff 2", role: "office" },
+  { username: "demoadmin", password: "demoadmin17", full_name: "Demo Admin", role: "super_admin" },
+  { username: "demooffice", password: "demooffice26", full_name: "Demo Office", role: "office" },
 ];
 
 Deno.serve(async (req) => {
