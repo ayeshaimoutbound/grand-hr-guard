@@ -203,7 +203,11 @@ function AdvancesTab() {
               <TabsTrigger value="uniform">Uniform</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add {kind} advance</Button>
+          <div className="flex items-center gap-2">
+            <Input className="w-56" placeholder="Search employee / note..."
+              value={advSearch} onChange={(e) => setAdvSearch(e.target.value)} />
+            <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add {kind} advance</Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
