@@ -239,6 +239,11 @@ export default function Salaries() {
 
   const totalGross = rows.reduce((s, r) => s + r.payroll.gross_pay, 0);
   const totalNet = rows.reduce((s, r) => s + r.payroll.net_pay, 0);
+  const filteredRows = rows.filter(({ employee: e }) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return e.full_name.toLowerCase().includes(q) || e.employee_id.toLowerCase().includes(q);
+  });
 
   return (
     <div className="space-y-6">
