@@ -146,6 +146,13 @@ function AdvancesTab() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [rows, setRows] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [advSearch, setAdvSearch] = useState("");
+  const visibleRows = rows.filter(r => {
+    const q = advSearch.trim().toLowerCase();
+    if (!q) return true;
+    return `${r.employees?.full_name || ""} ${r.employees?.employee_id || ""} ${r.notes || ""} ${r.companies?.company_name || ""}`
+      .toLowerCase().includes(q);
+  });
   const [form, setForm] = useState({ employee_id: "", company_id: "", advance_date: format(new Date(), "yyyy-MM-dd"), amount: "", notes: "" });
 
   const table = kind === "cash" ? "cash_advances" : kind === "food" ? "food_advances" : "uniform_advances";
