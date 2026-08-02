@@ -274,7 +274,17 @@ export default function Salaries() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Monthly Payroll Report</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CardTitle>Monthly Payroll Report</CardTitle>
+            <Input
+              placeholder="Search employee by name or ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
+        </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -293,9 +303,9 @@ export default function Salaries() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.length === 0 ? (
+              {filteredRows.length === 0 ? (
                 <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">No payroll data for selected month</TableCell></TableRow>
-              ) : rows.map(({ employee: e, payroll: p }) => (
+              ) : filteredRows.map(({ employee: e, payroll: p }) => (
                 <Collapsible key={e.id} asChild>
                   <>
                     <TableRow>
