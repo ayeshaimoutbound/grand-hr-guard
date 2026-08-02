@@ -47,6 +47,7 @@ export default function Accounts() {
 function PaymentsTab() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [filter, setFilter] = useState<"all" | "unpaid" | "partial" | "paid">("all");
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     const { data } = await supabase
