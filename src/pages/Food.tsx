@@ -38,6 +38,7 @@ export default function Food() {
   const [rateId, setRateId] = useState<string | null>(null);
   const [vendorId, setVendorId] = useState<string>("");
   const [rows, setRows] = useState<ChargeRow[]>([]);
+  const [rowSearch, setRowSearch] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
   const [manualEmp, setManualEmp] = useState("");
   const [vendorOpen, setVendorOpen] = useState(false);
