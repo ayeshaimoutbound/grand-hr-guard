@@ -153,7 +153,18 @@ export default function Food() {
     setManualEmp(""); setManualOpen(false);
   };
 
-  const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
+  const removeRow = async (i: number) => {
+    const r = rows[i];
+    if (r?.existingId) {
+      if (!confirm("Remove this saved food entry? The salary food advance deduction will also be removed.")) return;
+      const { error } = await supabase.from("food_charges").delete().eq("id", r.existingId);
+      if (error) { toast.error(error.message); return; }
+      await supabase.from("food_advances").delete()
+        .eq("employee_id", r.employee_id).eq("advance_date", monthStart);
+      toast.success("Food entry removed — salary deduction updated");
+    }
+    setRows(prev => prev.filter((_, idx) => idx !== i));
+  };
 
   const saveRate = async () => {
     if (!companyId) return;
