@@ -38,6 +38,7 @@ export default function Food() {
   const [rateId, setRateId] = useState<string | null>(null);
   const [vendorId, setVendorId] = useState<string>("");
   const [rows, setRows] = useState<ChargeRow[]>([]);
+  const [rowSearch, setRowSearch] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
   const [manualEmp, setManualEmp] = useState("");
   const [vendorOpen, setVendorOpen] = useState(false);
@@ -153,7 +154,18 @@ export default function Food() {
     setManualEmp(""); setManualOpen(false);
   };
 
-  const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
+  const removeRow = async (i: number) => {
+    const r = rows[i];
+    if (r?.existingId) {
+      if (!confirm("Remove this saved food entry? The salary food advance deduction will also be removed.")) return;
+      const { error } = await supabase.from("food_charges").delete().eq("id", r.existingId);
+      if (error) { toast.error(error.message); return; }
+      await supabase.from("food_advances").delete()
+        .eq("employee_id", r.employee_id).eq("advance_date", monthStart);
+      toast.success("Food entry removed — salary deduction updated");
+    }
+    setRows(prev => prev.filter((_, idx) => idx !== i));
+  };
 
   const saveRate = async () => {
     if (!companyId) return;
@@ -305,7 +317,11 @@ export default function Food() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <CardTitle>Employees ({rows.length})</CardTitle>
+              <div className="flex items-center gap-3">
+                <CardTitle>Employees ({rows.length})</CardTitle>
+                <Input className="w-56" placeholder="Search employee..."
+                  value={rowSearch} onChange={(e) => setRowSearch(e.target.value)} />
+              </div>
               <div className="flex items-center gap-2">
                 <div className="w-64">
                   <Select value={vendorId} onValueChange={setVendorId}>
@@ -335,7 +351,9 @@ export default function Food() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r, i) => (
+                  {rows.map((r, i) => [r, i] as [ChargeRow, number])
+                    .filter(([r]) => !rowSearch.trim() || empName(r.employee_id).toLowerCase().includes(rowSearch.trim().toLowerCase()))
+                    .map(([r, i]) => (
                     <TableRow key={r.employee_id}>
                       <TableCell>
                         {empName(r.employee_id)}

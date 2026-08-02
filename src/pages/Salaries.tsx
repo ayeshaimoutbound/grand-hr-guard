@@ -45,6 +45,7 @@ export default function Salaries() {
   const [rows, setRows] = useState<Row[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
   const [dailyMinWage, setDailyMinWage] = useState<number>(1200);
   const [manualMap, setManualMap] = useState<Record<string, ManualRow>>({});
   const [editEmp, setEditEmp] = useState<Employee | null>(null);
@@ -238,6 +239,11 @@ export default function Salaries() {
 
   const totalGross = rows.reduce((s, r) => s + r.payroll.gross_pay, 0);
   const totalNet = rows.reduce((s, r) => s + r.payroll.net_pay, 0);
+  const filteredRows = rows.filter(({ employee: e }) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return e.full_name.toLowerCase().includes(q) || e.employee_id.toLowerCase().includes(q);
+  });
 
   return (
     <div className="space-y-6">
@@ -273,7 +279,17 @@ export default function Salaries() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Monthly Payroll Report</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CardTitle>Monthly Payroll Report</CardTitle>
+            <Input
+              placeholder="Search employee by name or ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
+        </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -292,9 +308,9 @@ export default function Salaries() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.length === 0 ? (
+              {filteredRows.length === 0 ? (
                 <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">No payroll data for selected month</TableCell></TableRow>
-              ) : rows.map(({ employee: e, payroll: p }) => (
+              ) : filteredRows.map(({ employee: e, payroll: p }) => (
                 <Collapsible key={e.id} asChild>
                   <>
                     <TableRow>

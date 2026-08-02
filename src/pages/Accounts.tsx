@@ -47,6 +47,7 @@ export default function Accounts() {
 function PaymentsTab() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [filter, setFilter] = useState<"all" | "unpaid" | "partial" | "paid">("all");
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     const { data } = await supabase
@@ -65,6 +66,12 @@ function PaymentsTab() {
   };
 
   const filtered = invoices.filter(i => {
+    const q = search.trim().toLowerCase();
+    if (q && !(
+      (i.invoice_number || "").toLowerCase().includes(q) ||
+      (i.companies?.company_name || "").toLowerCase().includes(q) ||
+      (i.companies?.location || "").toLowerCase().includes(q)
+    )) return false;
     if (filter === "all") return true;
     const s = statusFor(i).toLowerCase();
     return filter === s || (filter === "partial" && s === "partial");
@@ -72,17 +79,21 @@ function PaymentsTab() {
 
   return (
     <Card className="mt-4">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Invoice Payments</CardTitle>
-        <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="unpaid">Unpaid</SelectItem>
-            <SelectItem value="partial">Partially Paid</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Input className="w-56" placeholder="Search invoice / company..."
+            value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="unpaid">Unpaid</SelectItem>
+              <SelectItem value="partial">Partially Paid</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground mb-3">Use the <b>Invoices</b> page to record payments. This tab is a read-only ledger.</p>
@@ -135,6 +146,13 @@ function AdvancesTab() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [rows, setRows] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [advSearch, setAdvSearch] = useState("");
+  const visibleRows = rows.filter(r => {
+    const q = advSearch.trim().toLowerCase();
+    if (!q) return true;
+    return `${r.employees?.full_name || ""} ${r.employees?.employee_id || ""} ${r.notes || ""} ${r.companies?.company_name || ""}`
+      .toLowerCase().includes(q);
+  });
   const [form, setForm] = useState({ employee_id: "", company_id: "", advance_date: format(new Date(), "yyyy-MM-dd"), amount: "", notes: "" });
 
   const table = kind === "cash" ? "cash_advances" : kind === "food" ? "food_advances" : "uniform_advances";
@@ -192,7 +210,11 @@ function AdvancesTab() {
               <TabsTrigger value="uniform">Uniform</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add {kind} advance</Button>
+          <div className="flex items-center gap-2">
+            <Input className="w-56" placeholder="Search employee / note..."
+              value={advSearch} onChange={(e) => setAdvSearch(e.target.value)} />
+            <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add {kind} advance</Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -208,9 +230,9 @@ function AdvancesTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? (
+            {visibleRows.length === 0 ? (
               <TableRow><TableCell colSpan={kind === "food" ? 6 : 5} className="text-center text-muted-foreground">No advances logged</TableCell></TableRow>
-            ) : rows.map(r => (
+            ) : visibleRows.map(r => (
               <TableRow key={r.id}>
                 <TableCell>{new Date(r.advance_date).toLocaleDateString()}</TableCell>
                 <TableCell>{r.employees?.full_name} ({r.employees?.employee_id})</TableCell>

@@ -94,6 +94,16 @@ export default function Invoices() {
   const [paymentDate, setPaymentDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentNotes, setPaymentNotes] = useState("");
   const [savingPayment, setSavingPayment] = useState(false);
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const filteredInvoices = recentInvoices.filter((inv: any) => {
+    const q = invoiceSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (inv.invoice_number || "").toLowerCase().includes(q) ||
+      (inv.companies?.company_name || "").toLowerCase().includes(q) ||
+      (inv.companies?.location || "").toLowerCase().includes(q)
+    );
+  });
 
 
   useEffect(() => {
@@ -450,7 +460,15 @@ export default function Invoices() {
 
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Recent Invoices</CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CardTitle>Recent Invoices</CardTitle>
+            <Input
+              placeholder="Search invoice # or company..."
+              value={invoiceSearch}
+              onChange={(e) => setInvoiceSearch(e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -467,14 +485,14 @@ export default function Invoices() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentInvoices.length === 0 ? (
+              {filteredInvoices.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground">
-                    No invoices generated yet
+                    No invoices found
                   </TableCell>
                 </TableRow>
               ) : (
-                recentInvoices.map((invoice) => {
+                filteredInvoices.map((invoice) => {
                   const received = Number(invoice.amount_received || 0);
                   const balance = invoice.amount_to_collect - received;
                   return (
