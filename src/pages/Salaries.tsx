@@ -45,6 +45,7 @@ export default function Salaries() {
   const [rows, setRows] = useState<Row[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
   const [dailyMinWage, setDailyMinWage] = useState<number>(1200);
   const [manualMap, setManualMap] = useState<Record<string, ManualRow>>({});
   const [editEmp, setEditEmp] = useState<Employee | null>(null);
