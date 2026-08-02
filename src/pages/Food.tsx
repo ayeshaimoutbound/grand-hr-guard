@@ -316,7 +316,11 @@ export default function Food() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <CardTitle>Employees ({rows.length})</CardTitle>
+              <div className="flex items-center gap-3">
+                <CardTitle>Employees ({rows.length})</CardTitle>
+                <Input className="w-56" placeholder="Search employee..."
+                  value={rowSearch} onChange={(e) => setRowSearch(e.target.value)} />
+              </div>
               <div className="flex items-center gap-2">
                 <div className="w-64">
                   <Select value={vendorId} onValueChange={setVendorId}>
