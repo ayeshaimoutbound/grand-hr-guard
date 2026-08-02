@@ -65,6 +65,12 @@ function PaymentsTab() {
   };
 
   const filtered = invoices.filter(i => {
+    const q = search.trim().toLowerCase();
+    if (q && !(
+      (i.invoice_number || "").toLowerCase().includes(q) ||
+      (i.companies?.company_name || "").toLowerCase().includes(q) ||
+      (i.companies?.location || "").toLowerCase().includes(q)
+    )) return false;
     if (filter === "all") return true;
     const s = statusFor(i).toLowerCase();
     return filter === s || (filter === "partial" && s === "partial");
@@ -72,17 +78,21 @@ function PaymentsTab() {
 
   return (
     <Card className="mt-4">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Invoice Payments</CardTitle>
-        <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="unpaid">Unpaid</SelectItem>
-            <SelectItem value="partial">Partially Paid</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Input className="w-56" placeholder="Search invoice / company..."
+            value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="unpaid">Unpaid</SelectItem>
+              <SelectItem value="partial">Partially Paid</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground mb-3">Use the <b>Invoices</b> page to record payments. This tab is a read-only ledger.</p>
