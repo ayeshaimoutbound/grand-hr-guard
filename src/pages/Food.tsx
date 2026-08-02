@@ -351,7 +351,9 @@ export default function Food() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r, i) => (
+                  {rows.map((r, i) => [r, i] as [ChargeRow, number])
+                    .filter(([r]) => !rowSearch.trim() || empName(r.employee_id).toLowerCase().includes(rowSearch.trim().toLowerCase()))
+                    .map(([r, i]) => (
                     <TableRow key={r.employee_id}>
                       <TableCell>
                         {empName(r.employee_id)}
