@@ -230,9 +230,9 @@ function AdvancesTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? (
+            {visibleRows.length === 0 ? (
               <TableRow><TableCell colSpan={kind === "food" ? 6 : 5} className="text-center text-muted-foreground">No advances logged</TableCell></TableRow>
-            ) : rows.map(r => (
+            ) : visibleRows.map(r => (
               <TableRow key={r.id}>
                 <TableCell>{new Date(r.advance_date).toLocaleDateString()}</TableCell>
                 <TableCell>{r.employees?.full_name} ({r.employees?.employee_id})</TableCell>
