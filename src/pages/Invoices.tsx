@@ -94,6 +94,16 @@ export default function Invoices() {
   const [paymentDate, setPaymentDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentNotes, setPaymentNotes] = useState("");
   const [savingPayment, setSavingPayment] = useState(false);
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const filteredInvoices = recentInvoices.filter((inv: any) => {
+    const q = invoiceSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (inv.invoice_number || "").toLowerCase().includes(q) ||
+      (inv.companies?.company_name || "").toLowerCase().includes(q) ||
+      (inv.companies?.location || "").toLowerCase().includes(q)
+    );
+  });
 
 
   useEffect(() => {
