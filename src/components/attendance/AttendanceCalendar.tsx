@@ -776,11 +776,10 @@ export default function AttendanceCalendar({
                 </tr>
               </thead>
               <tbody>
-                {filteredActiveEmployees.map((employee) => {
-                  const stats = calculateEmployeeStats(employee.id);
-                  const employeeRank = getEmployeeRank(employee.id);
+                {filteredRosterRows.map(({ employee, rank: employeeRank }) => {
+                  const stats = calculateEmployeeStats(employee.id, employeeRank);
                   return (
-                    <tr key={employee.id} className="border-b hover:bg-muted/20">
+                    <tr key={`${employee.id}-${employeeRank}`} className="border-b hover:bg-muted/20">
                       <td className="sticky left-0 z-10 bg-background p-2 border-r text-sm">
                         {employee.employee_id}
                       </td>
@@ -792,8 +791,8 @@ export default function AttendanceCalendar({
                               variant="ghost"
                               size="sm"
                               className="h-5 w-5 p-0 text-destructive hover:text-destructive"
-                              title="Remove this employee's attendance for this month"
-                              onClick={() => handleRemoveEmployeeFromMonth(employee.id, employee.full_name)}
+                              title={`Remove this employee's ${employeeRank} attendance for this month`}
+                              onClick={() => handleRemoveEmployeeFromMonth(employee.id, employeeRank, employee.full_name)}
                             >
                               ×
                             </Button>
@@ -804,7 +803,7 @@ export default function AttendanceCalendar({
                         {canEdit ? (
                           <Select
                             value={employeeRank !== "-" ? employeeRank : undefined}
-                            onValueChange={(v) => handleChangeRank(employee.id, v as any)}
+                            onValueChange={(v) => handleChangeRank(employee.id, employeeRank, v as any)}
                           >
                             <SelectTrigger className="h-7 w-[80px] mx-auto">
                               <SelectValue placeholder="-" />
@@ -822,7 +821,7 @@ export default function AttendanceCalendar({
                       </td>
                       {dates.map((date) =>
                         ["Day", "Night"].map((shift) => {
-                          const attendance = getAttendance(employee.id, date, shift as "Day" | "Night");
+                          const attendance = getAttendance(employee.id, employeeRank, date, shift as "Day" | "Night");
 
                           return (
                             <td
@@ -854,6 +853,7 @@ export default function AttendanceCalendar({
                                   onClick={() => {
                                     handleMarkAttendance(
                                       employee.id,
+                                      employeeRank,
                                       date,
                                       shift as "Day" | "Night"
                                     );
@@ -873,6 +873,7 @@ export default function AttendanceCalendar({
                   );
                 })}
               </tbody>
+
             </table>
           </div>
         </CardContent>
