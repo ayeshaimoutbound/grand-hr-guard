@@ -917,7 +917,9 @@ export type Database = {
           food: number | null
           gross_shift_total: number | null
           id: string
+          is_paid: boolean
           other_deductions: number | null
+          paid_at: string | null
           pay_per_shift: number | null
           salary_advance: number | null
           salary_advance_2: number
@@ -938,7 +940,9 @@ export type Database = {
           food?: number | null
           gross_shift_total?: number | null
           id?: string
+          is_paid?: boolean
           other_deductions?: number | null
+          paid_at?: string | null
           pay_per_shift?: number | null
           salary_advance?: number | null
           salary_advance_2?: number
@@ -959,7 +963,9 @@ export type Database = {
           food?: number | null
           gross_shift_total?: number | null
           id?: string
+          is_paid?: boolean
           other_deductions?: number | null
+          paid_at?: string | null
           pay_per_shift?: number | null
           salary_advance?: number | null
           salary_advance_2?: number
