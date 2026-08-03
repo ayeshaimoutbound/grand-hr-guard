@@ -468,15 +468,31 @@ export default function Invoices() {
       <Card className="shadow-card">
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle>Recent Invoices</CardTitle>
-            <Input
-              placeholder="Search invoice # or company..."
-              value={invoiceSearch}
-              onChange={(e) => setInvoiceSearch(e.target.value)}
-              className="max-w-xs"
-            />
+            <CardTitle>All Invoices</CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={monthFilter} onValueChange={setMonthFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All months" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All months</SelectItem>
+                  {availableMonths.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {new Date(`${m}-01`).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Search invoice # or company..."
+                value={invoiceSearch}
+                onChange={(e) => setInvoiceSearch(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
           </div>
         </CardHeader>
+
         <CardContent>
           <Table>
             <TableHeader>
