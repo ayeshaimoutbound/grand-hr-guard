@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "@/lib/pdfHeader";
 import OvertimeSection from "@/components/attendance/OvertimeSection";
+import { EmployeeCombobox } from "@/components/EmployeeCombobox";
 
 interface Employee {
   id: string;
@@ -79,21 +80,9 @@ export default function AttendanceCalendar({
 
   const dates = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const getAttendance = (employeeId: string, date: number, shift: "Day" | "Night") => {
-    const dateStr = `${selectedMonth.getFullYear()}-${String(
-      selectedMonth.getMonth() + 1
-    ).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
-    
-    return attendanceRecords.find(
-      (record) =>
-        record.employee_id === employeeId &&
-        record.attendance_date === dateStr &&
-        record.shift_type === shift
-    );
-  };
-
-  const handleMarkAttendance = async (
+  const getAttendance = (
     employeeId: string,
+    rank: string,
     date: number,
     shift: "Day" | "Night"
   ) => {
@@ -101,8 +90,26 @@ export default function AttendanceCalendar({
       selectedMonth.getMonth() + 1
     ).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
 
-    const existing = getAttendance(employeeId, date, shift);
-    const employeeRank = getEmployeeRank(employeeId) as "OIC" | "SSO" | "JSO" | "LSO";
+    return attendanceRecords.find(
+      (record) =>
+        record.employee_id === employeeId &&
+        record.rank === rank &&
+        record.attendance_date === dateStr &&
+        record.shift_type === shift
+    );
+  };
+
+  const handleMarkAttendance = async (
+    employeeId: string,
+    rank: string,
+    date: number,
+    shift: "Day" | "Night"
+  ) => {
+    const dateStr = `${selectedMonth.getFullYear()}-${String(
+      selectedMonth.getMonth() + 1
+    ).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
+
+    const existing = getAttendance(employeeId, rank, date, shift);
 
     if (existing) {
       const { error } = await supabase
@@ -122,7 +129,7 @@ export default function AttendanceCalendar({
           attendance_date: dateStr,
           present: true,
           shift_type: shift,
-          rank: employeeRank,
+          rank: rank as "OIC" | "SSO" | "JSO" | "LSO",
         },
       ]);
 
@@ -156,14 +163,15 @@ export default function AttendanceCalendar({
     return { start, end };
   };
 
-  const handleRemoveEmployeeFromMonth = async (employeeId: string, name: string) => {
-    if (!confirm(`Remove ALL attendance for ${name} in this month at ${selectedCompany.company_name}? This cannot be undone.`)) return;
+  const handleRemoveEmployeeFromMonth = async (employeeId: string, rank: string, name: string) => {
+    if (!confirm(`Remove ALL ${rank} attendance for ${name} in this month at ${selectedCompany.company_name}? This cannot be undone.`)) return;
     const { start, end } = monthDateRange();
     const { error } = await supabase
       .from("attendance")
       .delete()
       .eq("company_id", selectedCompany.id)
       .eq("employee_id", employeeId)
+      .eq("rank", rank as "OIC" | "SSO" | "JSO" | "LSO")
       .gte("attendance_date", start)
       .lte("attendance_date", end);
     if (error) { toast.error("Error removing employee: " + error.message); return; }
@@ -171,13 +179,19 @@ export default function AttendanceCalendar({
     onRefresh();
   };
 
-  const handleChangeRank = async (employeeId: string, newRank: "OIC" | "SSO" | "JSO" | "LSO") => {
+  const handleChangeRank = async (
+    employeeId: string,
+    oldRank: string,
+    newRank: "OIC" | "SSO" | "JSO" | "LSO"
+  ) => {
+    if (oldRank === newRank) return;
     const { start, end } = monthDateRange();
     const { error } = await supabase
       .from("attendance")
       .update({ rank: newRank })
       .eq("company_id", selectedCompany.id)
       .eq("employee_id", employeeId)
+      .eq("rank", oldRank as "OIC" | "SSO" | "JSO" | "LSO")
       .gte("attendance_date", start)
       .lte("attendance_date", end);
     if (error) { toast.error("Error updating rank: " + error.message); return; }
@@ -185,32 +199,40 @@ export default function AttendanceCalendar({
     onRefresh();
   };
 
-
-  const calculateEmployeeStats = (employeeId: string) => {
-    const records = attendanceRecords.filter(
-      (r) => r.employee_id === employeeId && r.present
+  // One row per employee + rank combination (an employee can serve in several ranks)
+  const rosterRows = (() => {
+    const seen = new Map<string, { employee: Employee; rank: string }>();
+    attendanceRecords.forEach((r) => {
+      const emp = employees.find((e) => e.id === r.employee_id);
+      if (!emp) return;
+      const key = `${r.employee_id}|${r.rank}`;
+      if (!seen.has(key)) seen.set(key, { employee: emp, rank: r.rank });
+    });
+    return Array.from(seen.values()).sort((a, b) =>
+      a.employee.full_name.localeCompare(b.employee.full_name) || a.rank.localeCompare(b.rank)
     );
-    
+  })();
+
+  const calculateEmployeeStats = (employeeId: string, rank?: string) => {
+    const records = attendanceRecords.filter(
+      (r) => r.employee_id === employeeId && r.present && (rank ? r.rank === rank : true)
+    );
+
     const totalShifts = records.length;
 
     return { totalShifts };
   };
 
-  const getEmployeeRank = (employeeId: string) => {
-    const record = attendanceRecords.find((r) => r.employee_id === employeeId);
-    return record?.rank || "-";
-  };
+  const getEmployeeRanks = (employeeId: string) =>
+    Array.from(
+      new Set(attendanceRecords.filter((r) => r.employee_id === employeeId).map((r) => r.rank))
+    );
 
   const calculateTotals = () => {
-    let totalShifts = 0;
-
-    employees.forEach((emp) => {
-      const stats = calculateEmployeeStats(emp.id);
-      totalShifts += stats.totalShifts;
-    });
-
+    const totalShifts = attendanceRecords.filter((r) => r.present).length;
     return { totalShifts };
   };
+
 
   const calculateShiftReport = () => {
     const report = {
@@ -247,9 +269,9 @@ export default function AttendanceCalendar({
 
   const handleExportPDF = () => {
     const monthLabel = selectedMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-    const rows = activeEmployees.map((emp) => {
-      const stats = calculateEmployeeStats(emp.id);
-      return `<tr><td>${emp.employee_id}</td><td>${emp.full_name}</td><td>${getEmployeeRank(emp.id)}</td><td style="text-align:right">${stats.totalShifts}</td></tr>`;
+    const rows = rosterRows.map(({ employee, rank }) => {
+      const stats = calculateEmployeeStats(employee.id, rank);
+      return `<tr><td>${employee.employee_id}</td><td>${employee.full_name}</td><td>${rank}</td><td style="text-align:right">${stats.totalShifts}</td></tr>`;
     }).join("");
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Attendance ${selectedCompany.company_name} ${monthLabel}</title>
@@ -299,16 +321,22 @@ export default function AttendanceCalendar({
     attendanceRecords.some((record) => record.employee_id === emp.id)
   );
 
-  const filteredActiveEmployees = activeEmployees.filter((emp) => {
+  const filteredRosterRows = rosterRows.filter(({ employee, rank }) => {
     const q = employeeSearch.trim().toLowerCase();
     if (!q) return true;
-    return emp.full_name.toLowerCase().includes(q) ||
-      emp.employee_id.toLowerCase().includes(q);
+    return employee.full_name.toLowerCase().includes(q) ||
+      employee.employee_id.toLowerCase().includes(q) ||
+      rank.toLowerCase().includes(q);
   });
 
   const handleAddEmployeeToCalendar = async () => {
     if (!selectedEmployee || !selectedRank) {
       toast.error("Please select both employee and rank");
+      return;
+    }
+
+    if (getEmployeeRanks(selectedEmployee).includes(selectedRank)) {
+      toast.error("This employee is already on the calendar with that rank");
       return;
     }
 
@@ -340,10 +368,9 @@ export default function AttendanceCalendar({
     toast.success("Employee added to calendar");
   };
 
-  // Get employees not yet in the calendar
-  const availableEmployees = employees.filter(
-    (emp) => !activeEmployees.some((active) => active.id === emp.id)
-  );
+  // An employee may be added again under a different rank, so all employees stay selectable
+  const availableEmployees = employees;
+
 
   const handleSaveAllAttendance = async () => {
     try {
@@ -370,18 +397,28 @@ export default function AttendanceCalendar({
   };
 
   const updateEmployeeSalary = async (employeeId: string) => {
-    const stats = calculateEmployeeStats(employeeId);
-    const rank = getEmployeeRank(employeeId) as "OIC" | "SSO" | "JSO" | "LSO";
-    
-    let payPerShift = 0;
-    switch (rank) {
-      case "OIC": payPerShift = selectedCompany.pay_oic; break;
-      case "SSO": payPerShift = selectedCompany.pay_sso; break;
-      case "JSO": payPerShift = selectedCompany.pay_jso; break;
-      case "LSO": payPerShift = selectedCompany.pay_lso; break;
-    }
+    // An employee may have worked several ranks this month — pay each rank at its own rate
+    const rateFor = (rank: string) => {
+      switch (rank) {
+        case "OIC": return selectedCompany.pay_oic;
+        case "SSO": return selectedCompany.pay_sso;
+        case "JSO": return selectedCompany.pay_jso;
+        case "LSO": return selectedCompany.pay_lso;
+        default: return 0;
+      }
+    };
 
-    const grossShiftTotal = stats.totalShifts * payPerShift;
+    const ranks = getEmployeeRanks(employeeId);
+    let totalShifts = 0;
+    let grossShiftTotal = 0;
+    ranks.forEach((rank) => {
+      const shifts = calculateEmployeeStats(employeeId, rank).totalShifts;
+      totalShifts += shifts;
+      grossShiftTotal += shifts * rateFor(rank);
+    });
+    const stats = { totalShifts };
+    const payPerShift = totalShifts > 0 ? grossShiftTotal / totalShifts : 0;
+
     const salaryMonth = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
 
     // Check if salary record exists
@@ -632,19 +669,14 @@ export default function AttendanceCalendar({
             <div className="flex gap-4 items-end">
               <div className="flex-1 space-y-2">
                 <label className="text-sm font-medium">Select Employee</label>
-                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableEmployees.map((emp) => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <EmployeeCombobox
+                  value={selectedEmployee}
+                  onChange={setSelectedEmployee}
+                  employees={availableEmployees}
+                  placeholder="Search & choose employee"
+                />
               </div>
+
               <div className="flex-1 space-y-2">
                 <label className="text-sm font-medium">Select Rank</label>
                 <Select value={selectedRank} onValueChange={(value) => setSelectedRank(value as "OIC" | "SSO" | "JSO" | "LSO")}>
@@ -740,11 +772,10 @@ export default function AttendanceCalendar({
                 </tr>
               </thead>
               <tbody>
-                {filteredActiveEmployees.map((employee) => {
-                  const stats = calculateEmployeeStats(employee.id);
-                  const employeeRank = getEmployeeRank(employee.id);
+                {filteredRosterRows.map(({ employee, rank: employeeRank }) => {
+                  const stats = calculateEmployeeStats(employee.id, employeeRank);
                   return (
-                    <tr key={employee.id} className="border-b hover:bg-muted/20">
+                    <tr key={`${employee.id}-${employeeRank}`} className="border-b hover:bg-muted/20">
                       <td className="sticky left-0 z-10 bg-background p-2 border-r text-sm">
                         {employee.employee_id}
                       </td>
@@ -756,8 +787,8 @@ export default function AttendanceCalendar({
                               variant="ghost"
                               size="sm"
                               className="h-5 w-5 p-0 text-destructive hover:text-destructive"
-                              title="Remove this employee's attendance for this month"
-                              onClick={() => handleRemoveEmployeeFromMonth(employee.id, employee.full_name)}
+                              title={`Remove this employee's ${employeeRank} attendance for this month`}
+                              onClick={() => handleRemoveEmployeeFromMonth(employee.id, employeeRank, employee.full_name)}
                             >
                               ×
                             </Button>
@@ -768,7 +799,7 @@ export default function AttendanceCalendar({
                         {canEdit ? (
                           <Select
                             value={employeeRank !== "-" ? employeeRank : undefined}
-                            onValueChange={(v) => handleChangeRank(employee.id, v as any)}
+                            onValueChange={(v) => handleChangeRank(employee.id, employeeRank, v as any)}
                           >
                             <SelectTrigger className="h-7 w-[80px] mx-auto">
                               <SelectValue placeholder="-" />
@@ -786,7 +817,7 @@ export default function AttendanceCalendar({
                       </td>
                       {dates.map((date) =>
                         ["Day", "Night"].map((shift) => {
-                          const attendance = getAttendance(employee.id, date, shift as "Day" | "Night");
+                          const attendance = getAttendance(employee.id, employeeRank, date, shift as "Day" | "Night");
 
                           return (
                             <td
@@ -818,6 +849,7 @@ export default function AttendanceCalendar({
                                   onClick={() => {
                                     handleMarkAttendance(
                                       employee.id,
+                                      employeeRank,
                                       date,
                                       shift as "Day" | "Night"
                                     );
@@ -837,6 +869,7 @@ export default function AttendanceCalendar({
                   );
                 })}
               </tbody>
+
             </table>
           </div>
         </CardContent>

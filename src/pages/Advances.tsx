@@ -11,9 +11,8 @@ import { Search, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { EmployeeCombobox } from "@/components/EmployeeCombobox";
+
 
 interface Employee { id: string; employee_id: string; full_name: string; }
 interface Advance {
@@ -119,17 +118,14 @@ export default function Advances() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <div className="space-y-1 md:col-span-2">
               <Label>Employee</Label>
-              <Select value={employeeId} onValueChange={setEmployeeId}>
-                <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {employees.map(e => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.full_name} ({e.employee_id})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <EmployeeCombobox
+                value={employeeId}
+                onChange={setEmployeeId}
+                employees={employees}
+                placeholder="Search & select employee"
+              />
             </div>
+
             <div className="space-y-1">
               <Label>Date</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />

@@ -19,6 +19,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { computePayroll, PayrollLine, type CompanyRateRow, type AttendanceRow, type ManualDeductions } from "@/lib/salaryEngine";
 
 interface ManualRow extends ManualDeductions {
@@ -48,6 +49,7 @@ export default function Salaries() {
   const [search, setSearch] = useState("");
   const [dailyMinWage, setDailyMinWage] = useState<number>(1200);
   const [manualMap, setManualMap] = useState<Record<string, ManualRow>>({});
+  const [paidMap, setPaidMap] = useState<Record<string, boolean>>({});
   const [editEmp, setEditEmp] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState<ManualRow>({});
   const { isSuperAdmin, isAdmin } = useAuth();
@@ -102,6 +104,16 @@ export default function Salaries() {
     }
     setManualMap(mMap);
 
+    const { data: paidRows } = await supabase
+      .from("salaries")
+      .select("employee_id,is_paid")
+      .eq("salary_month", startDate);
+    const pMap: Record<string, boolean> = {};
+    for (const r of (paidRows || []) as any[]) pMap[r.employee_id] = !!r.is_paid;
+    setPaidMap(pMap);
+
+
+
     const result: Row[] = employees.map((emp) => {
       const payroll = computePayroll({
         employeeId: emp.id,
@@ -125,10 +137,30 @@ export default function Salaries() {
     setRows(result);
   };
 
+  const togglePaid = async (employeeId: string, next: boolean) => {
+    const salaryMonth = `${selectedMonth}-01`;
+    const { data: existing } = await supabase
+      .from("salaries")
+      .select("id")
+      .eq("employee_id", employeeId)
+      .eq("salary_month", salaryMonth)
+      .maybeSingle();
+
+    const patch = { is_paid: next, paid_at: next ? new Date().toISOString() : null } as any;
+    const { error } = existing
+      ? await supabase.from("salaries").update(patch).eq("id", existing.id)
+      : await supabase.from("salaries").insert([{ employee_id: employeeId, salary_month: salaryMonth, ...patch }]);
+
+    if (error) { toast.error(error.message); return; }
+    setPaidMap((prev) => ({ ...prev, [employeeId]: next }));
+    toast.success(next ? "Marked as paid" : "Marked as unpaid");
+  };
+
   const openEdit = (emp: Employee) => {
     setEditEmp(emp);
     setEditForm(manualMap[emp.id] || {});
   };
+
 
   const saveManual = async () => {
     if (!editEmp) return;
@@ -304,12 +336,14 @@ export default function Salaries() {
                 <TableHead className="text-right">OT Pay</TableHead>
                 <TableHead className="text-right">Deductions</TableHead>
                 <TableHead className="text-right">Net Pay</TableHead>
+                <TableHead className="text-center">Paid</TableHead>
                 <TableHead></TableHead>
+
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredRows.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">No payroll data for selected month</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground">No payroll data for selected month</TableCell></TableRow>
               ) : filteredRows.map(({ employee: e, payroll: p }) => (
                 <Collapsible key={e.id} asChild>
                   <>
@@ -339,7 +373,21 @@ export default function Salaries() {
                           <span>LKR {p.net_pay.toFixed(2)}</span>
                         )}
                       </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <Switch
+                            checked={!!paidMap[e.id]}
+                            onCheckedChange={(v) => togglePaid(e.id, v)}
+                            disabled={!canEditManual}
+                            aria-label="Toggle salary paid"
+                          />
+                          <span className={`text-[10px] ${paidMap[e.id] ? "text-emerald-600" : "text-muted-foreground"}`}>
+                            {paidMap[e.id] ? "Paid" : "Unpaid"}
+                          </span>
+                        </div>
+                      </TableCell>
                       <TableCell>
+
                         <div className="flex gap-1">
                           {canEditManual && (
                             <Button variant="ghost" size="sm" title="Edit manual deductions" onClick={() => openEdit(e)}>
@@ -356,7 +404,7 @@ export default function Salaries() {
                     </TableRow>
                     <CollapsibleContent asChild>
                       <TableRow>
-                        <TableCell colSpan={11} className="bg-muted/40">
+                        <TableCell colSpan={12} className="bg-muted/40">
                           <div className="p-4 space-y-3">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                               <div><span className="text-muted-foreground">EPF Basic:</span> <b>LKR {p.epf_basic.toFixed(2)}</b></div>

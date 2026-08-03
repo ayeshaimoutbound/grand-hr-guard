@@ -95,7 +95,14 @@ export default function Invoices() {
   const [paymentNotes, setPaymentNotes] = useState("");
   const [savingPayment, setSavingPayment] = useState(false);
   const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [monthFilter, setMonthFilter] = useState<string>("all");
+
+  const availableMonths = Array.from(
+    new Set(recentInvoices.map((inv: any) => (inv.month_period || "").substring(0, 7)).filter(Boolean))
+  ).sort().reverse();
+
   const filteredInvoices = recentInvoices.filter((inv: any) => {
+    if (monthFilter !== "all" && (inv.month_period || "").substring(0, 7) !== monthFilter) return false;
     const q = invoiceSearch.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -129,8 +136,8 @@ export default function Invoices() {
     const { data, error } = await supabase
       .from("invoices")
       .select("*, companies(company_name, location)")
-      .order("invoice_date", { ascending: false })
-      .limit(10);
+      .order("month_period", { ascending: false })
+      .order("invoice_date", { ascending: false });
 
     if (error) {
       toast.error("Error fetching invoices");
@@ -461,15 +468,31 @@ export default function Invoices() {
       <Card className="shadow-card">
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle>Recent Invoices</CardTitle>
-            <Input
-              placeholder="Search invoice # or company..."
-              value={invoiceSearch}
-              onChange={(e) => setInvoiceSearch(e.target.value)}
-              className="max-w-xs"
-            />
+            <CardTitle>All Invoices</CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={monthFilter} onValueChange={setMonthFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All months" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All months</SelectItem>
+                  {availableMonths.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {new Date(`${m}-01`).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Search invoice # or company..."
+                value={invoiceSearch}
+                onChange={(e) => setInvoiceSearch(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
           </div>
         </CardHeader>
+
         <CardContent>
           <Table>
             <TableHeader>
