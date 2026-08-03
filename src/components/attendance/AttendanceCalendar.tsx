@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "@/lib/pdfHeader";
 import OvertimeSection from "@/components/attendance/OvertimeSection";
+import { EmployeeCombobox } from "@/components/EmployeeCombobox";
 
 interface Employee {
   id: string;
