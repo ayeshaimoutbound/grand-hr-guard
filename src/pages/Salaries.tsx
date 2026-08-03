@@ -103,6 +103,16 @@ export default function Salaries() {
     }
     setManualMap(mMap);
 
+    const { data: paidRows } = await supabase
+      .from("salaries")
+      .select("employee_id,is_paid")
+      .eq("salary_month", startDate);
+    const pMap: Record<string, boolean> = {};
+    for (const r of (paidRows || []) as any[]) pMap[r.employee_id] = !!r.is_paid;
+    setPaidMap(pMap);
+
+
+
     const result: Row[] = employees.map((emp) => {
       const payroll = computePayroll({
         employeeId: emp.id,
