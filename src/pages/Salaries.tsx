@@ -19,6 +19,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { computePayroll, PayrollLine, type CompanyRateRow, type AttendanceRow, type ManualDeductions } from "@/lib/salaryEngine";
 
 interface ManualRow extends ManualDeductions {
@@ -342,7 +343,7 @@ export default function Salaries() {
             </TableHeader>
             <TableBody>
               {filteredRows.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">No payroll data for selected month</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground">No payroll data for selected month</TableCell></TableRow>
               ) : filteredRows.map(({ employee: e, payroll: p }) => (
                 <Collapsible key={e.id} asChild>
                   <>
@@ -403,7 +404,7 @@ export default function Salaries() {
                     </TableRow>
                     <CollapsibleContent asChild>
                       <TableRow>
-                        <TableCell colSpan={11} className="bg-muted/40">
+                        <TableCell colSpan={12} className="bg-muted/40">
                           <div className="p-4 space-y-3">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                               <div><span className="text-muted-foreground">EPF Basic:</span> <b>LKR {p.epf_basic.toFixed(2)}</b></div>
