@@ -396,18 +396,28 @@ export default function AttendanceCalendar({
   };
 
   const updateEmployeeSalary = async (employeeId: string) => {
-    const stats = calculateEmployeeStats(employeeId);
-    const rank = getEmployeeRank(employeeId) as "OIC" | "SSO" | "JSO" | "LSO";
-    
-    let payPerShift = 0;
-    switch (rank) {
-      case "OIC": payPerShift = selectedCompany.pay_oic; break;
-      case "SSO": payPerShift = selectedCompany.pay_sso; break;
-      case "JSO": payPerShift = selectedCompany.pay_jso; break;
-      case "LSO": payPerShift = selectedCompany.pay_lso; break;
-    }
+    // An employee may have worked several ranks this month — pay each rank at its own rate
+    const rateFor = (rank: string) => {
+      switch (rank) {
+        case "OIC": return selectedCompany.pay_oic;
+        case "SSO": return selectedCompany.pay_sso;
+        case "JSO": return selectedCompany.pay_jso;
+        case "LSO": return selectedCompany.pay_lso;
+        default: return 0;
+      }
+    };
 
-    const grossShiftTotal = stats.totalShifts * payPerShift;
+    const ranks = getEmployeeRanks(employeeId);
+    let totalShifts = 0;
+    let grossShiftTotal = 0;
+    ranks.forEach((rank) => {
+      const shifts = calculateEmployeeStats(employeeId, rank).totalShifts;
+      totalShifts += shifts;
+      grossShiftTotal += shifts * rateFor(rank);
+    });
+    const stats = { totalShifts };
+    const payPerShift = totalShifts > 0 ? grossShiftTotal / totalShifts : 0;
+
     const salaryMonth = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
 
     // Check if salary record exists
