@@ -372,7 +372,21 @@ export default function Salaries() {
                           <span>LKR {p.net_pay.toFixed(2)}</span>
                         )}
                       </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <Switch
+                            checked={!!paidMap[e.id]}
+                            onCheckedChange={(v) => togglePaid(e.id, v)}
+                            disabled={!canEditManual}
+                            aria-label="Toggle salary paid"
+                          />
+                          <span className={`text-[10px] ${paidMap[e.id] ? "text-emerald-600" : "text-muted-foreground"}`}>
+                            {paidMap[e.id] ? "Paid" : "Unpaid"}
+                          </span>
+                        </div>
+                      </TableCell>
                       <TableCell>
+
                         <div className="flex gap-1">
                           {canEditManual && (
                             <Button variant="ghost" size="sm" title="Edit manual deductions" onClick={() => openEdit(e)}>
