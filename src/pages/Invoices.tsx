@@ -95,7 +95,14 @@ export default function Invoices() {
   const [paymentNotes, setPaymentNotes] = useState("");
   const [savingPayment, setSavingPayment] = useState(false);
   const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [monthFilter, setMonthFilter] = useState<string>("all");
+
+  const availableMonths = Array.from(
+    new Set(recentInvoices.map((inv: any) => (inv.month_period || "").substring(0, 7)).filter(Boolean))
+  ).sort().reverse();
+
   const filteredInvoices = recentInvoices.filter((inv: any) => {
+    if (monthFilter !== "all" && (inv.month_period || "").substring(0, 7) !== monthFilter) return false;
     const q = invoiceSearch.trim().toLowerCase();
     if (!q) return true;
     return (
