@@ -136,10 +136,30 @@ export default function Salaries() {
     setRows(result);
   };
 
+  const togglePaid = async (employeeId: string, next: boolean) => {
+    const salaryMonth = `${selectedMonth}-01`;
+    const { data: existing } = await supabase
+      .from("salaries")
+      .select("id")
+      .eq("employee_id", employeeId)
+      .eq("salary_month", salaryMonth)
+      .maybeSingle();
+
+    const patch = { is_paid: next, paid_at: next ? new Date().toISOString() : null } as any;
+    const { error } = existing
+      ? await supabase.from("salaries").update(patch).eq("id", existing.id)
+      : await supabase.from("salaries").insert([{ employee_id: employeeId, salary_month: salaryMonth, ...patch }]);
+
+    if (error) { toast.error(error.message); return; }
+    setPaidMap((prev) => ({ ...prev, [employeeId]: next }));
+    toast.success(next ? "Marked as paid" : "Marked as unpaid");
+  };
+
   const openEdit = (emp: Employee) => {
     setEditEmp(emp);
     setEditForm(manualMap[emp.id] || {});
   };
+
 
   const saveManual = async () => {
     if (!editEmp) return;
