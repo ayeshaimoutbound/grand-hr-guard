@@ -268,9 +268,9 @@ export default function AttendanceCalendar({
 
   const handleExportPDF = () => {
     const monthLabel = selectedMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-    const rows = activeEmployees.map((emp) => {
-      const stats = calculateEmployeeStats(emp.id);
-      return `<tr><td>${emp.employee_id}</td><td>${emp.full_name}</td><td>${getEmployeeRank(emp.id)}</td><td style="text-align:right">${stats.totalShifts}</td></tr>`;
+    const rows = rosterRows.map(({ employee, rank }) => {
+      const stats = calculateEmployeeStats(employee.id, rank);
+      return `<tr><td>${employee.employee_id}</td><td>${employee.full_name}</td><td>${rank}</td><td style="text-align:right">${stats.totalShifts}</td></tr>`;
     }).join("");
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Attendance ${selectedCompany.company_name} ${monthLabel}</title>
