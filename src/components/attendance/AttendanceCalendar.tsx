@@ -79,21 +79,9 @@ export default function AttendanceCalendar({
 
   const dates = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const getAttendance = (employeeId: string, date: number, shift: "Day" | "Night") => {
-    const dateStr = `${selectedMonth.getFullYear()}-${String(
-      selectedMonth.getMonth() + 1
-    ).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
-    
-    return attendanceRecords.find(
-      (record) =>
-        record.employee_id === employeeId &&
-        record.attendance_date === dateStr &&
-        record.shift_type === shift
-    );
-  };
-
-  const handleMarkAttendance = async (
+  const getAttendance = (
     employeeId: string,
+    rank: string,
     date: number,
     shift: "Day" | "Night"
   ) => {
@@ -101,8 +89,26 @@ export default function AttendanceCalendar({
       selectedMonth.getMonth() + 1
     ).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
 
-    const existing = getAttendance(employeeId, date, shift);
-    const employeeRank = getEmployeeRank(employeeId) as "OIC" | "SSO" | "JSO" | "LSO";
+    return attendanceRecords.find(
+      (record) =>
+        record.employee_id === employeeId &&
+        record.rank === rank &&
+        record.attendance_date === dateStr &&
+        record.shift_type === shift
+    );
+  };
+
+  const handleMarkAttendance = async (
+    employeeId: string,
+    rank: string,
+    date: number,
+    shift: "Day" | "Night"
+  ) => {
+    const dateStr = `${selectedMonth.getFullYear()}-${String(
+      selectedMonth.getMonth() + 1
+    ).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
+
+    const existing = getAttendance(employeeId, rank, date, shift);
 
     if (existing) {
       const { error } = await supabase
@@ -122,7 +128,7 @@ export default function AttendanceCalendar({
           attendance_date: dateStr,
           present: true,
           shift_type: shift,
-          rank: employeeRank,
+          rank: rank as "OIC" | "SSO" | "JSO" | "LSO",
         },
       ]);
 
