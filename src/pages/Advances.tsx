@@ -11,9 +11,8 @@ import { Search, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { EmployeeCombobox } from "@/components/EmployeeCombobox";
+
 
 interface Employee { id: string; employee_id: string; full_name: string; }
 interface Advance {
