@@ -320,16 +320,22 @@ export default function AttendanceCalendar({
     attendanceRecords.some((record) => record.employee_id === emp.id)
   );
 
-  const filteredActiveEmployees = activeEmployees.filter((emp) => {
+  const filteredRosterRows = rosterRows.filter(({ employee, rank }) => {
     const q = employeeSearch.trim().toLowerCase();
     if (!q) return true;
-    return emp.full_name.toLowerCase().includes(q) ||
-      emp.employee_id.toLowerCase().includes(q);
+    return employee.full_name.toLowerCase().includes(q) ||
+      employee.employee_id.toLowerCase().includes(q) ||
+      rank.toLowerCase().includes(q);
   });
 
   const handleAddEmployeeToCalendar = async () => {
     if (!selectedEmployee || !selectedRank) {
       toast.error("Please select both employee and rank");
+      return;
+    }
+
+    if (getEmployeeRanks(selectedEmployee).includes(selectedRank)) {
+      toast.error("This employee is already on the calendar with that rank");
       return;
     }
 
@@ -361,10 +367,9 @@ export default function AttendanceCalendar({
     toast.success("Employee added to calendar");
   };
 
-  // Get employees not yet in the calendar
-  const availableEmployees = employees.filter(
-    (emp) => !activeEmployees.some((active) => active.id === emp.id)
-  );
+  // An employee may be added again under a different rank, so all employees stay selectable
+  const availableEmployees = employees;
+
 
   const handleSaveAllAttendance = async () => {
     try {
