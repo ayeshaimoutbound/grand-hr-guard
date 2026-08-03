@@ -668,19 +668,14 @@ export default function AttendanceCalendar({
             <div className="flex gap-4 items-end">
               <div className="flex-1 space-y-2">
                 <label className="text-sm font-medium">Select Employee</label>
-                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableEmployees.map((emp) => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <EmployeeCombobox
+                  value={selectedEmployee}
+                  onChange={setSelectedEmployee}
+                  employees={availableEmployees}
+                  placeholder="Search & choose employee"
+                />
               </div>
+
               <div className="flex-1 space-y-2">
                 <label className="text-sm font-medium">Select Rank</label>
                 <Select value={selectedRank} onValueChange={(value) => setSelectedRank(value as "OIC" | "SSO" | "JSO" | "LSO")}>
