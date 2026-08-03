@@ -129,8 +129,8 @@ export default function Invoices() {
     const { data, error } = await supabase
       .from("invoices")
       .select("*, companies(company_name, location)")
-      .order("invoice_date", { ascending: false })
-      .limit(10);
+      .order("month_period", { ascending: false })
+      .order("invoice_date", { ascending: false });
 
     if (error) {
       toast.error("Error fetching invoices");
