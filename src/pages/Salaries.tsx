@@ -48,6 +48,7 @@ export default function Salaries() {
   const [search, setSearch] = useState("");
   const [dailyMinWage, setDailyMinWage] = useState<number>(1200);
   const [manualMap, setManualMap] = useState<Record<string, ManualRow>>({});
+  const [paidMap, setPaidMap] = useState<Record<string, boolean>>({});
   const [editEmp, setEditEmp] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState<ManualRow>({});
   const { isSuperAdmin, isAdmin } = useAuth();
