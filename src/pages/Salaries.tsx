@@ -335,7 +335,9 @@ export default function Salaries() {
                 <TableHead className="text-right">OT Pay</TableHead>
                 <TableHead className="text-right">Deductions</TableHead>
                 <TableHead className="text-right">Net Pay</TableHead>
+                <TableHead className="text-center">Paid</TableHead>
                 <TableHead></TableHead>
+
               </TableRow>
             </TableHeader>
             <TableBody>
