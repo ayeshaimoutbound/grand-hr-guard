@@ -360,6 +360,8 @@ export default function Invoices() {
     }
 
     const { company, monthStart, lineItems, totalAmount, existingInvoiceId } = previewData;
+    const { sscl, vat, grandTotal } = computeInvoiceTaxes(totalAmount);
+    const invoiceDataPayload = { lineItems, subtotal: totalAmount, sscl, vat, grandTotal };
 
     let invoiceError;
 
@@ -370,8 +372,8 @@ export default function Invoices() {
         .update({
           invoice_number: editableInvoiceNumber,
           invoice_date: format(new Date(), "yyyy-MM-dd"),
-          amount_to_collect: totalAmount,
-          invoice_data: { lineItems },
+          amount_to_collect: grandTotal,
+          invoice_data: invoiceDataPayload,
         })
         .eq("id", existingInvoiceId);
       
@@ -389,9 +391,9 @@ export default function Invoices() {
           invoice_number: editableInvoiceNumber,
           invoice_date: format(new Date(), "yyyy-MM-dd"),
           month_period: format(monthStart, "yyyy-MM-dd"),
-          amount_to_collect: totalAmount,
+          amount_to_collect: grandTotal,
           amount_received: 0,
-          invoice_data: { lineItems },
+          invoice_data: invoiceDataPayload,
         });
       
       invoiceError = error;
@@ -415,6 +417,9 @@ export default function Invoices() {
       companyAddress: company.location,
       lineItems: lineItems,
       total: totalAmount,
+      sscl,
+      vat,
+      grandTotal,
     });
 
     setIsDialogOpen(false);
