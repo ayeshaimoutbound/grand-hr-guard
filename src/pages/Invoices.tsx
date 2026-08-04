@@ -189,7 +189,8 @@ export default function Invoices() {
       invoice_id: paymentInvoice.id,
       payment_date: paymentDate,
       amount: amt,
-      payment_method: paymentMethod,
+      payment_method:
+        paymentMethod === "cash" ? "Cash" : paymentMethod === "cheque" ? "Cheque" : "Bank Transfer",
       reference_number: paymentMethod === "cash" ? null : paymentReference.trim(),
       notes: paymentNotes.trim() || null,
       created_by: userData.user?.id,
