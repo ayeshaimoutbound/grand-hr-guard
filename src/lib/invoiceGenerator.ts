@@ -36,6 +36,11 @@ const money = (n: number) =>
   `LKR ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const generateInvoicePDF = (invoiceData: InvoiceData) => {
+  const subtotal = invoiceData.total;
+  const t = computeInvoiceTaxes(subtotal);
+  const sscl = invoiceData.sscl ?? t.sscl;
+  const vat = invoiceData.vat ?? t.vat;
+  const grandTotal = invoiceData.grandTotal ?? subtotal + sscl + vat;
   // Create HTML content for the invoice
   const htmlContent = `
     <!DOCTYPE html>
