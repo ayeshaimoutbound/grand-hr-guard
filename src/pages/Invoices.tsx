@@ -569,6 +569,10 @@ export default function Invoices() {
                             const monthEnd = endOfMonth(monthStart);
                             const periodStr =
                               format(monthStart, "dd") + "-" + format(monthEnd, "dd MMM yy").toUpperCase();
+                            const subtotal =
+                              invoice.invoice_data?.subtotal ??
+                              lineItems.reduce((s: number, i: any) => s + (i.amount || 0), 0);
+                            const taxes = computeInvoiceTaxes(subtotal);
                             generateInvoicePDF({
                               invoiceNumber: invoice.invoice_number,
                               invoiceDate: format(new Date(invoice.invoice_date), "MMMM d, yyyy"),
@@ -576,7 +580,10 @@ export default function Invoices() {
                               companyName: invoice.companies.company_name,
                               companyAddress: invoice.companies.location,
                               lineItems,
-                              total: invoice.amount_to_collect,
+                              total: subtotal,
+                              sscl: invoice.invoice_data?.sscl ?? taxes.sscl,
+                              vat: invoice.invoice_data?.vat ?? taxes.vat,
+                              grandTotal: invoice.invoice_data?.grandTotal ?? taxes.grandTotal,
                             });
                           }}
                         >
