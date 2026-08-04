@@ -138,7 +138,13 @@ export default function Settings() {
         <TabsList>
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1" /> Users</TabsTrigger>
           <TabsTrigger value="access">Module Access</TabsTrigger>
+          <TabsTrigger value="backup">Backup</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="backup" className="mt-4">
+          <BackupSection />
+        </TabsContent>
+
 
         <TabsContent value="users" className="mt-4">
           <Card>
