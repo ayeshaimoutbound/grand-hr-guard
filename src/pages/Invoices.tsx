@@ -333,6 +333,8 @@ export default function Invoices() {
       invoiceNumber = generateInvoiceNumber(company.company_number, selectedDate.getFullYear(), selectedDate.getMonth() + 1);
     }
 
+    const taxes = computeInvoiceTaxes(totalAmount);
+
     setPreviewData({
       company,
       invoiceNumber,
@@ -342,6 +344,7 @@ export default function Invoices() {
       periodStr,
       lineItems,
       totalAmount,
+      ...taxes,
       existingInvoiceId: existingInvoice?.id,
     });
     setEditableInvoiceNumber(invoiceNumber);
