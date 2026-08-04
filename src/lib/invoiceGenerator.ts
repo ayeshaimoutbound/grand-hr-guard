@@ -18,7 +18,22 @@ interface InvoiceData {
   companyAddress: string;
   lineItems: InvoiceLineItem[];
   total: number;
+  sscl?: number;
+  vat?: number;
+  grandTotal?: number;
 }
+
+export const SSCL_RATE = 0.025;
+export const VAT_RATE = 0.18;
+
+export const computeInvoiceTaxes = (subtotal: number) => {
+  const sscl = subtotal * SSCL_RATE;
+  const vat = (subtotal + sscl) * VAT_RATE;
+  return { subtotal, sscl, vat, grandTotal: subtotal + sscl + vat };
+};
+
+const money = (n: number) =>
+  `LKR ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const generateInvoicePDF = (invoiceData: InvoiceData) => {
   // Create HTML content for the invoice
