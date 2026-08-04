@@ -145,7 +145,22 @@ export const generateInvoicePDF = (invoiceData: InvoiceData) => {
             <td colspan="3"></td>
             <td class="text-right">${invoiceData.lineItems.reduce((sum, item) => sum + item.shifts, 0)}</td>
             <td class="text-right">TOTAL</td>
-            <td class="text-right">LKR ${invoiceData.total.toLocaleString()}</td>
+            <td class="text-right">${money(subtotal)}</td>
+          </tr>
+          <tr>
+            <td colspan="4"></td>
+            <td class="text-right">SSCL (2.5%)</td>
+            <td class="text-right">${money(sscl)}</td>
+          </tr>
+          <tr>
+            <td colspan="4"></td>
+            <td class="text-right">VAT (18%)</td>
+            <td class="text-right">${money(vat)}</td>
+          </tr>
+          <tr class="total-row">
+            <td colspan="4"></td>
+            <td class="text-right">GRAND TOTAL</td>
+            <td class="text-right">${money(grandTotal)}</td>
           </tr>
         </tbody>
       </table>
