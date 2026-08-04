@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { generateInvoicePDF, generateInvoiceNumber } from "@/lib/invoiceGenerator";
+import { generateInvoicePDF, generateInvoiceNumber, computeInvoiceTaxes } from "@/lib/invoiceGenerator";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import {
   Dialog,
@@ -189,7 +189,8 @@ export default function Invoices() {
       invoice_id: paymentInvoice.id,
       payment_date: paymentDate,
       amount: amt,
-      payment_method: paymentMethod,
+      payment_method:
+        paymentMethod === "cash" ? "Cash" : paymentMethod === "cheque" ? "Cheque" : "Bank Transfer",
       reference_number: paymentMethod === "cash" ? null : paymentReference.trim(),
       notes: paymentNotes.trim() || null,
       created_by: userData.user?.id,
@@ -332,6 +333,8 @@ export default function Invoices() {
       invoiceNumber = generateInvoiceNumber(company.company_number, selectedDate.getFullYear(), selectedDate.getMonth() + 1);
     }
 
+    const taxes = computeInvoiceTaxes(totalAmount);
+
     setPreviewData({
       company,
       invoiceNumber,
@@ -341,6 +344,7 @@ export default function Invoices() {
       periodStr,
       lineItems,
       totalAmount,
+      ...taxes,
       existingInvoiceId: existingInvoice?.id,
     });
     setEditableInvoiceNumber(invoiceNumber);
@@ -356,6 +360,8 @@ export default function Invoices() {
     }
 
     const { company, monthStart, lineItems, totalAmount, existingInvoiceId } = previewData;
+    const { sscl, vat, grandTotal } = computeInvoiceTaxes(totalAmount);
+    const invoiceDataPayload = { lineItems, subtotal: totalAmount, sscl, vat, grandTotal };
 
     let invoiceError;
 
@@ -366,8 +372,8 @@ export default function Invoices() {
         .update({
           invoice_number: editableInvoiceNumber,
           invoice_date: format(new Date(), "yyyy-MM-dd"),
-          amount_to_collect: totalAmount,
-          invoice_data: { lineItems },
+          amount_to_collect: grandTotal,
+          invoice_data: invoiceDataPayload,
         })
         .eq("id", existingInvoiceId);
       
@@ -385,9 +391,9 @@ export default function Invoices() {
           invoice_number: editableInvoiceNumber,
           invoice_date: format(new Date(), "yyyy-MM-dd"),
           month_period: format(monthStart, "yyyy-MM-dd"),
-          amount_to_collect: totalAmount,
+          amount_to_collect: grandTotal,
           amount_received: 0,
-          invoice_data: { lineItems },
+          invoice_data: invoiceDataPayload,
         });
       
       invoiceError = error;
@@ -411,6 +417,9 @@ export default function Invoices() {
       companyAddress: company.location,
       lineItems: lineItems,
       total: totalAmount,
+      sscl,
+      vat,
+      grandTotal,
     });
 
     setIsDialogOpen(false);
@@ -560,6 +569,10 @@ export default function Invoices() {
                             const monthEnd = endOfMonth(monthStart);
                             const periodStr =
                               format(monthStart, "dd") + "-" + format(monthEnd, "dd MMM yy").toUpperCase();
+                            const subtotal =
+                              invoice.invoice_data?.subtotal ??
+                              lineItems.reduce((s: number, i: any) => s + (i.amount || 0), 0);
+                            const taxes = computeInvoiceTaxes(subtotal);
                             generateInvoicePDF({
                               invoiceNumber: invoice.invoice_number,
                               invoiceDate: format(new Date(invoice.invoice_date), "MMMM d, yyyy"),
@@ -567,7 +580,10 @@ export default function Invoices() {
                               companyName: invoice.companies.company_name,
                               companyAddress: invoice.companies.location,
                               lineItems,
-                              total: invoice.amount_to_collect,
+                              total: subtotal,
+                              sscl: invoice.invoice_data?.sscl ?? taxes.sscl,
+                              vat: invoice.invoice_data?.vat ?? taxes.vat,
+                              grandTotal: invoice.invoice_data?.grandTotal ?? taxes.grandTotal,
                             });
                           }}
                         >
@@ -692,9 +708,21 @@ export default function Invoices() {
                         <TableCell className="text-right">LKR {item.amount.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
-                    <TableRow className="font-bold bg-muted/50">
+                    <TableRow className="font-semibold bg-muted/30">
                       <TableCell colSpan={4} className="text-right">Total Amount</TableCell>
-                      <TableCell className="text-right">LKR {previewData.totalAmount.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">LKR {previewData.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-right">SSCL (2.5%)</TableCell>
+                      <TableCell className="text-right">LKR {previewData.sscl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-right">VAT (18%)</TableCell>
+                      <TableCell className="text-right">LKR {previewData.vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    </TableRow>
+                    <TableRow className="font-bold bg-muted/50">
+                      <TableCell colSpan={4} className="text-right">Grand Total</TableCell>
+                      <TableCell className="text-right">LKR {previewData.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>

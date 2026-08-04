@@ -284,6 +284,17 @@ export default function AttendanceCalendar({
       th{background:#e6f4ef;color:#014d3a;}
       .summary td{padding:4px 8px;}
       .meta{margin:4px 0 12px;padding:8px 12px;background:#f4faf7;border-left:3px solid #00855e;}
+      .calendar{font-size:8px;table-layout:fixed;}
+      .calendar th,.calendar td{padding:2px;text-align:center;}
+      .calendar th.day,.calendar td.day{width:16px;}
+      .calendar .sticky-name{width:110px;text-align:left;font-size:8.5px;}
+      .calendar .eid{color:#666;font-size:7px;}
+      .calendar .off{color:#bbb;}
+      .k{display:inline-block;min-width:9px;font-weight:700;}
+      .k.d{color:#014d3a;}
+      .k.n{color:#8a4b00;}
+      .legend{font-size:10px;margin:6px 0;}
+      @page{size:A4 landscape;margin:10mm;}
     </style></head><body>
       ${getPdfHeaderHtml("ATTENDANCE REPORT")}
       <div class="meta">
@@ -305,6 +316,37 @@ export default function AttendanceCalendar({
       <table>
         <thead><tr><th>Employee ID</th><th>Name</th><th>Rank</th><th style="text-align:right">Total Shifts</th></tr></thead>
         <tbody>${rows || '<tr><td colspan="4" style="text-align:center">No records</td></tr>'}</tbody>
+      </table>
+
+      <h2>Daily Attendance Calendar</h2>
+      <p class="legend"><span class="k d">D</span> Day shift &nbsp; <span class="k n">N</span> Night shift &nbsp; <span class="k">–</span> Off</p>
+      <table class="calendar">
+        <thead>
+          <tr>
+            <th class="sticky-name">Employee</th>
+            <th>Rank</th>
+            ${dates.map((d) => `<th class="day">${d}</th>`).join("")}
+            <th style="text-align:right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            rosterRows.length
+              ? rosterRows.map(({ employee, rank }) => {
+                  const cells = dates.map((d) => {
+                    const day = getAttendance(employee.id, rank, d, "Day");
+                    const night = getAttendance(employee.id, rank, d, "Night");
+                    const marks: string[] = [];
+                    if (day?.present) marks.push('<span class="k d">D</span>');
+                    if (night?.present) marks.push('<span class="k n">N</span>');
+                    return `<td class="day">${marks.join("") || '<span class="off">–</span>'}</td>`;
+                  }).join("");
+                  const stats = calculateEmployeeStats(employee.id, rank);
+                  return `<tr><td class="sticky-name">${employee.full_name}<br/><span class="eid">${employee.employee_id}</span></td><td>${rank}</td>${cells}<td style="text-align:right"><strong>${stats.totalShifts}</strong></td></tr>`;
+                }).join("")
+              : `<tr><td colspan="${dates.length + 3}" style="text-align:center">No records</td></tr>`
+          }
+        </tbody>
       </table>
     </body></html>`;
 

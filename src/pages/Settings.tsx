@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Plus, Trash2, KeyRound, Settings as SettingsIcon, Users } from "lucide-react";
+import BackupSection from "@/components/BackupSection";
 
 const ALL_MODULES = [
   { key: "dashboard", label: "Dashboard" },
@@ -138,7 +139,13 @@ export default function Settings() {
         <TabsList>
           <TabsTrigger value="users"><Users className="h-4 w-4 mr-1" /> Users</TabsTrigger>
           <TabsTrigger value="access">Module Access</TabsTrigger>
+          <TabsTrigger value="backup">Backup</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="backup" className="mt-4">
+          <BackupSection />
+        </TabsContent>
+
 
         <TabsContent value="users" className="mt-4">
           <Card>
