@@ -167,6 +167,14 @@ export default function Inventory() {
 
   const totalUnits = filtered.reduce((s, i) => s + i.quantity, 0);
   const totalValue = filtered.reduce((s, i) => s + i.quantity * Number(i.unit_cost || 0), 0);
+  const lowStockItems = useMemo(() => items.filter(isLow), [items]);
+  const insightRows = useMemo(
+    () => filtered
+      .map((item) => ({ item, stat: stats[item.id] }))
+      .filter((r) => r.stat && r.stat.totalIssued > 0)
+      .sort((a, b) => b.stat.totalIssued - a.stat.totalIssued),
+    [filtered, stats]
+  );
 
   const resetForm = () => setForm({
     category: "Shirt (Men)", item_name: "", size: "", color: "", gender: "",
