@@ -854,13 +854,7 @@ export default function Inventory() {
         </DialogContent>
       </Dialog>
 
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button onClick={saveItem}>Add Item</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
 
       {/* STOCK ADJUST DIALOG */}
       <Dialog open={!!moveItem} onOpenChange={(v) => !v && setMoveItem(null)}>
