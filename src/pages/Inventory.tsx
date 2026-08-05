@@ -65,18 +65,26 @@ interface Item {
   unit_cost: number | null;
   supplier: string | null;
   notes: string | null;
+  inventory_type: string;
+  low_stock_threshold: number;
+  auto_threshold: boolean;
+  vendor_id: string | null;
 }
 
 export default function Inventory() {
   const { isSuperAdmin } = useAuth();
   const [tab, setTab] = useState<string>("all");
   const [items, setItems] = useState<Item[]>([]);
+  const [vendors, setVendors] = useState<{ id: string; vendor_name: string; vendor_type: string }[]>([]);
+  const [stats, setStats] = useState<Record<string, UsageStat>>({});
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [moveItem, setMoveItem] = useState<Item | null>(null);
   const [moveQty, setMoveQty] = useState<string>("");
   const [moveReason, setMoveReason] = useState<string>("");
+  const [settingsItem, setSettingsItem] = useState<Item | null>(null);
+  const [settingsForm, setSettingsForm] = useState({ inventory_type: "non_critical", low_stock_threshold: "3", auto_threshold: true });
 
   const [issueItem, setIssueItem] = useState<Item | null>(null);
   const [issueQty, setIssueQty] = useState<string>("1");
@@ -95,6 +103,15 @@ export default function Inventory() {
     unit_cost: "",
     supplier: "",
     notes: "",
+    inventory_type: "non_critical",
+    low_stock_threshold: "3",
+    auto_threshold: true,
+    vendor_id: "",
+    is_paid: false,
+    payment_method: "Cash",
+    cheque_number: "",
+    cheque_date: "",
+    invoice_ref: "",
   });
 
   const [bulk, setBulk] = useState({
@@ -105,11 +122,39 @@ export default function Inventory() {
 
   const load = async () => {
     const { data } = await supabase.from("inventory_items").select("*").order("category").order("item_name");
-    setItems((data as any) || []);
-    const { data: emps } = await supabase.from("employees").select("id, employee_id, full_name").order("full_name");
+    const list = ((data as any) || []) as Item[];
+    setItems(list);
+    const [{ data: emps }, { data: vends }] = await Promise.all([
+      supabase.from("employees").select("id, employee_id, full_name").order("full_name"),
+      supabase.from("vendors").select("id, vendor_name, vendor_type").order("vendor_name"),
+    ]);
     setEmployees((emps as any) || []);
+    setVendors((vends as any) || []);
+    setStats(await fetchUsageStats(list));
   };
   useEffect(() => { load(); }, []);
+
+  const recalcThresholds = async () => {
+    const fresh = await fetchUsageStats(items);
+    const changed = await applyAutoThresholds(items, fresh);
+    toast.success(changed ? `Updated ${changed} adaptive threshold${changed > 1 ? "s" : ""}` : "All adaptive thresholds are already up to date");
+    load();
+  };
+
+  const saveSettings = async () => {
+    if (!settingsItem) return;
+    const { error } = await supabase.from("inventory_items").update({
+      inventory_type: settingsForm.inventory_type,
+      low_stock_threshold: parseInt(settingsForm.low_stock_threshold) || 0,
+      auto_threshold: settingsForm.auto_threshold,
+    } as any).eq("id", settingsItem.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Item settings updated");
+    setSettingsItem(null);
+    load();
+  };
+
+  const isLow = (i: Item) => i.inventory_type === "critical" && i.quantity < (i.low_stock_threshold ?? 3);
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
