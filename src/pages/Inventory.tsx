@@ -685,7 +685,7 @@ export default function Inventory() {
       <Dialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) resetForm(); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Add Inventory Item</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-h-[70vh] overflow-y-auto pr-1">
             <div className="space-y-2 col-span-2">
               <Label>Category</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v, size: "", color: "" })}>
