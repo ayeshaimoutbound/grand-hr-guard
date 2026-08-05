@@ -10,6 +10,8 @@ import {
   Wallet,
   Package,
   Utensils,
+  Store,
+  Wrench,
   HandCoins,
   Settings as SettingsIcon,
   LogOut,
