@@ -142,6 +142,26 @@ export default function Dashboard() {
         <p className="text-muted-foreground">Overview of your HR management system</p>
       </div>
 
+      {lowStock.length > 0 && (
+        <Card className="border-destructive/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />Low Stock Alerts ({lowStock.length})
+            </CardTitle>
+            <Button asChild size="sm" variant="outline"><Link to="/inventory">Open Inventory</Link></Button>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {lowStock.map((i) => (
+              <Badge key={i.id} variant="destructive" className="text-xs">
+                {i.item_name}{i.size ? ` ${i.size}` : ""}{i.color ? ` ${i.color}` : ""} — {i.quantity} left (min {i.low_stock_threshold})
+              </Badge>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat, index) => {
           // Hide revenue metrics from regular admins for security
