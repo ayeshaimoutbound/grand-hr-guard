@@ -526,6 +526,7 @@ export default function Inventory() {
           <p className="text-muted-foreground">Uniforms, epaulets, lanyards, shoes, stationaries and more</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={recalcThresholds}><Sparkles className="h-4 w-4 mr-2" />Recalculate Thresholds</Button>
           <Button variant="outline" onClick={downloadUniformTemplate}><Download className="h-4 w-4 mr-2" />Bulk Upload Format</Button>
           <Button variant="outline" onClick={downloadExport}><Download className="h-4 w-4 mr-2" />Export (.xlsx)</Button>
           <Button variant="outline" onClick={() => setBulkOpen(true)}><Upload className="h-4 w-4 mr-2" />Bulk Upload Uniforms</Button>
@@ -537,8 +538,25 @@ export default function Inventory() {
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Items</p><p className="text-2xl font-bold">{filtered.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Units in Stock</p><p className="text-2xl font-bold">{totalUnits}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Stock Value</p><p className="text-2xl font-bold">LKR {totalValue.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Low Stock (&lt;5)</p><p className="text-2xl font-bold text-destructive">{filtered.filter(i => i.quantity < 5).length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Critical Low Stock</p><p className="text-2xl font-bold text-destructive">{lowStockItems.length}</p></CardContent></Card>
       </div>
+
+      {lowStockItems.length > 0 && (
+        <Card className="border-destructive/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />Low Stock Alerts — Critical Inventory
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {lowStockItems.map((i) => (
+              <Badge key={i.id} variant="destructive" className="text-xs">
+                {i.item_name}{i.size ? ` ${i.size}` : ""}{i.color ? ` ${i.color}` : ""} — {i.quantity} left (min {i.low_stock_threshold})
+              </Badge>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -558,32 +576,46 @@ export default function Inventory() {
                   <TableRow>
                     <TableHead>Category</TableHead>
                     <TableHead>Item</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Color</TableHead>
-                    <TableHead>Rank</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Threshold</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
-                    <TableHead>Supplier</TableHead>
+                    <TableHead>Vendor</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No items</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">No items</TableCell></TableRow>
                   ) : filtered.map((i) => (
                     <TableRow key={i.id}>
                       <TableCell><Badge variant="outline">{i.category}</Badge></TableCell>
-                      <TableCell className="font-medium">{i.item_name}</TableCell>
+                      <TableCell className="font-medium">
+                        {i.item_name}
+                        {i.epaulet_rank ? <div className="text-xs text-muted-foreground">{i.epaulet_rank}</div> : null}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={i.inventory_type === "critical" ? "default" : "secondary"}>
+                          {i.inventory_type === "critical" ? "Critical" : "Non-Critical"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{i.size || "—"}</TableCell>
                       <TableCell>{i.color || "—"}</TableCell>
-                      <TableCell>{i.epaulet_rank || "—"}</TableCell>
                       <TableCell className="text-right">
-                        <span className={i.quantity < 5 ? "text-destructive font-semibold" : ""}>{i.quantity}</span>
+                        <span className={isLow(i) ? "text-destructive font-semibold" : ""}>{i.quantity}</span>
+                        {isLow(i) && <AlertTriangle className="inline h-3.5 w-3.5 ml-1 text-destructive" />}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {i.low_stock_threshold}
+                        <div className="text-xs text-muted-foreground">{i.auto_threshold ? "auto" : "manual"}</div>
                       </TableCell>
                       <TableCell className="text-right">{i.unit_cost ? `LKR ${Number(i.unit_cost).toFixed(2)}` : "—"}</TableCell>
                       <TableCell>{i.supplier || "—"}</TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button size="sm" variant="outline" onClick={() => { setMoveItem(i); setMoveQty(""); setMoveReason(""); }}>Adjust</Button>
+                        <Button size="sm" variant="outline" onClick={() => { setSettingsItem(i); setSettingsForm({ inventory_type: i.inventory_type, low_stock_threshold: String(i.low_stock_threshold ?? 3), auto_threshold: i.auto_threshold !== false }); }}>Settings</Button>
                         <Button size="sm" variant="secondary" onClick={() => { setIssueItem(i); setIssueQty("1"); setIssueEmployeeId(""); setIssueMonths("3"); }}>
                           <UserCheck className="h-3.5 w-3.5 mr-1" />Issue
                         </Button>
@@ -597,6 +629,49 @@ export default function Inventory() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* STOCK MOVEMENT INSIGHTS */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-5 w-5" />Stock Movement Insights</CardTitle>
+          <p className="text-sm text-muted-foreground">Consumption over the last {WINDOW_DAYS} days — drives adaptive thresholds.</p>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-right">Issued ({WINDOW_DAYS}d)</TableHead>
+                <TableHead className="text-right">Avg / month</TableHead>
+                <TableHead>Velocity</TableHead>
+                <TableHead className="text-right">Suggested Threshold</TableHead>
+                <TableHead className="text-right">In Stock</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {insightRows.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No movement recorded yet</TableCell></TableRow>
+              ) : insightRows.map(({ item, stat }) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.item_name}{item.size ? ` ${item.size}` : ""}{item.color ? ` ${item.color}` : ""}</TableCell>
+                  <TableCell><Badge variant={item.inventory_type === "critical" ? "default" : "secondary"}>{item.inventory_type === "critical" ? "Critical" : "Non-Critical"}</Badge></TableCell>
+                  <TableCell className="text-right">{stat.totalIssued}</TableCell>
+                  <TableCell className="text-right">{stat.perMonth.toFixed(1)}</TableCell>
+                  <TableCell>
+                    <Badge variant={stat.velocity === "fast" ? "default" : stat.velocity === "medium" ? "secondary" : "outline"}>
+                      {stat.velocity}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">{stat.suggestedThreshold}</TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
 
       {/* ADD ITEM DIALOG */}
       <Dialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) resetForm(); }}>
