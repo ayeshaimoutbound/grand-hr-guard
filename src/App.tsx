@@ -18,6 +18,8 @@ import Invoices from "./pages/Invoices";
 import Accounts from "./pages/Accounts";
 import Inventory from "./pages/Inventory";
 import Food from "./pages/Food";
+import Vendors from "./pages/Vendors";
+import Maintenance from "./pages/Maintenance";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -51,6 +53,8 @@ const App = () => (
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/food" element={<Food />} />
+              <Route path="/vendors" element={<Vendors />} />
+              <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/settings" element={<ProtectedRoute requireSuperAdmin><Settings /></ProtectedRoute>} />
             </Route>
 

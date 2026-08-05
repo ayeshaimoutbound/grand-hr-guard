@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 // Routes "office" role can access (Salaries + Advances added)
-const OFFICE_ALLOWED = ["/employees", "/attendance", "/inventory", "/food", "/salaries", "/advances"];
+const OFFICE_ALLOWED = ["/employees", "/attendance", "/inventory", "/food", "/salaries", "/advances", "/vendors", "/maintenance"];
 // Routes admin+ can access (blocked for office)
 const ADMIN_ONLY = ["/accounts", "/invoices", "/companies", "/dashboard"];
 // Super-admin only
@@ -25,6 +25,8 @@ const PATH_TO_MODULE: { prefix: string; key: string }[] = [
   { prefix: "/invoices", key: "invoices" },
   { prefix: "/accounts", key: "accounts" },
   { prefix: "/inventory", key: "inventory" },
+  { prefix: "/vendors", key: "vendors" },
+  { prefix: "/maintenance", key: "maintenance" },
   { prefix: "/settings", key: "settings" },
 ];
 

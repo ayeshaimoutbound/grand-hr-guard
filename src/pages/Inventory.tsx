@@ -12,8 +12,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Plus, Upload, Download, Trash2, Package, Minus, PlusCircle, UserCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Upload, Download, Trash2, Package, Minus, PlusCircle, UserCheck, AlertTriangle, TrendingUp, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchUsageStats, applyAutoThresholds, suggestThreshold, UsageStat, WINDOW_DAYS } from "@/lib/inventoryInsights";
 
 const CATEGORIES = [
   "Shirt (Men)",
@@ -63,18 +65,26 @@ interface Item {
   unit_cost: number | null;
   supplier: string | null;
   notes: string | null;
+  inventory_type: string;
+  low_stock_threshold: number;
+  auto_threshold: boolean;
+  vendor_id: string | null;
 }
 
 export default function Inventory() {
   const { isSuperAdmin } = useAuth();
   const [tab, setTab] = useState<string>("all");
   const [items, setItems] = useState<Item[]>([]);
+  const [vendors, setVendors] = useState<{ id: string; vendor_name: string; vendor_type: string }[]>([]);
+  const [stats, setStats] = useState<Record<string, UsageStat>>({});
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [moveItem, setMoveItem] = useState<Item | null>(null);
   const [moveQty, setMoveQty] = useState<string>("");
   const [moveReason, setMoveReason] = useState<string>("");
+  const [settingsItem, setSettingsItem] = useState<Item | null>(null);
+  const [settingsForm, setSettingsForm] = useState({ inventory_type: "non_critical", low_stock_threshold: "3", auto_threshold: true });
 
   const [issueItem, setIssueItem] = useState<Item | null>(null);
   const [issueQty, setIssueQty] = useState<string>("1");
@@ -93,6 +103,15 @@ export default function Inventory() {
     unit_cost: "",
     supplier: "",
     notes: "",
+    inventory_type: "non_critical",
+    low_stock_threshold: "3",
+    auto_threshold: true,
+    vendor_id: "",
+    is_paid: false,
+    payment_method: "Cash",
+    cheque_number: "",
+    cheque_date: "",
+    invoice_ref: "",
   });
 
   const [bulk, setBulk] = useState({
@@ -103,11 +122,39 @@ export default function Inventory() {
 
   const load = async () => {
     const { data } = await supabase.from("inventory_items").select("*").order("category").order("item_name");
-    setItems((data as any) || []);
-    const { data: emps } = await supabase.from("employees").select("id, employee_id, full_name").order("full_name");
+    const list = ((data as any) || []) as Item[];
+    setItems(list);
+    const [{ data: emps }, { data: vends }] = await Promise.all([
+      supabase.from("employees").select("id, employee_id, full_name").order("full_name"),
+      supabase.from("vendors").select("id, vendor_name, vendor_type").order("vendor_name"),
+    ]);
     setEmployees((emps as any) || []);
+    setVendors((vends as any) || []);
+    setStats(await fetchUsageStats(list));
   };
   useEffect(() => { load(); }, []);
+
+  const recalcThresholds = async () => {
+    const fresh = await fetchUsageStats(items);
+    const changed = await applyAutoThresholds(items, fresh);
+    toast.success(changed ? `Updated ${changed} adaptive threshold${changed > 1 ? "s" : ""}` : "All adaptive thresholds are already up to date");
+    load();
+  };
+
+  const saveSettings = async () => {
+    if (!settingsItem) return;
+    const { error } = await supabase.from("inventory_items").update({
+      inventory_type: settingsForm.inventory_type,
+      low_stock_threshold: parseInt(settingsForm.low_stock_threshold) || 0,
+      auto_threshold: settingsForm.auto_threshold,
+    } as any).eq("id", settingsItem.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Item settings updated");
+    setSettingsItem(null);
+    load();
+  };
+
+  const isLow = (i: Item) => i.inventory_type === "critical" && i.quantity < (i.low_stock_threshold ?? 3);
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
@@ -120,14 +167,31 @@ export default function Inventory() {
 
   const totalUnits = filtered.reduce((s, i) => s + i.quantity, 0);
   const totalValue = filtered.reduce((s, i) => s + i.quantity * Number(i.unit_cost || 0), 0);
+  const lowStockItems = useMemo(() => items.filter(isLow), [items]);
+  const insightRows = useMemo(
+    () => filtered
+      .map((item) => ({ item, stat: stats[item.id] }))
+      .filter((r) => r.stat && r.stat.totalIssued > 0)
+      .sort((a, b) => b.stat.totalIssued - a.stat.totalIssued),
+    [filtered, stats]
+  );
 
   const resetForm = () => setForm({
     category: "Shirt (Men)", item_name: "", size: "", color: "", gender: "",
     epaulet_rank: "", quantity: "0", unit_cost: "", supplier: "", notes: "",
+    inventory_type: "non_critical", low_stock_threshold: "3", auto_threshold: true,
+    vendor_id: "", is_paid: false, payment_method: "Cash", cheque_number: "", cheque_date: "", invoice_ref: "",
   });
 
   const saveItem = async () => {
     if (!form.category || !form.item_name) { toast.error("Category and item name are required"); return; }
+    const qty = parseInt(form.quantity) || 0;
+    const unitCost = form.unit_cost ? parseFloat(form.unit_cost) : null;
+    if (qty > 0 && !form.vendor_id) { toast.error("Select the vendor this stock came from"); return; }
+    if (form.is_paid && form.payment_method === "Cheque" && !form.cheque_number.trim()) {
+      toast.error("Cheque number is required"); return;
+    }
+    const vendorName = vendors.find((v) => v.id === form.vendor_id)?.vendor_name || form.supplier || null;
     const { data: u } = await supabase.auth.getUser();
     const payload: any = {
       category: form.category,
@@ -136,19 +200,59 @@ export default function Inventory() {
       color: form.color || null,
       gender: form.gender || null,
       epaulet_rank: form.epaulet_rank || null,
-      quantity: parseInt(form.quantity) || 0,
-      unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : null,
-      supplier: form.supplier || null,
+      quantity: qty,
+      unit_cost: unitCost,
+      supplier: vendorName,
       notes: form.notes || null,
+      inventory_type: form.inventory_type,
+      low_stock_threshold: parseInt(form.low_stock_threshold) || 3,
+      auto_threshold: form.auto_threshold,
+      vendor_id: form.vendor_id || null,
       created_by: u.user?.id,
     };
     const { data, error } = await supabase.from("inventory_items").insert(payload).select().single();
     if (error) { toast.error(error.message); return; }
-    if ((payload.quantity || 0) > 0) {
+    const itemId = (data as any).id;
+    if (qty > 0) {
+      const total = (unitCost || 0) * qty;
+      // Expense so Accounts reflects the payable
+      const { data: exp } = await supabase.from("expenses").insert({
+        expense_date: format(new Date(), "yyyy-MM-dd"),
+        category: form.category === "Stationary" ? "Stationaries" : "Uniforms",
+        subcategory: "Inventory Purchase",
+        amount: total,
+        description: `${form.item_name} × ${qty}`,
+        supplier: vendorName,
+        vendor: vendorName,
+        invoice_ref: form.invoice_ref || null,
+        is_paid: form.is_paid,
+        payment_date: form.is_paid ? format(new Date(), "yyyy-MM-dd") : null,
+        created_by: u.user?.id,
+      } as any).select("id").single();
+
+      await supabase.from("inventory_purchases").insert({
+        item_id: itemId,
+        vendor_id: form.vendor_id || null,
+        purchase_date: format(new Date(), "yyyy-MM-dd"),
+        quantity: qty,
+        unit_cost: unitCost || 0,
+        total_amount: total,
+        is_paid: form.is_paid,
+        payment_method: form.is_paid ? form.payment_method : null,
+        cheque_number: form.is_paid && form.payment_method === "Cheque" ? form.cheque_number : null,
+        cheque_date: form.is_paid && form.payment_method === "Cheque" && form.cheque_date ? form.cheque_date : null,
+        invoice_ref: form.invoice_ref || null,
+        expense_id: (exp as any)?.id ?? null,
+        created_by: u.user?.id,
+      } as any);
+
       await supabase.from("inventory_movements").insert({
-        item_id: (data as any).id,
-        change: payload.quantity,
+        item_id: itemId,
+        change: qty,
         reason: "manual_add",
+        reference: form.invoice_ref || null,
+        unit_cost: unitCost,
+        expense_id: (exp as any)?.id ?? null,
         created_by: u.user?.id,
       } as any);
     }
@@ -430,6 +534,7 @@ export default function Inventory() {
           <p className="text-muted-foreground">Uniforms, epaulets, lanyards, shoes, stationaries and more</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={recalcThresholds}><Sparkles className="h-4 w-4 mr-2" />Recalculate Thresholds</Button>
           <Button variant="outline" onClick={downloadUniformTemplate}><Download className="h-4 w-4 mr-2" />Bulk Upload Format</Button>
           <Button variant="outline" onClick={downloadExport}><Download className="h-4 w-4 mr-2" />Export (.xlsx)</Button>
           <Button variant="outline" onClick={() => setBulkOpen(true)}><Upload className="h-4 w-4 mr-2" />Bulk Upload Uniforms</Button>
@@ -441,8 +546,25 @@ export default function Inventory() {
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Items</p><p className="text-2xl font-bold">{filtered.length}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Units in Stock</p><p className="text-2xl font-bold">{totalUnits}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Stock Value</p><p className="text-2xl font-bold">LKR {totalValue.toLocaleString()}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Low Stock (&lt;5)</p><p className="text-2xl font-bold text-destructive">{filtered.filter(i => i.quantity < 5).length}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Critical Low Stock</p><p className="text-2xl font-bold text-destructive">{lowStockItems.length}</p></CardContent></Card>
       </div>
+
+      {lowStockItems.length > 0 && (
+        <Card className="border-destructive/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />Low Stock Alerts — Critical Inventory
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {lowStockItems.map((i) => (
+              <Badge key={i.id} variant="destructive" className="text-xs">
+                {i.item_name}{i.size ? ` ${i.size}` : ""}{i.color ? ` ${i.color}` : ""} — {i.quantity} left (min {i.low_stock_threshold})
+              </Badge>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -462,32 +584,46 @@ export default function Inventory() {
                   <TableRow>
                     <TableHead>Category</TableHead>
                     <TableHead>Item</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Color</TableHead>
-                    <TableHead>Rank</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Threshold</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
-                    <TableHead>Supplier</TableHead>
+                    <TableHead>Vendor</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No items</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">No items</TableCell></TableRow>
                   ) : filtered.map((i) => (
                     <TableRow key={i.id}>
                       <TableCell><Badge variant="outline">{i.category}</Badge></TableCell>
-                      <TableCell className="font-medium">{i.item_name}</TableCell>
+                      <TableCell className="font-medium">
+                        {i.item_name}
+                        {i.epaulet_rank ? <div className="text-xs text-muted-foreground">{i.epaulet_rank}</div> : null}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={i.inventory_type === "critical" ? "default" : "secondary"}>
+                          {i.inventory_type === "critical" ? "Critical" : "Non-Critical"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{i.size || "—"}</TableCell>
                       <TableCell>{i.color || "—"}</TableCell>
-                      <TableCell>{i.epaulet_rank || "—"}</TableCell>
                       <TableCell className="text-right">
-                        <span className={i.quantity < 5 ? "text-destructive font-semibold" : ""}>{i.quantity}</span>
+                        <span className={isLow(i) ? "text-destructive font-semibold" : ""}>{i.quantity}</span>
+                        {isLow(i) && <AlertTriangle className="inline h-3.5 w-3.5 ml-1 text-destructive" />}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {i.low_stock_threshold}
+                        <div className="text-xs text-muted-foreground">{i.auto_threshold ? "auto" : "manual"}</div>
                       </TableCell>
                       <TableCell className="text-right">{i.unit_cost ? `LKR ${Number(i.unit_cost).toFixed(2)}` : "—"}</TableCell>
                       <TableCell>{i.supplier || "—"}</TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button size="sm" variant="outline" onClick={() => { setMoveItem(i); setMoveQty(""); setMoveReason(""); }}>Adjust</Button>
+                        <Button size="sm" variant="outline" onClick={() => { setSettingsItem(i); setSettingsForm({ inventory_type: i.inventory_type, low_stock_threshold: String(i.low_stock_threshold ?? 3), auto_threshold: i.auto_threshold !== false }); }}>Settings</Button>
                         <Button size="sm" variant="secondary" onClick={() => { setIssueItem(i); setIssueQty("1"); setIssueEmployeeId(""); setIssueMonths("3"); }}>
                           <UserCheck className="h-3.5 w-3.5 mr-1" />Issue
                         </Button>
@@ -502,11 +638,54 @@ export default function Inventory() {
         </CardContent>
       </Card>
 
+      {/* STOCK MOVEMENT INSIGHTS */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-5 w-5" />Stock Movement Insights</CardTitle>
+          <p className="text-sm text-muted-foreground">Consumption over the last {WINDOW_DAYS} days — drives adaptive thresholds.</p>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-right">Issued ({WINDOW_DAYS}d)</TableHead>
+                <TableHead className="text-right">Avg / month</TableHead>
+                <TableHead>Velocity</TableHead>
+                <TableHead className="text-right">Suggested Threshold</TableHead>
+                <TableHead className="text-right">In Stock</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {insightRows.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No movement recorded yet</TableCell></TableRow>
+              ) : insightRows.map(({ item, stat }) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.item_name}{item.size ? ` ${item.size}` : ""}{item.color ? ` ${item.color}` : ""}</TableCell>
+                  <TableCell><Badge variant={item.inventory_type === "critical" ? "default" : "secondary"}>{item.inventory_type === "critical" ? "Critical" : "Non-Critical"}</Badge></TableCell>
+                  <TableCell className="text-right">{stat.totalIssued}</TableCell>
+                  <TableCell className="text-right">{stat.perMonth.toFixed(1)}</TableCell>
+                  <TableCell>
+                    <Badge variant={stat.velocity === "fast" ? "default" : stat.velocity === "medium" ? "secondary" : "outline"}>
+                      {stat.velocity}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">{stat.suggestedThreshold}</TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+
       {/* ADD ITEM DIALOG */}
       <Dialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) resetForm(); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Add Inventory Item</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-h-[70vh] overflow-y-auto pr-1">
             <div className="space-y-2 col-span-2">
               <Label>Category</Label>
               <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v, size: "", color: "" })}>
@@ -553,10 +732,75 @@ export default function Inventory() {
               <Label>Unit Cost (LKR)</Label>
               <Input type="number" step="0.01" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} />
             </div>
-            <div className="space-y-2 col-span-2">
-              <Label>Supplier</Label>
-              <Input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} />
+            <div className="space-y-2">
+              <Label>Inventory Type</Label>
+              <Select value={form.inventory_type} onValueChange={(v) => setForm({ ...form, inventory_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="critical">Critical (monitored, alerts)</SelectItem>
+                  <SelectItem value="non_critical">Non-Critical (no alerts)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Low Stock Threshold</Label>
+              <Input type="number" min="0" value={form.low_stock_threshold} disabled={form.auto_threshold}
+                onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-3 col-span-2">
+              <Switch checked={form.auto_threshold} onCheckedChange={(v) => setForm({ ...form, auto_threshold: v })} />
+              <Label>Adaptive threshold (auto-adjust from usage history)</Label>
+            </div>
+
+            <div className="space-y-2 col-span-2">
+              <Label>Vendor</Label>
+              <Select value={form.vendor_id || "none"} onValueChange={(v) => setForm({ ...form, vendor_id: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No vendor</SelectItem>
+                  {vendors.map((v) => <SelectItem key={v.id} value={v.id}>{v.vendor_name} — {v.vendor_type}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Purchase amount = quantity × unit cost{" "}
+                {parseInt(form.quantity) > 0 && form.unit_cost
+                  ? `= LKR ${((parseFloat(form.unit_cost) || 0) * (parseInt(form.quantity) || 0)).toLocaleString()}`
+                  : ""}
+              </p>
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>Invoice / Bill Ref</Label>
+              <Input value={form.invoice_ref} onChange={(e) => setForm({ ...form, invoice_ref: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-3 col-span-2">
+              <Switch checked={form.is_paid} onCheckedChange={(v) => setForm({ ...form, is_paid: v })} />
+              <Label>Payment settled</Label>
+            </div>
+            {form.is_paid && (
+              <>
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["Cash", "Cheque", "Bank Transfer"].map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {form.payment_method === "Cheque" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Cheque No</Label>
+                      <Input value={form.cheque_number} onChange={(e) => setForm({ ...form, cheque_number: e.target.value })} />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Cheque Dated To</Label>
+                      <Input type="date" value={form.cheque_date} onChange={(e) => setForm({ ...form, cheque_date: e.target.value })} />
+                    </div>
+                  </>
+                )}
+              </>
+            )}
             <div className="space-y-2 col-span-2">
               <Label>Notes</Label>
               <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -568,6 +812,49 @@ export default function Inventory() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ITEM SETTINGS DIALOG */}
+      <Dialog open={!!settingsItem} onOpenChange={(v) => !v && setSettingsItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Item Settings — {settingsItem?.item_name}</DialogTitle>
+            <DialogDescription>
+              Classification and low-stock threshold.
+              {settingsItem && stats[settingsItem.id]
+                ? ` Suggested: ${suggestThreshold(stats[settingsItem.id].perMonth, settingsForm.inventory_type)} (avg ${stats[settingsItem.id].perMonth.toFixed(1)}/month).`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Inventory Type</Label>
+              <Select value={settingsForm.inventory_type} onValueChange={(v) => setSettingsForm({ ...settingsForm, inventory_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="critical">Critical (monitored, alerts)</SelectItem>
+                  <SelectItem value="non_critical">Non-Critical (no alerts)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={settingsForm.auto_threshold} onCheckedChange={(v) => setSettingsForm({ ...settingsForm, auto_threshold: v })} />
+              <Label>Adaptive threshold</Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Low Stock Threshold {settingsForm.auto_threshold && <span className="text-xs text-muted-foreground">(auto — turn off to override)</span>}</Label>
+              <Input type="number" min="0" disabled={settingsForm.auto_threshold}
+                value={settingsForm.low_stock_threshold}
+                onChange={(e) => setSettingsForm({ ...settingsForm, low_stock_threshold: e.target.value })} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSettingsItem(null)}>Cancel</Button>
+              <Button onClick={saveSettings}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
 
       {/* STOCK ADJUST DIALOG */}
       <Dialog open={!!moveItem} onOpenChange={(v) => !v && setMoveItem(null)}>

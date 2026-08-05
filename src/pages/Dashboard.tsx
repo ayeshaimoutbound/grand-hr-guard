@@ -1,11 +1,24 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building2, Calendar, DollarSign } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Users, Building2, Calendar, DollarSign, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface LowStockItem {
+  id: string;
+  item_name: string;
+  size: string | null;
+  color: string | null;
+  quantity: number;
+  low_stock_threshold: number;
+}
+
 export default function Dashboard() {
   const { isSuperAdmin } = useAuth();
+  const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [stats, setStats] = useState({
     totalEmployees: 0,
     totalCompanies: 0,
@@ -13,8 +26,18 @@ export default function Dashboard() {
     monthlySalary: 0,
   });
 
+  const fetchLowStock = async () => {
+    const { data } = await supabase
+      .from("inventory_items")
+      .select("id, item_name, size, color, quantity, low_stock_threshold, inventory_type")
+      .eq("inventory_type", "critical");
+    setLowStock(((data as any) || []).filter((i: any) => i.quantity < (i.low_stock_threshold ?? 3)));
+  };
+
   useEffect(() => {
     fetchStats();
+    fetchLowStock();
+
 
     // Set up real-time subscriptions for invoices and salaries
     const channel = supabase
@@ -118,6 +141,26 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground">Overview of your HR management system</p>
       </div>
+
+      {lowStock.length > 0 && (
+        <Card className="border-destructive/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />Low Stock Alerts ({lowStock.length})
+            </CardTitle>
+            <Button asChild size="sm" variant="outline"><Link to="/inventory">Open Inventory</Link></Button>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {lowStock.map((i) => (
+              <Badge key={i.id} variant="destructive" className="text-xs">
+                {i.item_name}{i.size ? ` ${i.size}` : ""}{i.color ? ` ${i.color}` : ""} — {i.quantity} left (min {i.low_stock_threshold})
+              </Badge>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat, index) => {
