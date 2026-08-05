@@ -171,10 +171,19 @@ export default function Inventory() {
   const resetForm = () => setForm({
     category: "Shirt (Men)", item_name: "", size: "", color: "", gender: "",
     epaulet_rank: "", quantity: "0", unit_cost: "", supplier: "", notes: "",
+    inventory_type: "non_critical", low_stock_threshold: "3", auto_threshold: true,
+    vendor_id: "", is_paid: false, payment_method: "Cash", cheque_number: "", cheque_date: "", invoice_ref: "",
   });
 
   const saveItem = async () => {
     if (!form.category || !form.item_name) { toast.error("Category and item name are required"); return; }
+    const qty = parseInt(form.quantity) || 0;
+    const unitCost = form.unit_cost ? parseFloat(form.unit_cost) : null;
+    if (qty > 0 && !form.vendor_id) { toast.error("Select the vendor this stock came from"); return; }
+    if (form.is_paid && form.payment_method === "Cheque" && !form.cheque_number.trim()) {
+      toast.error("Cheque number is required"); return;
+    }
+    const vendorName = vendors.find((v) => v.id === form.vendor_id)?.vendor_name || form.supplier || null;
     const { data: u } = await supabase.auth.getUser();
     const payload: any = {
       category: form.category,
@@ -183,19 +192,59 @@ export default function Inventory() {
       color: form.color || null,
       gender: form.gender || null,
       epaulet_rank: form.epaulet_rank || null,
-      quantity: parseInt(form.quantity) || 0,
-      unit_cost: form.unit_cost ? parseFloat(form.unit_cost) : null,
-      supplier: form.supplier || null,
+      quantity: qty,
+      unit_cost: unitCost,
+      supplier: vendorName,
       notes: form.notes || null,
+      inventory_type: form.inventory_type,
+      low_stock_threshold: parseInt(form.low_stock_threshold) || 3,
+      auto_threshold: form.auto_threshold,
+      vendor_id: form.vendor_id || null,
       created_by: u.user?.id,
     };
     const { data, error } = await supabase.from("inventory_items").insert(payload).select().single();
     if (error) { toast.error(error.message); return; }
-    if ((payload.quantity || 0) > 0) {
+    const itemId = (data as any).id;
+    if (qty > 0) {
+      const total = (unitCost || 0) * qty;
+      // Expense so Accounts reflects the payable
+      const { data: exp } = await supabase.from("expenses").insert({
+        expense_date: format(new Date(), "yyyy-MM-dd"),
+        category: form.category === "Stationary" ? "Stationaries" : "Uniforms",
+        subcategory: "Inventory Purchase",
+        amount: total,
+        description: `${form.item_name} × ${qty}`,
+        supplier: vendorName,
+        vendor: vendorName,
+        invoice_ref: form.invoice_ref || null,
+        is_paid: form.is_paid,
+        payment_date: form.is_paid ? format(new Date(), "yyyy-MM-dd") : null,
+        created_by: u.user?.id,
+      } as any).select("id").single();
+
+      await supabase.from("inventory_purchases").insert({
+        item_id: itemId,
+        vendor_id: form.vendor_id || null,
+        purchase_date: format(new Date(), "yyyy-MM-dd"),
+        quantity: qty,
+        unit_cost: unitCost || 0,
+        total_amount: total,
+        is_paid: form.is_paid,
+        payment_method: form.is_paid ? form.payment_method : null,
+        cheque_number: form.is_paid && form.payment_method === "Cheque" ? form.cheque_number : null,
+        cheque_date: form.is_paid && form.payment_method === "Cheque" && form.cheque_date ? form.cheque_date : null,
+        invoice_ref: form.invoice_ref || null,
+        expense_id: (exp as any)?.id ?? null,
+        created_by: u.user?.id,
+      } as any);
+
       await supabase.from("inventory_movements").insert({
-        item_id: (data as any).id,
-        change: payload.quantity,
+        item_id: itemId,
+        change: qty,
         reason: "manual_add",
+        reference: form.invoice_ref || null,
+        unit_cost: unitCost,
+        expense_id: (exp as any)?.id ?? null,
         created_by: u.user?.id,
       } as any);
     }
