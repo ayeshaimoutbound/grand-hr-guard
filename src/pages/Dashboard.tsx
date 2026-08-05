@@ -1,11 +1,24 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building2, Calendar, DollarSign } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Users, Building2, Calendar, DollarSign, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface LowStockItem {
+  id: string;
+  item_name: string;
+  size: string | null;
+  color: string | null;
+  quantity: number;
+  low_stock_threshold: number;
+}
+
 export default function Dashboard() {
   const { isSuperAdmin } = useAuth();
+  const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [stats, setStats] = useState({
     totalEmployees: 0,
     totalCompanies: 0,
