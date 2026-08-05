@@ -53,6 +53,8 @@ const App = () => (
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/food" element={<Food />} />
+              <Route path="/vendors" element={<Vendors />} />
+              <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/settings" element={<ProtectedRoute requireSuperAdmin><Settings /></ProtectedRoute>} />
             </Route>
 
