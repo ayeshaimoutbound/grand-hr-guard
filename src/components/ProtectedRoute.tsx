@@ -25,6 +25,8 @@ const PATH_TO_MODULE: { prefix: string; key: string }[] = [
   { prefix: "/invoices", key: "invoices" },
   { prefix: "/accounts", key: "accounts" },
   { prefix: "/inventory", key: "inventory" },
+  { prefix: "/vendors", key: "vendors" },
+  { prefix: "/maintenance", key: "maintenance" },
   { prefix: "/settings", key: "settings" },
 ];
 
