@@ -26,8 +26,18 @@ export default function Dashboard() {
     monthlySalary: 0,
   });
 
+  const fetchLowStock = async () => {
+    const { data } = await supabase
+      .from("inventory_items")
+      .select("id, item_name, size, color, quantity, low_stock_threshold, inventory_type")
+      .eq("inventory_type", "critical");
+    setLowStock(((data as any) || []).filter((i: any) => i.quantity < (i.low_stock_threshold ?? 3)));
+  };
+
   useEffect(() => {
     fetchStats();
+    fetchLowStock();
+
 
     // Set up real-time subscriptions for invoices and salaries
     const channel = supabase
