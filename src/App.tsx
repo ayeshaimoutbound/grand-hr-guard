@@ -18,6 +18,8 @@ import Invoices from "./pages/Invoices";
 import Accounts from "./pages/Accounts";
 import Inventory from "./pages/Inventory";
 import Food from "./pages/Food";
+import Vendors from "./pages/Vendors";
+import Maintenance from "./pages/Maintenance";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
