@@ -732,14 +732,128 @@ export default function Inventory() {
               <Label>Unit Cost (LKR)</Label>
               <Input type="number" step="0.01" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} />
             </div>
-            <div className="space-y-2 col-span-2">
-              <Label>Supplier</Label>
-              <Input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} />
+            <div className="space-y-2">
+              <Label>Inventory Type</Label>
+              <Select value={form.inventory_type} onValueChange={(v) => setForm({ ...form, inventory_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="critical">Critical (monitored, alerts)</SelectItem>
+                  <SelectItem value="non_critical">Non-Critical (no alerts)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Low Stock Threshold</Label>
+              <Input type="number" min="0" value={form.low_stock_threshold} disabled={form.auto_threshold}
+                onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-3 col-span-2">
+              <Switch checked={form.auto_threshold} onCheckedChange={(v) => setForm({ ...form, auto_threshold: v })} />
+              <Label>Adaptive threshold (auto-adjust from usage history)</Label>
+            </div>
+
+            <div className="space-y-2 col-span-2">
+              <Label>Vendor</Label>
+              <Select value={form.vendor_id || "none"} onValueChange={(v) => setForm({ ...form, vendor_id: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No vendor</SelectItem>
+                  {vendors.map((v) => <SelectItem key={v.id} value={v.id}>{v.vendor_name} — {v.vendor_type}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Purchase amount = quantity × unit cost{" "}
+                {parseInt(form.quantity) > 0 && form.unit_cost
+                  ? `= LKR ${((parseFloat(form.unit_cost) || 0) * (parseInt(form.quantity) || 0)).toLocaleString()}`
+                  : ""}
+              </p>
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>Invoice / Bill Ref</Label>
+              <Input value={form.invoice_ref} onChange={(e) => setForm({ ...form, invoice_ref: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-3 col-span-2">
+              <Switch checked={form.is_paid} onCheckedChange={(v) => setForm({ ...form, is_paid: v })} />
+              <Label>Payment settled</Label>
+            </div>
+            {form.is_paid && (
+              <>
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["Cash", "Cheque", "Bank Transfer"].map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {form.payment_method === "Cheque" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Cheque No</Label>
+                      <Input value={form.cheque_number} onChange={(e) => setForm({ ...form, cheque_number: e.target.value })} />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Cheque Dated To</Label>
+                      <Input type="date" value={form.cheque_date} onChange={(e) => setForm({ ...form, cheque_date: e.target.value })} />
+                    </div>
+                  </>
+                )}
+              </>
+            )}
             <div className="space-y-2 col-span-2">
               <Label>Notes</Label>
               <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button onClick={saveItem}>Add Item</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ITEM SETTINGS DIALOG */}
+      <Dialog open={!!settingsItem} onOpenChange={(v) => !v && setSettingsItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Item Settings — {settingsItem?.item_name}</DialogTitle>
+            <DialogDescription>
+              Classification and low-stock threshold.
+              {settingsItem && stats[settingsItem.id]
+                ? ` Suggested: ${suggestThreshold(stats[settingsItem.id].perMonth, settingsForm.inventory_type)} (avg ${stats[settingsItem.id].perMonth.toFixed(1)}/month).`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Inventory Type</Label>
+              <Select value={settingsForm.inventory_type} onValueChange={(v) => setSettingsForm({ ...settingsForm, inventory_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="critical">Critical (monitored, alerts)</SelectItem>
+                  <SelectItem value="non_critical">Non-Critical (no alerts)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={settingsForm.auto_threshold} onCheckedChange={(v) => setSettingsForm({ ...settingsForm, auto_threshold: v })} />
+              <Label>Adaptive threshold</Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Low Stock Threshold {settingsForm.auto_threshold && <span className="text-xs text-muted-foreground">(auto — turn off to override)</span>}</Label>
+              <Input type="number" min="0" disabled={settingsForm.auto_threshold}
+                value={settingsForm.low_stock_threshold}
+                onChange={(e) => setSettingsForm({ ...settingsForm, low_stock_threshold: e.target.value })} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSettingsItem(null)}>Cancel</Button>
+              <Button onClick={saveSettings}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
