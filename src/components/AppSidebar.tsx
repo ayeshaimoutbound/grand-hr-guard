@@ -40,6 +40,8 @@ const menuItems = [
   { title: "Accounts", url: "/accounts", icon: Wallet, key: "accounts", roles: ["admin", "super_admin"] },
   { title: "Inventory", url: "/inventory", icon: Package, key: "inventory", roles: ["admin", "super_admin", "office"] },
   { title: "Food", url: "/food", icon: Utensils, key: "food", roles: ["admin", "super_admin", "office"] },
+  { title: "Vendors", url: "/vendors", icon: Store, key: "vendors", roles: ["admin", "super_admin", "office"] },
+  { title: "Maintenance", url: "/maintenance", icon: Wrench, key: "maintenance", roles: ["admin", "super_admin", "office"] },
   { title: "Settings", url: "/settings", icon: SettingsIcon, key: "settings", roles: ["super_admin"] },
 ];
 
