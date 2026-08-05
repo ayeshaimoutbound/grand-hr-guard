@@ -572,6 +572,7 @@ export type Database = {
       }
       inventory_items: {
         Row: {
+          auto_threshold: boolean
           category: string
           color: string | null
           created_at: string
@@ -579,15 +580,19 @@ export type Database = {
           epaulet_rank: string | null
           gender: string | null
           id: string
+          inventory_type: string
           item_name: string
+          low_stock_threshold: number
           notes: string | null
           quantity: number
           size: string | null
           supplier: string | null
           unit_cost: number | null
           updated_at: string
+          vendor_id: string | null
         }
         Insert: {
+          auto_threshold?: boolean
           category: string
           color?: string | null
           created_at?: string
@@ -595,15 +600,19 @@ export type Database = {
           epaulet_rank?: string | null
           gender?: string | null
           id?: string
+          inventory_type?: string
           item_name: string
+          low_stock_threshold?: number
           notes?: string | null
           quantity?: number
           size?: string | null
           supplier?: string | null
           unit_cost?: number | null
           updated_at?: string
+          vendor_id?: string | null
         }
         Update: {
+          auto_threshold?: boolean
           category?: string
           color?: string | null
           created_at?: string
@@ -611,15 +620,26 @@ export type Database = {
           epaulet_rank?: string | null
           gender?: string | null
           id?: string
+          inventory_type?: string
           item_name?: string
+          low_stock_threshold?: number
           notes?: string | null
           quantity?: number
           size?: string | null
           supplier?: string | null
           unit_cost?: number | null
           updated_at?: string
+          vendor_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_movements: {
         Row: {
@@ -698,6 +718,98 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_purchases: {
+        Row: {
+          batch_id: string | null
+          cheque_date: string | null
+          cheque_number: string | null
+          created_at: string
+          created_by: string | null
+          expense_id: string | null
+          id: string
+          invoice_ref: string | null
+          is_paid: boolean
+          item_id: string | null
+          notes: string | null
+          payment_method: string | null
+          purchase_date: string
+          quantity: number
+          total_amount: number
+          unit_cost: number
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          batch_id?: string | null
+          cheque_date?: string | null
+          cheque_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string | null
+          id?: string
+          invoice_ref?: string | null
+          is_paid?: boolean
+          item_id?: string | null
+          notes?: string | null
+          payment_method?: string | null
+          purchase_date?: string
+          quantity?: number
+          total_amount?: number
+          unit_cost?: number
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          batch_id?: string | null
+          cheque_date?: string | null
+          cheque_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string | null
+          id?: string
+          invoice_ref?: string | null
+          is_paid?: boolean
+          item_id?: string | null
+          notes?: string | null
+          payment_method?: string | null
+          purchase_date?: string
+          quantity?: number
+          total_amount?: number
+          unit_cost?: number
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_purchases_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "uniform_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_purchases_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_purchases_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_purchases_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -804,6 +916,90 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_records: {
+        Row: {
+          asset_name: string | null
+          cheque_date: string | null
+          cheque_number: string | null
+          cost: number
+          created_at: string
+          created_by: string | null
+          expense_id: string | null
+          id: string
+          invoice_ref: string | null
+          is_paid: boolean
+          maintenance_type: string
+          next_service_date: string | null
+          notes: string | null
+          payment_method: string | null
+          service_date: string
+          status: string
+          title: string
+          updated_at: string
+          vehicle_number: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          asset_name?: string | null
+          cheque_date?: string | null
+          cheque_number?: string | null
+          cost?: number
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string | null
+          id?: string
+          invoice_ref?: string | null
+          is_paid?: boolean
+          maintenance_type?: string
+          next_service_date?: string | null
+          notes?: string | null
+          payment_method?: string | null
+          service_date?: string
+          status?: string
+          title: string
+          updated_at?: string
+          vehicle_number?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          asset_name?: string | null
+          cheque_date?: string | null
+          cheque_number?: string | null
+          cost?: number
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string | null
+          id?: string
+          invoice_ref?: string | null
+          is_paid?: boolean
+          maintenance_type?: string
+          next_service_date?: string | null
+          notes?: string | null
+          payment_method?: string | null
+          service_date?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          vehicle_number?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_records_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_records_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -1207,6 +1403,60 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vendors: {
+        Row: {
+          address: string | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
+          branch_name: string | null
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+          vendor_name: string
+          vendor_type: string
+        }
+        Insert: {
+          address?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          branch_name?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          vendor_name: string
+          vendor_type?: string
+        }
+        Update: {
+          address?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          branch_name?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          vendor_name?: string
+          vendor_type?: string
         }
         Relationships: []
       }
