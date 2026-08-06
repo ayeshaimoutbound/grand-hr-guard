@@ -121,6 +121,15 @@ export default function Inventory() {
     notes: "",
   });
 
+  const [invBulkOpen, setInvBulkOpen] = useState(false);
+  const [invBulk, setInvBulk] = useState({
+    file: null as File | null,
+    vendor_id: "",
+    invoice_ref: "",
+    is_paid: false,
+  });
+
+
   const load = async () => {
     const { data } = await supabase.from("inventory_items").select("*").order("category").order("item_name");
     const list = ((data as any) || []) as Item[];
