@@ -846,10 +846,9 @@ export default function AttendanceCalendar({
                               <SelectValue placeholder="-" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="OIC">OIC</SelectItem>
-                              <SelectItem value="SSO">SSO</SelectItem>
-                              <SelectItem value="JSO">JSO</SelectItem>
-                              <SelectItem value="LSO">LSO</SelectItem>
+                              {(((selectedCompany as any).active_ranks?.length ? (selectedCompany as any).active_ranks : ["OIC", "SSO", "JSO", "LSO"]) as string[]).map((r) => (
+                                <SelectItem key={r} value={r}>{r}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         ) : (
