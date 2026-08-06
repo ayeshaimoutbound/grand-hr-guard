@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Upload, Download, Trash2, Package, Minus, PlusCircle, UserCheck, AlertTriangle, TrendingUp, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchUsageStats, applyAutoThresholds, suggestThreshold, UsageStat, WINDOW_DAYS } from "@/lib/inventoryInsights";
+import AssetsSection from "@/components/inventory/AssetsSection";
 
 const CATEGORIES = [
   "Shirt (Men)",
@@ -119,6 +120,15 @@ export default function Inventory() {
     supplier: "",
     notes: "",
   });
+
+  const [invBulkOpen, setInvBulkOpen] = useState(false);
+  const [invBulk, setInvBulk] = useState({
+    file: null as File | null,
+    vendor_id: "",
+    invoice_ref: "",
+    is_paid: false,
+  });
+
 
   const load = async () => {
     const { data } = await supabase.from("inventory_items").select("*").order("category").order("item_name");
@@ -319,6 +329,132 @@ export default function Inventory() {
     a.click();
     a.remove();
     toast.success("Template downloaded");
+  };
+
+  const downloadInventoryTemplate = () => {
+    const rows = [{
+      "Category": "Shoes",
+      "Item Name": "Black Leather Shoes",
+      "Size": "42",
+      "Color": "Black",
+      "Gender": "Men",
+      "Quantity": 10,
+      "Unit Cost": 4500,
+      "Vendor": "",
+      "Invoice No": "",
+      "Notes": "",
+    }];
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+    XLSX.writeFile(wb, "Inventory_Bulk_Upload_Format.xlsx");
+    toast.success("Format downloaded");
+  };
+
+  const processInventoryBulk = async () => {
+    if (!invBulk.file) { toast.error("Choose a file"); return; }
+    try {
+      const buf = await invBulk.file.arrayBuffer();
+      const wb = XLSX.read(buf, { cellFormula: false });
+      const rows: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+      if (!rows.length) { toast.error("No rows found in the file"); return; }
+
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u.user?.id;
+      const pick = (r: any, keys: string[]) => {
+        for (const k of Object.keys(r)) {
+          if (keys.includes(k.trim().toLowerCase())) return r[k];
+        }
+        return "";
+      };
+
+      let created = 0, updated = 0, totalCost = 0;
+
+      for (const r of rows) {
+        const itemName = String(pick(r, ["item name", "item", "description"]) || "").trim();
+        if (!itemName) continue;
+        const category = String(pick(r, ["category"]) || "Other").trim() || "Other";
+        const size = String(pick(r, ["size"]) || "").trim() || null;
+        const color = String(pick(r, ["color", "colour"]) || "").trim() || null;
+        const gender = String(pick(r, ["gender"]) || "").trim() || null;
+        const qty = parseInt(String(pick(r, ["quantity", "qty"]) || "0")) || 0;
+        const unitCost = parseFloat(String(pick(r, ["unit cost", "price", "unit price"]) || "0")) || 0;
+        const vendorName = String(pick(r, ["vendor", "supplier"]) || "").trim();
+        const invoiceRef = String(pick(r, ["invoice no", "invoice no.", "invoice"]) || "").trim() || invBulk.invoice_ref || null;
+        const notes = String(pick(r, ["notes", "remarks"]) || "").trim() || null;
+        if (qty <= 0) continue;
+
+        const vendorId = vendors.find((v) => v.vendor_name.toLowerCase() === vendorName.toLowerCase())?.id || invBulk.vendor_id || null;
+
+        const existing = items.find(
+          (i) => i.item_name.toLowerCase() === itemName.toLowerCase() &&
+            (i.category || "").toLowerCase() === category.toLowerCase() &&
+            (i.size || "") === (size || "") &&
+            (i.color || "") === (color || "")
+        );
+
+        let itemId: string;
+        if (existing) {
+          itemId = existing.id;
+          await supabase.from("inventory_items").update({
+            quantity: (existing.quantity || 0) + qty,
+            unit_cost: unitCost || existing.unit_cost,
+            vendor_id: vendorId || (existing as any).vendor_id,
+          }).eq("id", existing.id);
+          updated++;
+        } else {
+          const { data: ins, error } = await supabase.from("inventory_items").insert({
+            category, item_name: itemName, size, color, gender,
+            quantity: qty, unit_cost: unitCost || null,
+            supplier: vendorName || null, vendor_id: vendorId,
+            notes, created_by: uid,
+          }).select("id").single();
+          if (error) { toast.error(`${itemName}: ${error.message}`); continue; }
+          itemId = (ins as any).id;
+          created++;
+        }
+
+        await supabase.from("inventory_movements").insert({
+          item_id: itemId, change: qty, reason: "Bulk upload",
+          reference: invoiceRef, unit_cost: unitCost || null, created_by: uid,
+        });
+
+        const lineTotal = qty * unitCost;
+        totalCost += lineTotal;
+
+        if (lineTotal > 0) {
+          await supabase.from("inventory_purchases").insert({
+            item_id: itemId, vendor_id: vendorId,
+            purchase_date: new Date().toISOString().slice(0, 10),
+            quantity: qty, unit_cost: unitCost, total_amount: lineTotal,
+            is_paid: invBulk.is_paid, invoice_ref: invoiceRef,
+            notes: "Bulk upload", created_by: uid,
+          });
+        }
+      }
+
+      if (totalCost > 0) {
+        await supabase.from("expenses").insert({
+          expense_date: new Date().toISOString().slice(0, 10),
+          category: "Inventory",
+          subcategory: "Bulk Purchase",
+          amount: totalCost,
+          description: `Inventory bulk upload (${created + updated} items)`,
+          supplier: vendors.find((v) => v.id === invBulk.vendor_id)?.vendor_name || null,
+          invoice_ref: invBulk.invoice_ref || null,
+          is_paid: invBulk.is_paid,
+          payment_date: invBulk.is_paid ? new Date().toISOString().slice(0, 10) : null,
+          created_by: uid,
+        });
+      }
+
+      toast.success(`Uploaded — ${created} new, ${updated} restocked · LKR ${totalCost.toLocaleString()}`);
+      setInvBulkOpen(false);
+      setInvBulk({ file: null, vendor_id: "", invoice_ref: "", is_paid: false });
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to process file");
+    }
   };
 
   const processBulkUpload = async () => {
@@ -538,6 +674,7 @@ export default function Inventory() {
           <Button variant="outline" onClick={downloadUniformTemplate}><Download className="h-4 w-4 mr-2" />Bulk Upload Format</Button>
           <Button variant="outline" onClick={downloadExport}><Download className="h-4 w-4 mr-2" />Export (.xlsx)</Button>
           <Button variant="outline" onClick={() => setBulkOpen(true)}><Upload className="h-4 w-4 mr-2" />Bulk Upload Uniforms</Button>
+          <Button variant="outline" onClick={() => setInvBulkOpen(true)}><Upload className="h-4 w-4 mr-2" />Bulk Upload Inventory</Button>
           <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-2" />Add Item</Button>
         </div>
       </div>
@@ -957,6 +1094,47 @@ export default function Inventory() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* GENERAL INVENTORY BULK UPLOAD DIALOG */}
+      <Dialog open={invBulkOpen} onOpenChange={setInvBulkOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Upload Inventory</DialogTitle>
+            <DialogDescription>
+              Upload a simple sheet with Category, Item Name, Size, Color, Quantity, Unit Cost, Vendor and Invoice No.
+              Stock is added or topped up, and a purchase + expense is recorded automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Excel File (.xlsx)</Label>
+              <Input type="file" accept=".xlsx,.xls" onChange={(e) => setInvBulk({ ...invBulk, file: e.target.files?.[0] || null })} />
+              <Button variant="link" className="h-auto p-0 text-xs" onClick={downloadInventoryTemplate}>Download bulk upload format</Button>
+            </div>
+            <div className="space-y-2">
+              <Label>Default Vendor (used when the sheet has no Vendor column)</Label>
+              <Select value={invBulk.vendor_id} onValueChange={(v) => setInvBulk({ ...invBulk, vendor_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
+                <SelectContent>{vendors.map((v) => <SelectItem key={v.id} value={v.id}>{v.vendor_name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Default Invoice No (optional)</Label>
+              <Input value={invBulk.invoice_ref} onChange={(e) => setInvBulk({ ...invBulk, invoice_ref: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={invBulk.is_paid} onCheckedChange={(v) => setInvBulk({ ...invBulk, is_paid: v })} />
+              <Label>Already paid</Label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setInvBulkOpen(false)}>Cancel</Button>
+              <Button onClick={processInventoryBulk}><Upload className="h-4 w-4 mr-1" />Upload</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AssetsSection />
     </div>
   );
 }

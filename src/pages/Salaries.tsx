@@ -198,13 +198,10 @@ export default function Salaries() {
       "Employee ID": e.employee_id,
       "Name": e.full_name,
       "Total Shifts": p.total_shifts,
-      "EPF Days": p.epf_days,
-      "Extra Days": p.extra_days,
       "Gross Pay": p.gross_pay.toFixed(2),
-      "EPF Basic": p.epf_basic.toFixed(2),
-      "Basic+OT": p.basic_plus_ot.toFixed(2),
-      "OT (Extended)": p.ot_extended.toFixed(2),
-      "Annual Leave+Allowance": p.allowance.toFixed(2),
+      "Basic": p.epf_basic.toFixed(2),
+      "OT": (p.basic_plus_ot + p.ot_extended).toFixed(2),
+      "Incentive": p.allowance.toFixed(2),
       "EPF 8%": p.epf_8.toFixed(2),
       "Overtime Pay": p.ot_pay.toFixed(2),
       "Cash Advance": p.cash_advance.toFixed(2),
@@ -245,12 +242,9 @@ export default function Salaries() {
         <tr><td style="padding-left:24px">Earnings</td><td style="text-align:right">${b.amount.toFixed(2)}</td></tr>`).join("")}
       <tr class="tot"><td>Total Shifts</td><td style="text-align:right">${p.total_shifts}</td></tr>
       <tr class="tot"><td>Gross Pay</td><td style="text-align:right">${p.gross_pay.toFixed(2)}</td></tr>
-      <tr><td>EPF Days</td><td style="text-align:right">${p.epf_days}</td></tr>
-      <tr><td>Extra Days</td><td style="text-align:right">${p.extra_days}</td></tr>
-      <tr><td>EPF Basic (${p.epf_days} × LKR${dailyMinWage})</td><td style="text-align:right">${p.epf_basic.toFixed(2)}</td></tr>
-      <tr><td>Basic + OT</td><td style="text-align:right">${p.basic_plus_ot.toFixed(2)}</td></tr>
-      <tr><td>OT for Extended Days</td><td style="text-align:right">${p.ot_extended.toFixed(2)}</td></tr>
-      <tr><td>Annual Leave + Allowance</td><td style="text-align:right">${p.allowance.toFixed(2)}</td></tr>
+      <tr><td>Basic</td><td style="text-align:right">${p.epf_basic.toFixed(2)}</td></tr>
+      <tr><td>OT</td><td style="text-align:right">${(p.basic_plus_ot + p.ot_extended).toFixed(2)}</td></tr>
+      <tr><td>Incentive</td><td style="text-align:right">${p.allowance.toFixed(2)}</td></tr>
       <tr><td>Overtime Pay</td><td style="text-align:right">${p.ot_pay.toFixed(2)}</td></tr>
       <tr><td colspan="2"><b>Deductions</b></td></tr>
       <tr><td>EPF 8%</td><td style="text-align:right">${p.epf_8.toFixed(2)}</td></tr>
@@ -407,10 +401,9 @@ export default function Salaries() {
                         <TableCell colSpan={12} className="bg-muted/40">
                           <div className="p-4 space-y-3">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              <div><span className="text-muted-foreground">EPF Basic:</span> <b>LKR {p.epf_basic.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Basic+OT:</span> <b>LKR {p.basic_plus_ot.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">OT (Extended):</span> <b>LKR {p.ot_extended.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Annual Leave+Allowance:</span> <b>LKR {p.allowance.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Basic:</span> <b>LKR {p.epf_basic.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">OT:</span> <b>LKR {(p.basic_plus_ot + p.ot_extended).toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Incentive:</span> <b>LKR {p.allowance.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Cash Adv:</span> <b>LKR {p.cash_advance.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Food Adv:</span> <b>LKR {p.food_advance.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Uniform Adv:</span> <b>LKR {p.uniform_advance.toFixed(2)}</b></div>
