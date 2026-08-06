@@ -404,10 +404,9 @@ export default function Salaries() {
                         <TableCell colSpan={12} className="bg-muted/40">
                           <div className="p-4 space-y-3">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              <div><span className="text-muted-foreground">EPF Basic:</span> <b>LKR {p.epf_basic.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Basic+OT:</span> <b>LKR {p.basic_plus_ot.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">OT (Extended):</span> <b>LKR {p.ot_extended.toFixed(2)}</b></div>
-                              <div><span className="text-muted-foreground">Annual Leave+Allowance:</span> <b>LKR {p.allowance.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Basic:</span> <b>LKR {p.epf_basic.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">OT:</span> <b>LKR {(p.basic_plus_ot + p.ot_extended).toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Incentive:</span> <b>LKR {p.allowance.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Cash Adv:</span> <b>LKR {p.cash_advance.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Food Adv:</span> <b>LKR {p.food_advance.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Uniform Adv:</span> <b>LKR {p.uniform_advance.toFixed(2)}</b></div>
