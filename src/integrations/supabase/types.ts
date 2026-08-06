@@ -32,6 +32,80 @@ export type Database = {
         }
         Relationships: []
       }
+      assets: {
+        Row: {
+          asset_category: string
+          asset_name: string
+          assigned_to: string | null
+          condition: string
+          created_at: string
+          created_by: string | null
+          id: string
+          identifier: string | null
+          invoice_ref: string | null
+          location: string | null
+          notes: string | null
+          purchase_cost: number
+          purchase_date: string | null
+          quantity: number
+          serial_number: string | null
+          status: string
+          updated_at: string
+          vehicle_number: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          asset_category: string
+          asset_name: string
+          assigned_to?: string | null
+          condition?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          identifier?: string | null
+          invoice_ref?: string | null
+          location?: string | null
+          notes?: string | null
+          purchase_cost?: number
+          purchase_date?: string | null
+          quantity?: number
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_number?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          asset_category?: string
+          asset_name?: string
+          assigned_to?: string | null
+          condition?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          identifier?: string | null
+          invoice_ref?: string | null
+          location?: string | null
+          notes?: string | null
+          purchase_cost?: number
+          purchase_date?: string | null
+          quantity?: number
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_number?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance: {
         Row: {
           attendance_date: string
@@ -143,6 +217,9 @@ export type Database = {
       }
       companies: {
         Row: {
+          active_ranks: string[]
+          archived: boolean
+          archived_at: string | null
           charge_jso: number
           charge_lso: number
           charge_oic: number
@@ -161,6 +238,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          active_ranks?: string[]
+          archived?: boolean
+          archived_at?: string | null
           charge_jso?: number
           charge_lso?: number
           charge_oic?: number
@@ -179,6 +259,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          active_ranks?: string[]
+          archived?: boolean
+          archived_at?: string | null
           charge_jso?: number
           charge_lso?: number
           charge_oic?: number
