@@ -163,8 +163,23 @@ function round2(n: number) {
   return Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
 }
 
-// Hours rule: any partial hour rounds UP to next full hour.
+// OT rounding rule (half-hour steps):
+//  - up to 15 mins  -> no OT
+//  - 15–34 mins     -> 0.5 h
+//  - 35 mins–1h10   -> 1 h
+//  - 1h11–1h34      -> 1.5 h
+//  - 1h35–2h10      -> 2 h  ... and so on, repeating every hour.
 // If end < start, treat as crossing midnight (add 24h).
+export function roundOvertimeMinutes(mins: number): number {
+  if (mins <= 0) return 0;
+  if (mins < 15) return 0;
+  const h = Math.floor(mins / 60);
+  const r = mins % 60;
+  if (r <= 10) return h;
+  if (r <= 34) return h + 0.5;
+  return h + 1;
+}
+
 export function calcOvertimeHours(startTime: string, endTime: string): number {
   const toMin = (t: string) => {
     const [h, m] = t.split(":").map(Number);
@@ -172,5 +187,5 @@ export function calcOvertimeHours(startTime: string, endTime: string): number {
   };
   let mins = toMin(endTime) - toMin(startTime);
   if (mins <= 0) mins += 24 * 60;
-  return Math.ceil(mins / 60);
+  return roundOvertimeMinutes(mins);
 }
