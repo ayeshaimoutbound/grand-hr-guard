@@ -245,12 +245,9 @@ export default function Salaries() {
         <tr><td style="padding-left:24px">Earnings</td><td style="text-align:right">${b.amount.toFixed(2)}</td></tr>`).join("")}
       <tr class="tot"><td>Total Shifts</td><td style="text-align:right">${p.total_shifts}</td></tr>
       <tr class="tot"><td>Gross Pay</td><td style="text-align:right">${p.gross_pay.toFixed(2)}</td></tr>
-      <tr><td>EPF Days</td><td style="text-align:right">${p.epf_days}</td></tr>
-      <tr><td>Extra Days</td><td style="text-align:right">${p.extra_days}</td></tr>
-      <tr><td>EPF Basic (${p.epf_days} × LKR${dailyMinWage})</td><td style="text-align:right">${p.epf_basic.toFixed(2)}</td></tr>
-      <tr><td>Basic + OT</td><td style="text-align:right">${p.basic_plus_ot.toFixed(2)}</td></tr>
-      <tr><td>OT for Extended Days</td><td style="text-align:right">${p.ot_extended.toFixed(2)}</td></tr>
-      <tr><td>Annual Leave + Allowance</td><td style="text-align:right">${p.allowance.toFixed(2)}</td></tr>
+      <tr><td>Basic</td><td style="text-align:right">${p.epf_basic.toFixed(2)}</td></tr>
+      <tr><td>OT</td><td style="text-align:right">${(p.basic_plus_ot + p.ot_extended).toFixed(2)}</td></tr>
+      <tr><td>Incentive</td><td style="text-align:right">${p.allowance.toFixed(2)}</td></tr>
       <tr><td>Overtime Pay</td><td style="text-align:right">${p.ot_pay.toFixed(2)}</td></tr>
       <tr><td colspan="2"><b>Deductions</b></td></tr>
       <tr><td>EPF 8%</td><td style="text-align:right">${p.epf_8.toFixed(2)}</td></tr>
