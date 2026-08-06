@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Upload, Download, Trash2, Package, Minus, PlusCircle, UserCheck, AlertTriangle, TrendingUp, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchUsageStats, applyAutoThresholds, suggestThreshold, UsageStat, WINDOW_DAYS } from "@/lib/inventoryInsights";
+import AssetsSection from "@/components/inventory/AssetsSection";
 
 const CATEGORIES = [
   "Shirt (Men)",
