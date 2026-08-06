@@ -674,6 +674,7 @@ export default function Inventory() {
           <Button variant="outline" onClick={downloadUniformTemplate}><Download className="h-4 w-4 mr-2" />Bulk Upload Format</Button>
           <Button variant="outline" onClick={downloadExport}><Download className="h-4 w-4 mr-2" />Export (.xlsx)</Button>
           <Button variant="outline" onClick={() => setBulkOpen(true)}><Upload className="h-4 w-4 mr-2" />Bulk Upload Uniforms</Button>
+          <Button variant="outline" onClick={() => setInvBulkOpen(true)}><Upload className="h-4 w-4 mr-2" />Bulk Upload Inventory</Button>
           <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-2" />Add Item</Button>
         </div>
       </div>
