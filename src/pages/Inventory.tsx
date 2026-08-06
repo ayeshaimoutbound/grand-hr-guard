@@ -957,6 +957,47 @@ export default function Inventory() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* GENERAL INVENTORY BULK UPLOAD DIALOG */}
+      <Dialog open={invBulkOpen} onOpenChange={setInvBulkOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Upload Inventory</DialogTitle>
+            <DialogDescription>
+              Upload a simple sheet with Category, Item Name, Size, Color, Quantity, Unit Cost, Vendor and Invoice No.
+              Stock is added or topped up, and a purchase + expense is recorded automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Excel File (.xlsx)</Label>
+              <Input type="file" accept=".xlsx,.xls" onChange={(e) => setInvBulk({ ...invBulk, file: e.target.files?.[0] || null })} />
+              <Button variant="link" className="h-auto p-0 text-xs" onClick={downloadInventoryTemplate}>Download bulk upload format</Button>
+            </div>
+            <div className="space-y-2">
+              <Label>Default Vendor (used when the sheet has no Vendor column)</Label>
+              <Select value={invBulk.vendor_id} onValueChange={(v) => setInvBulk({ ...invBulk, vendor_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
+                <SelectContent>{vendors.map((v) => <SelectItem key={v.id} value={v.id}>{v.vendor_name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Default Invoice No (optional)</Label>
+              <Input value={invBulk.invoice_ref} onChange={(e) => setInvBulk({ ...invBulk, invoice_ref: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={invBulk.is_paid} onCheckedChange={(v) => setInvBulk({ ...invBulk, is_paid: v })} />
+              <Label>Already paid</Label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setInvBulkOpen(false)}>Cancel</Button>
+              <Button onClick={processInventoryBulk}><Upload className="h-4 w-4 mr-1" />Upload</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AssetsSection />
     </div>
   );
 }
