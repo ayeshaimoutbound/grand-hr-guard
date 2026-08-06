@@ -178,7 +178,7 @@ export default function OvertimeSection({ companyId, selectedMonth, employees }:
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? "Edit" : "Add"} Overtime</DialogTitle>
-            <DialogDescription>Partial hours round UP to the next full hour. End before start = crosses midnight.</DialogDescription>
+            <DialogDescription>Rounded to the nearest half hour: under 15 mins = no O/T, 15–34 mins = 30 mins, 35 mins–1h10 = 1 hour, 1h11–1h34 = 1.5 hours, 1h35–2h10 = 2 hours. End before start = crosses midnight.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
