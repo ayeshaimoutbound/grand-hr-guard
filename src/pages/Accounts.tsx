@@ -631,7 +631,7 @@ function OverviewTab() {
             </div>
           ))}
           <div className={`rounded-lg border-2 p-4 ${net >= 0 ? "border-emerald-500" : "border-destructive"}`}>
-            <p className="text-xs text-muted-foreground">Net (Received − Salaries − Expenses)</p>
+            <p className="text-xs text-muted-foreground">Net (Received − Salaries − Expenses − EPF/ETF)</p>
             <p className={`text-2xl font-bold ${net < 0 ? "text-destructive" : "text-emerald-600"}`}>LKR {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
         </div>
