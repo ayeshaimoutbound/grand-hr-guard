@@ -10,6 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Trash2, Wallet, Receipt, BarChart3, Settings, Banknote, UtensilsCrossed, Shirt, Landmark } from "lucide-react";
 import EmployerContributionsTab from "@/components/accounts/EmployerContributionsTab";
+import { fetchEmployerContributions, sumContributions } from "@/lib/employerContributions";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
