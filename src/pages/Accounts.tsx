@@ -26,18 +26,21 @@ export default function Accounts() {
         <p className="text-muted-foreground">Invoice payments, advances, expenses & monthly overview</p>
       </div>
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-5 max-w-3xl">
+        <TabsList className="grid grid-cols-6 max-w-4xl">
           <TabsTrigger value="payments"><Wallet className="h-4 w-4 mr-1" /> Payments</TabsTrigger>
           <TabsTrigger value="advances"><Banknote className="h-4 w-4 mr-1" /> Advances</TabsTrigger>
           <TabsTrigger value="expenses"><Receipt className="h-4 w-4 mr-1" /> Expenses</TabsTrigger>
+          <TabsTrigger value="contributions"><Landmark className="h-4 w-4 mr-1" /> EPF &amp; ETF</TabsTrigger>
           <TabsTrigger value="overview"><BarChart3 className="h-4 w-4 mr-1" /> Overview</TabsTrigger>
           <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="payments"><PaymentsTab /></TabsContent>
         <TabsContent value="advances"><AdvancesTab /></TabsContent>
         <TabsContent value="expenses"><ExpensesTab /></TabsContent>
+        <TabsContent value="contributions"><EmployerContributionsTab /></TabsContent>
         <TabsContent value="overview"><OverviewTab /></TabsContent>
         <TabsContent value="settings"><SettingsTab /></TabsContent>
+
       </Tabs>
     </div>
   );
