@@ -163,7 +163,7 @@ export function computePayroll(args: {
     employee_id: employeeId,
     total_shifts, epf_days, extra_days,
     gross_pay, epf_basic, basic_plus_ot, ot_extended, allowance,
-    epf_8, ot_pay, cash_advance, food_advance, uniform_advance,
+    epf_8, epf_12, etf_3, employer_total, ot_pay, cash_advance, food_advance, uniform_advance,
     manual_food, manual_uniforms, manual_accommodation, manual_transport, manual_other, manual_total,
     total_deductions, net_pay, breakdown,
   };
