@@ -135,6 +135,10 @@ export function computePayroll(args: {
 
   const epf_basic = round2(epf_days * dailyMinWage);
   const epf_8 = round2(epf_basic * EPF_EMPLOYEE_RATE);
+  const epf_12 = round2(epf_basic * EPF_EMPLOYER_RATE);
+  const etf_3 = round2(epf_basic * ETF_EMPLOYER_RATE);
+  const employer_total = round2(epf_12 + etf_3);
+
 
   const basic_plus_ot = round2(epf_days * settings.ot_hourly_rate * settings.normal_ot_hours);
   const ot_extended = round2(extra_days * settings.ot_hourly_rate * settings.extended_ot_hours);
