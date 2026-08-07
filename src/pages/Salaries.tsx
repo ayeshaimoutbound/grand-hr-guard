@@ -433,6 +433,9 @@ export default function Salaries() {
                               <div><span className="text-muted-foreground">Accommodation:</span> <b>LKR {p.manual_accommodation.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Transport:</span> <b>LKR {p.manual_transport.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Other:</span> <b>LKR {p.manual_other.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Employer EPF 12%:</span> <b>LKR {p.epf_12.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Employer ETF 3%:</span> <b>LKR {p.etf_3.toFixed(2)}</b></div>
+
                             </div>
                             {p.breakdown.length > 1 && (
                               <div>
