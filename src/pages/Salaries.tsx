@@ -274,6 +274,9 @@ export default function Salaries() {
 
   const totalGross = rows.reduce((s, r) => s + r.payroll.gross_pay, 0);
   const totalNet = rows.reduce((s, r) => s + r.payroll.net_pay, 0);
+  const totalEpf12 = rows.reduce((s, r) => s + r.payroll.epf_12, 0);
+  const totalEtf3 = rows.reduce((s, r) => s + r.payroll.etf_3, 0);
+
   const filteredRows = rows.filter(({ employee: e }) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
