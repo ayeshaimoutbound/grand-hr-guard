@@ -60,6 +60,9 @@ export interface PayrollLine {
   ot_extended: number;
   allowance: number;
   epf_8: number;
+  epf_12: number;
+  etf_3: number;
+  employer_total: number;
   ot_pay: number;
   cash_advance: number;
   food_advance: number;
@@ -77,6 +80,9 @@ export interface PayrollLine {
 
 const EPF_DAY_CAP = 25;
 const EPF_EMPLOYEE_RATE = 0.08;
+const EPF_EMPLOYER_RATE = 0.12;
+const ETF_EMPLOYER_RATE = 0.03;
+
 
 const rankRate = (c: CompanyRateRow, rank: string): number => {
   switch (rank) {
@@ -129,6 +135,10 @@ export function computePayroll(args: {
 
   const epf_basic = round2(epf_days * dailyMinWage);
   const epf_8 = round2(epf_basic * EPF_EMPLOYEE_RATE);
+  const epf_12 = round2(epf_basic * EPF_EMPLOYER_RATE);
+  const etf_3 = round2(epf_basic * ETF_EMPLOYER_RATE);
+  const employer_total = round2(epf_12 + etf_3);
+
 
   const basic_plus_ot = round2(epf_days * settings.ot_hourly_rate * settings.normal_ot_hours);
   const ot_extended = round2(extra_days * settings.ot_hourly_rate * settings.extended_ot_hours);
@@ -153,7 +163,7 @@ export function computePayroll(args: {
     employee_id: employeeId,
     total_shifts, epf_days, extra_days,
     gross_pay, epf_basic, basic_plus_ot, ot_extended, allowance,
-    epf_8, ot_pay, cash_advance, food_advance, uniform_advance,
+    epf_8, epf_12, etf_3, employer_total, ot_pay, cash_advance, food_advance, uniform_advance,
     manual_food, manual_uniforms, manual_accommodation, manual_transport, manual_other, manual_total,
     total_deductions, net_pay, breakdown,
   };

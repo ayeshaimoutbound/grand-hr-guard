@@ -203,6 +203,10 @@ export default function Salaries() {
       "OT": (p.basic_plus_ot + p.ot_extended).toFixed(2),
       "Incentive": p.allowance.toFixed(2),
       "EPF 8%": p.epf_8.toFixed(2),
+      "EPF 12% (Employer)": p.epf_12.toFixed(2),
+      "ETF 3% (Employer)": p.etf_3.toFixed(2),
+      "Employer Total": p.employer_total.toFixed(2),
+
       "Overtime Pay": p.ot_pay.toFixed(2),
       "Cash Advance": p.cash_advance.toFixed(2),
       "Food Advance": p.food_advance.toFixed(2),
@@ -258,13 +262,21 @@ export default function Salaries() {
       ${p.manual_other ? `<tr><td>Other Deductions</td><td style="text-align:right">${p.manual_other.toFixed(2)}</td></tr>` : ""}
       <tr class="tot"><td>Total Deductions</td><td style="text-align:right">${p.total_deductions.toFixed(2)}</td></tr>
       <tr class="net ${p.net_pay < 0 ? 'neg' : ''}"><td>NET PAY</td><td style="text-align:right">LKR ${p.net_pay.toFixed(2)}</td></tr>
+      <tr><td colspan="2" style="background:#f9f9f9"><b>Employer Contributions</b> (company cost — not deducted from the employee)</td></tr>
+      <tr><td>EPF 12% (Employer)</td><td style="text-align:right">${p.epf_12.toFixed(2)}</td></tr>
+      <tr><td>ETF 3% (Employer)</td><td style="text-align:right">${p.etf_3.toFixed(2)}</td></tr>
+      <tr class="tot"><td>Total Employer Contribution</td><td style="text-align:right">${p.employer_total.toFixed(2)}</td></tr>
       </table></body></html>`);
+
     w.document.close();
     setTimeout(() => w.print(), 300);
   };
 
   const totalGross = rows.reduce((s, r) => s + r.payroll.gross_pay, 0);
   const totalNet = rows.reduce((s, r) => s + r.payroll.net_pay, 0);
+  const totalEpf12 = rows.reduce((s, r) => s + r.payroll.epf_12, 0);
+  const totalEtf3 = rows.reduce((s, r) => s + r.payroll.etf_3, 0);
+
   const filteredRows = rows.filter(({ employee: e }) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
@@ -299,8 +311,17 @@ export default function Salaries() {
                 <p className="text-sm text-muted-foreground">Total Net</p>
                 <p className="text-2xl font-bold text-emerald-600">LKR {totalNet.toFixed(2)}</p>
               </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Employer EPF 12%</p>
+                <p className="text-2xl font-bold">LKR {totalEpf12.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Employer ETF 3%</p>
+                <p className="text-2xl font-bold">LKR {totalEtf3.toFixed(2)}</p>
+              </div>
             </div>
           </div>
+
         </CardHeader>
       </Card>
 
@@ -412,6 +433,9 @@ export default function Salaries() {
                               <div><span className="text-muted-foreground">Accommodation:</span> <b>LKR {p.manual_accommodation.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Transport:</span> <b>LKR {p.manual_transport.toFixed(2)}</b></div>
                               <div><span className="text-muted-foreground">Other:</span> <b>LKR {p.manual_other.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Employer EPF 12%:</span> <b>LKR {p.epf_12.toFixed(2)}</b></div>
+                              <div><span className="text-muted-foreground">Employer ETF 3%:</span> <b>LKR {p.etf_3.toFixed(2)}</b></div>
+
                             </div>
                             {p.breakdown.length > 1 && (
                               <div>

@@ -712,18 +712,11 @@ export default function Invoices() {
                       <TableCell colSpan={4} className="text-right">Total Amount</TableCell>
                       <TableCell className="text-right">LKR {previewData.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     </TableRow>
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-right">SSCL (2.5%)</TableCell>
-                      <TableCell className="text-right">LKR {previewData.sscl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-right">VAT (18%)</TableCell>
-                      <TableCell className="text-right">LKR {previewData.vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    </TableRow>
                     <TableRow className="font-bold bg-muted/50">
                       <TableCell colSpan={4} className="text-right">Grand Total</TableCell>
-                      <TableCell className="text-right">LKR {previewData.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-right">LKR {previewData.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     </TableRow>
+
                   </TableBody>
                 </Table>
               </div>

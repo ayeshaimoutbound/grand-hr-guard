@@ -8,7 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, Wallet, Receipt, BarChart3, Settings, Banknote, UtensilsCrossed, Shirt } from "lucide-react";
+import { Plus, Trash2, Wallet, Receipt, BarChart3, Settings, Banknote, UtensilsCrossed, Shirt, Landmark } from "lucide-react";
+import EmployerContributionsTab from "@/components/accounts/EmployerContributionsTab";
+import { fetchEmployerContributions, sumContributions } from "@/lib/employerContributions";
+
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth } from "date-fns";
@@ -26,18 +30,21 @@ export default function Accounts() {
         <p className="text-muted-foreground">Invoice payments, advances, expenses & monthly overview</p>
       </div>
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-5 max-w-3xl">
+        <TabsList className="grid grid-cols-6 max-w-4xl">
           <TabsTrigger value="payments"><Wallet className="h-4 w-4 mr-1" /> Payments</TabsTrigger>
           <TabsTrigger value="advances"><Banknote className="h-4 w-4 mr-1" /> Advances</TabsTrigger>
           <TabsTrigger value="expenses"><Receipt className="h-4 w-4 mr-1" /> Expenses</TabsTrigger>
+          <TabsTrigger value="contributions"><Landmark className="h-4 w-4 mr-1" /> EPF &amp; ETF</TabsTrigger>
           <TabsTrigger value="overview"><BarChart3 className="h-4 w-4 mr-1" /> Overview</TabsTrigger>
           <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="payments"><PaymentsTab /></TabsContent>
         <TabsContent value="advances"><AdvancesTab /></TabsContent>
         <TabsContent value="expenses"><ExpensesTab /></TabsContent>
+        <TabsContent value="contributions"><EmployerContributionsTab /></TabsContent>
         <TabsContent value="overview"><OverviewTab /></TabsContent>
         <TabsContent value="settings"><SettingsTab /></TabsContent>
+
       </Tabs>
     </div>
   );
@@ -571,18 +578,19 @@ function ExpensesTab() {
 /* ============== OVERVIEW TAB ============== */
 function OverviewTab() {
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [data, setData] = useState({ invoiced: 0, received: 0, outstanding: 0, salaries: 0, expenses: 0 });
+  const [data, setData] = useState({ invoiced: 0, received: 0, outstanding: 0, salaries: 0, expenses: 0, epf12: 0, etf3: 0 });
 
   useEffect(() => {
     (async () => {
       const start = `${month}-01`;
       const [y, m] = month.split("-").map(Number);
       const end = `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
-      const [inv, pay, sal, exp] = await Promise.all([
+      const [inv, pay, sal, exp, contrib] = await Promise.all([
         supabase.from("invoices").select("amount_to_collect, amount_received").gte("month_period", start).lte("month_period", end),
         supabase.from("invoice_payments").select("amount").gte("payment_date", start).lte("payment_date", end),
         supabase.from("salaries").select("final_salary").gte("salary_month", start).lte("salary_month", end),
         supabase.from("expenses").select("amount").gte("expense_date", start).lte("expense_date", end),
+        fetchEmployerContributions(month),
       ]);
       const invoiced = (inv.data || []).reduce((s, r) => s + Number(r.amount_to_collect || 0), 0);
       const receivedFromInv = (inv.data || []).reduce((s, r) => s + Number(r.amount_received || 0), 0);
@@ -590,18 +598,23 @@ function OverviewTab() {
       const outstanding = invoiced - receivedFromInv;
       const salaries = (sal.data || []).reduce((s, r) => s + Number(r.final_salary || 0), 0);
       const expenses = (exp.data || []).reduce((s, r) => s + Number(r.amount || 0), 0);
-      setData({ invoiced, received: receivedThisMonth, outstanding, salaries, expenses });
+      const c = sumContributions(contrib);
+      setData({ invoiced, received: receivedThisMonth, outstanding, salaries, expenses, epf12: c.epf_12, etf3: c.etf_3 });
     })();
   }, [month]);
 
-  const net = data.received - data.salaries - data.expenses;
+  const contributions = data.epf12 + data.etf3;
+  const net = data.received - data.salaries - data.expenses - contributions;
   const cards = [
     { label: "Total Invoiced", value: data.invoiced },
     { label: "Total Received (this month)", value: data.received },
     { label: "Total Outstanding", value: data.outstanding },
     { label: "Total Salaries Paid", value: data.salaries },
     { label: "Total Expenses", value: data.expenses },
+    { label: "EPF 12% (Employer Cost)", value: data.epf12 },
+    { label: "ETF 3% (Employer Cost)", value: data.etf3 },
   ];
+
 
   return (
     <Card className="mt-4">
@@ -618,7 +631,7 @@ function OverviewTab() {
             </div>
           ))}
           <div className={`rounded-lg border-2 p-4 ${net >= 0 ? "border-emerald-500" : "border-destructive"}`}>
-            <p className="text-xs text-muted-foreground">Net (Received − Salaries − Expenses)</p>
+            <p className="text-xs text-muted-foreground">Net (Received − Salaries − Expenses − EPF/ETF)</p>
             <p className={`text-2xl font-bold ${net < 0 ? "text-destructive" : "text-emerald-600"}`}>LKR {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
         </div>
