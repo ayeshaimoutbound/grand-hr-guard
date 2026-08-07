@@ -262,7 +262,12 @@ export default function Salaries() {
       ${p.manual_other ? `<tr><td>Other Deductions</td><td style="text-align:right">${p.manual_other.toFixed(2)}</td></tr>` : ""}
       <tr class="tot"><td>Total Deductions</td><td style="text-align:right">${p.total_deductions.toFixed(2)}</td></tr>
       <tr class="net ${p.net_pay < 0 ? 'neg' : ''}"><td>NET PAY</td><td style="text-align:right">LKR ${p.net_pay.toFixed(2)}</td></tr>
+      <tr><td colspan="2" style="background:#f9f9f9"><b>Employer Contributions</b> (company cost — not deducted from the employee)</td></tr>
+      <tr><td>EPF 12% (Employer)</td><td style="text-align:right">${p.epf_12.toFixed(2)}</td></tr>
+      <tr><td>ETF 3% (Employer)</td><td style="text-align:right">${p.etf_3.toFixed(2)}</td></tr>
+      <tr class="tot"><td>Total Employer Contribution</td><td style="text-align:right">${p.employer_total.toFixed(2)}</td></tr>
       </table></body></html>`);
+
     w.document.close();
     setTimeout(() => w.print(), 300);
   };
