@@ -22,9 +22,15 @@ const ALL_MODULES = [
   { key: "attendance", label: "Attendance" },
   { key: "salaries", label: "Salaries" },
   { key: "invoices", label: "Invoices" },
+  { key: "advances", label: "Advances" },
   { key: "accounts", label: "Accounts" },
   { key: "inventory", label: "Inventory" },
+  { key: "food", label: "Food" },
+  { key: "vendors", label: "Vendors" },
+  { key: "maintenance", label: "Maintenance" },
+  { key: "settings", label: "Settings" },
 ];
+
 
 interface UserRow {
   user_id: string;
