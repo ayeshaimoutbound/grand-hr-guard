@@ -203,6 +203,10 @@ export default function Salaries() {
       "OT": (p.basic_plus_ot + p.ot_extended).toFixed(2),
       "Incentive": p.allowance.toFixed(2),
       "EPF 8%": p.epf_8.toFixed(2),
+      "EPF 12% (Employer)": p.epf_12.toFixed(2),
+      "ETF 3% (Employer)": p.etf_3.toFixed(2),
+      "Employer Total": p.employer_total.toFixed(2),
+
       "Overtime Pay": p.ot_pay.toFixed(2),
       "Cash Advance": p.cash_advance.toFixed(2),
       "Food Advance": p.food_advance.toFixed(2),
