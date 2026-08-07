@@ -311,8 +311,17 @@ export default function Salaries() {
                 <p className="text-sm text-muted-foreground">Total Net</p>
                 <p className="text-2xl font-bold text-emerald-600">LKR {totalNet.toFixed(2)}</p>
               </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Employer EPF 12%</p>
+                <p className="text-2xl font-bold">LKR {totalEpf12.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Employer ETF 3%</p>
+                <p className="text-2xl font-bold">LKR {totalEtf3.toFixed(2)}</p>
+              </div>
             </div>
           </div>
+
         </CardHeader>
       </Card>
 
