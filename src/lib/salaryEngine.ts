@@ -60,6 +60,9 @@ export interface PayrollLine {
   ot_extended: number;
   allowance: number;
   epf_8: number;
+  epf_12: number;
+  etf_3: number;
+  employer_total: number;
   ot_pay: number;
   cash_advance: number;
   food_advance: number;
@@ -77,6 +80,9 @@ export interface PayrollLine {
 
 const EPF_DAY_CAP = 25;
 const EPF_EMPLOYEE_RATE = 0.08;
+const EPF_EMPLOYER_RATE = 0.12;
+const ETF_EMPLOYER_RATE = 0.03;
+
 
 const rankRate = (c: CompanyRateRow, rank: string): number => {
   switch (rank) {
