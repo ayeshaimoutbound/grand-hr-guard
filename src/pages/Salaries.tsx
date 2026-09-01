@@ -300,8 +300,20 @@ export default function Salaries() {
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <Label>Select Month</Label>
-              <Input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="mt-1" />
+              <div className="mt-1 flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={() => shiftMonth(-1)} aria-label="Previous month">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="max-w-[200px]" />
+                <Button variant="outline" size="icon" onClick={() => shiftMonth(1)} aria-label="Next month">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {new Date(selectedMonth + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                </span>
+              </div>
             </div>
+
             <div className="flex gap-6 items-end">
               <div>
                 <p className="text-sm text-muted-foreground">Total Gross</p>
