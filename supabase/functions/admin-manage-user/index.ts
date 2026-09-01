@@ -33,17 +33,25 @@ Deno.serve(async (req) => {
     if (action === 'create') {
       const { username, password, full_name, role } = body;
       if (!username || !password) return json({ error: 'username and password required' }, 400);
-      const email = `${username}@grandsenaro.local`;
+      const uname = String(username).trim().toLowerCase();
+      const email = `${uname}@grandsenaro.local`;
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email, password, email_confirm: true,
-        user_metadata: { username, full_name: full_name || null },
+        user_metadata: { username: uname, full_name: full_name || null },
       });
       if (createErr) return json({ error: createErr.message }, 400);
       const uid = created.user!.id;
-      await admin.from('profiles').upsert({ id: uid, username, full_name: full_name || null } as any);
+      const { error: profErr } = await admin
+        .from('profiles')
+        .upsert({ id: uid, username: uname, email, full_name: full_name || null } as any);
+      if (profErr) {
+        await admin.auth.admin.deleteUser(uid);
+        return json({ error: `Could not create profile: ${profErr.message}` }, 400);
+      }
       await admin.from('user_roles').upsert({ user_id: uid, role: role || 'office' } as any);
       return json({ success: true, user_id: uid });
     }
+
 
     if (action === 'reset_password') {
       const { userId, password } = body;
