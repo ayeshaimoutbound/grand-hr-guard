@@ -217,7 +217,7 @@ export default function Maintenance() {
               </Select>
             </div>
             <div className="space-y-2"><Label>Asset Name</Label><Input value={form.asset_name} onChange={(e) => setForm({ ...form, asset_name: e.target.value })} placeholder="Laptop / A/C / Printer" /></div>
-            <div className="space-y-2"><Label>Vehicle Number</Label><Input value={form.vehicle_number} onChange={(e) => setForm({ ...form, vehicle_number: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Asset No</Label><Input value={form.vehicle_number} onChange={(e) => setForm({ ...form, vehicle_number: e.target.value })} placeholder="e.g. AST-014 / CAB-1234" /></div>
             <div className="space-y-2 col-span-2">
               <Label>Vendor</Label>
               <Select value={form.vendor_id || "none"} onValueChange={(v) => setForm({ ...form, vendor_id: v === "none" ? "" : v })}>
