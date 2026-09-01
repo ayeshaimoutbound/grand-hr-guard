@@ -73,12 +73,15 @@ export default function Attendance() {
   };
 
   const fetchAttendanceData = async () => {
-    const startDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1)
-      .toISOString()
-      .split("T")[0];
-    const endDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0)
-      .toISOString()
-      .split("T")[0];
+    // Build the range from local calendar parts — never via toISOString(), which
+    // shifts the date backwards for timezones ahead of UTC and dropped the 31st.
+    const y = selectedMonth.getFullYear();
+    const m = selectedMonth.getMonth();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    const startDate = `${y}-${pad(m + 1)}-01`;
+    const endDate = `${y}-${pad(m + 1)}-${pad(lastDay)}`;
+
 
     const { data, error } = await supabase
       .from("attendance")
