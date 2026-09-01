@@ -57,6 +57,16 @@ export default function Salaries() {
 
   useEffect(() => { fetchData(); }, [selectedMonth]);
 
+  // Move the payroll month backwards/forwards, rolling the year over correctly.
+  const shiftMonth = (delta: number) => {
+    setSelectedMonth((prev) => {
+      const [y, m] = prev.split("-").map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    });
+  };
+
+
   const fetchData = async () => {
     const startDate = `${selectedMonth}-01`;
     const [y, m] = selectedMonth.split("-").map(Number);
