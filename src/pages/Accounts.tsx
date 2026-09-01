@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toDateStr, toMonthStr } from "@/lib/dateUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -577,7 +578,7 @@ function ExpensesTab() {
 
 /* ============== OVERVIEW TAB ============== */
 function OverviewTab() {
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(toMonthStr());
   const [data, setData] = useState({ invoiced: 0, received: 0, outstanding: 0, salaries: 0, expenses: 0, epf12: 0, etf3: 0 });
 
   useEffect(() => {

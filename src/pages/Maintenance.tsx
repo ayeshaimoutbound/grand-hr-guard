@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toDateStr, toMonthStr } from "@/lib/dateUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,8 +24,8 @@ const EMPTY = {
   asset_name: "",
   vehicle_number: "",
   vendor_id: "",
-  service_date: new Date().toISOString().slice(0, 10),
-  next_service_date: "",
+  service_date: toDateStr(),
+  
   cost: "",
   status: "Completed",
   is_paid: false,
@@ -94,7 +95,7 @@ export default function Maintenance() {
       vehicle_number: form.vehicle_number || null,
       vendor_id: form.vendor_id || null,
       service_date: form.service_date,
-      next_service_date: form.next_service_date || null,
+
       cost,
       status: form.status,
       is_paid: form.is_paid,
@@ -152,7 +153,7 @@ export default function Maintenance() {
                 <TableHead>Date</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Asset / Vehicle</TableHead>
+                <TableHead>Asset No</TableHead>
                 <TableHead>Vendor</TableHead>
                 <TableHead className="text-right">Cost</TableHead>
                 <TableHead>Status</TableHead>
@@ -165,7 +166,7 @@ export default function Maintenance() {
                 <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No records</TableCell></TableRow>
               ) : filtered.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell>{r.service_date}{r.next_service_date && <div className="text-xs text-muted-foreground">Next: {r.next_service_date}</div>}</TableCell>
+                  <TableCell>{r.service_date}</TableCell>
                   <TableCell className="font-medium">{r.title}</TableCell>
                   <TableCell><Badge variant="outline">{r.maintenance_type}</Badge></TableCell>
                   <TableCell>{r.vehicle_number || r.asset_name || "—"}</TableCell>
@@ -217,7 +218,7 @@ export default function Maintenance() {
               </Select>
             </div>
             <div className="space-y-2"><Label>Asset Name</Label><Input value={form.asset_name} onChange={(e) => setForm({ ...form, asset_name: e.target.value })} placeholder="Laptop / A/C / Printer" /></div>
-            <div className="space-y-2"><Label>Vehicle Number</Label><Input value={form.vehicle_number} onChange={(e) => setForm({ ...form, vehicle_number: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Asset No</Label><Input value={form.vehicle_number} onChange={(e) => setForm({ ...form, vehicle_number: e.target.value })} placeholder="e.g. AST-014 / CAB-1234" /></div>
             <div className="space-y-2 col-span-2">
               <Label>Vendor</Label>
               <Select value={form.vendor_id || "none"} onValueChange={(v) => setForm({ ...form, vendor_id: v === "none" ? "" : v })}>
@@ -229,7 +230,7 @@ export default function Maintenance() {
               </Select>
             </div>
             <div className="space-y-2"><Label>Service Date</Label><Input type="date" value={form.service_date} onChange={(e) => setForm({ ...form, service_date: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Next Service Date</Label><Input type="date" value={form.next_service_date} onChange={(e) => setForm({ ...form, next_service_date: e.target.value })} /></div>
+            
             <div className="space-y-2"><Label>Cost (LKR)</Label><Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} /></div>
             <div className="space-y-2"><Label>Invoice / Bill Ref</Label><Input value={form.invoice_ref} onChange={(e) => setForm({ ...form, invoice_ref: e.target.value })} /></div>
             <div className="flex items-center gap-3 col-span-2">

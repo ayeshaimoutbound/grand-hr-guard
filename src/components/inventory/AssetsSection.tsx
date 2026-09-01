@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toDateStr, toMonthStr } from "@/lib/dateUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -181,7 +182,7 @@ export default function AssetsSection() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Assets");
-    XLSX.writeFile(wb, `Assets_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `Assets_${toDateStr()}.xlsx`);
   };
 
   return (

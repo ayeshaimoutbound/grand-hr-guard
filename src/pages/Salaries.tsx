@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { toDateStr, toMonthStr } from "@/lib/dateUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ChevronDown, ChevronUp, FileDown, Pencil } from "lucide-react";
+import { Printer, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileDown, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -44,7 +45,7 @@ interface Row { employee: Employee; payroll: PayrollLine; }
 
 export default function Salaries() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState<string>(toMonthStr());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [dailyMinWage, setDailyMinWage] = useState<number>(1200);
@@ -56,6 +57,16 @@ export default function Salaries() {
   const canEditManual = isSuperAdmin || isAdmin;
 
   useEffect(() => { fetchData(); }, [selectedMonth]);
+
+  // Move the payroll month backwards/forwards, rolling the year over correctly.
+  const shiftMonth = (delta: number) => {
+    setSelectedMonth((prev) => {
+      const [y, m] = prev.split("-").map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    });
+  };
+
 
   const fetchData = async () => {
     const startDate = `${selectedMonth}-01`;
@@ -300,8 +311,20 @@ export default function Salaries() {
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <Label>Select Month</Label>
-              <Input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="mt-1" />
+              <div className="mt-1 flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={() => shiftMonth(-1)} aria-label="Previous month">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="max-w-[200px]" />
+                <Button variant="outline" size="icon" onClick={() => shiftMonth(1)} aria-label="Next month">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {new Date(selectedMonth + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                </span>
+              </div>
             </div>
+
             <div className="flex gap-6 items-end">
               <div>
                 <p className="text-sm text-muted-foreground">Total Gross</p>
