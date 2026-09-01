@@ -152,7 +152,7 @@ export default function Maintenance() {
                 <TableHead>Date</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Asset / Vehicle</TableHead>
+                <TableHead>Asset No</TableHead>
                 <TableHead>Vendor</TableHead>
                 <TableHead className="text-right">Cost</TableHead>
                 <TableHead>Status</TableHead>
