@@ -94,7 +94,7 @@ export default function Maintenance() {
       vehicle_number: form.vehicle_number || null,
       vendor_id: form.vendor_id || null,
       service_date: form.service_date,
-      next_service_date: form.next_service_date || null,
+
       cost,
       status: form.status,
       is_paid: form.is_paid,
