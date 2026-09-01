@@ -165,7 +165,7 @@ export default function Maintenance() {
                 <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No records</TableCell></TableRow>
               ) : filtered.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell>{r.service_date}{r.next_service_date && <div className="text-xs text-muted-foreground">Next: {r.next_service_date}</div>}</TableCell>
+                  <TableCell>{r.service_date}</TableCell>
                   <TableCell className="font-medium">{r.title}</TableCell>
                   <TableCell><Badge variant="outline">{r.maintenance_type}</Badge></TableCell>
                   <TableCell>{r.vehicle_number || r.asset_name || "—"}</TableCell>
