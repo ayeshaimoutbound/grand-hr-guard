@@ -229,7 +229,7 @@ export default function Maintenance() {
               </Select>
             </div>
             <div className="space-y-2"><Label>Service Date</Label><Input type="date" value={form.service_date} onChange={(e) => setForm({ ...form, service_date: e.target.value })} /></div>
-            <div className="space-y-2"><Label>Next Service Date</Label><Input type="date" value={form.next_service_date} onChange={(e) => setForm({ ...form, next_service_date: e.target.value })} /></div>
+            
             <div className="space-y-2"><Label>Cost (LKR)</Label><Input type="number" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} /></div>
             <div className="space-y-2"><Label>Invoice / Bill Ref</Label><Input value={form.invoice_ref} onChange={(e) => setForm({ ...form, invoice_ref: e.target.value })} /></div>
             <div className="flex items-center gap-3 col-span-2">
