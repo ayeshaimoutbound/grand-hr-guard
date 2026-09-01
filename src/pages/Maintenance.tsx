@@ -24,7 +24,7 @@ const EMPTY = {
   vehicle_number: "",
   vendor_id: "",
   service_date: new Date().toISOString().slice(0, 10),
-  next_service_date: "",
+  
   cost: "",
   status: "Completed",
   is_paid: false,
