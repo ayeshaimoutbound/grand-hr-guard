@@ -30,7 +30,7 @@ const BACKUP_TABLES: { table: string; dateCol: string | null; sheet: string }[] 
 
 export default function BackupSection() {
   const firstOfYear = `${new Date().getFullYear()}-01-01`;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toDateStr();
   const [from, setFrom] = useState(firstOfYear);
   const [to, setTo] = useState(today);
   const [busy, setBusy] = useState(false);

@@ -44,7 +44,7 @@ interface Row { employee: Employee; payroll: PayrollLine; }
 
 export default function Salaries() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState<string>(toMonthStr());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [dailyMinWage, setDailyMinWage] = useState<number>(1200);

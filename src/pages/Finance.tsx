@@ -81,7 +81,7 @@ export default function Finance() {
   });
 
   const [paymentFormData, setPaymentFormData] = useState({
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: toDateStr(),
     amount: "",
     payment_method: "Cash" as 'Cash' | 'Cheque' | 'Bank Transfer',
     reference_number: "",
@@ -365,7 +365,7 @@ export default function Finance() {
 
   const resetPaymentForm = () => {
     setPaymentFormData({
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: toDateStr(),
       amount: "",
       payment_method: "Cash" as 'Cash' | 'Cheque' | 'Bank Transfer',
       reference_number: "",

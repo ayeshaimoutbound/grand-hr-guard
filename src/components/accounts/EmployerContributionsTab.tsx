@@ -12,7 +12,7 @@ import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "@/lib/pdfHeader";
 const money = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function EmployerContributionsTab() {
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(toMonthStr());
   const [rows, setRows] = useState<ContributionRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);

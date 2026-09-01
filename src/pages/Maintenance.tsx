@@ -23,7 +23,7 @@ const EMPTY = {
   asset_name: "",
   vehicle_number: "",
   vendor_id: "",
-  service_date: new Date().toISOString().slice(0, 10),
+  service_date: toDateStr(),
   
   cost: "",
   status: "Completed",

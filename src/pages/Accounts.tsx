@@ -577,7 +577,7 @@ function ExpensesTab() {
 
 /* ============== OVERVIEW TAB ============== */
 function OverviewTab() {
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(toMonthStr());
   const [data, setData] = useState({ invoiced: 0, received: 0, outstanding: 0, salaries: 0, expenses: 0, epf12: 0, etf3: 0 });
 
   useEffect(() => {

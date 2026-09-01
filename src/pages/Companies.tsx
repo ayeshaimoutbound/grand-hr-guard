@@ -308,7 +308,7 @@ export default function Companies() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Companies");
-    XLSX.writeFile(wb, `Companies_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `Companies_${toDateStr()}.xlsx`);
     toast.success("Companies exported");
   };
 

@@ -28,11 +28,11 @@ export default function Advances() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [advances, setAdvances] = useState<Advance[]>([]);
   const [search, setSearch] = useState("");
-  const [monthFilter, setMonthFilter] = useState<string>(new Date().toISOString().substring(0, 7));
+  const [monthFilter, setMonthFilter] = useState<string>(toMonthStr());
 
   // form
   const [employeeId, setEmployeeId] = useState("");
-  const [date, setDate] = useState<string>(new Date().toISOString().substring(0, 10));
+  const [date, setDate] = useState<string>(toDateStr());
   const [amount, setAmount] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
 
@@ -91,7 +91,7 @@ export default function Advances() {
     if (error) { toast.error(error.message); return; }
     toast.success("Salary advance recorded");
     setEmployeeId(""); setAmount(""); setNotes("");
-    setDate(new Date().toISOString().substring(0, 10));
+    setDate(toDateStr());
     fetchAll();
   };
 

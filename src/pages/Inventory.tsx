@@ -318,7 +318,7 @@ export default function Inventory() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Inventory");
-    XLSX.writeFile(wb, `Inventory_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `Inventory_${toDateStr()}.xlsx`);
   };
 
   const downloadUniformTemplate = () => {
@@ -425,7 +425,7 @@ export default function Inventory() {
         if (lineTotal > 0) {
           await supabase.from("inventory_purchases").insert({
             item_id: itemId, vendor_id: vendorId,
-            purchase_date: new Date().toISOString().slice(0, 10),
+            purchase_date: toDateStr(),
             quantity: qty, unit_cost: unitCost, total_amount: lineTotal,
             is_paid: invBulk.is_paid, invoice_ref: invoiceRef,
             notes: "Bulk upload", created_by: uid,
@@ -435,7 +435,7 @@ export default function Inventory() {
 
       if (totalCost > 0) {
         await supabase.from("expenses").insert({
-          expense_date: new Date().toISOString().slice(0, 10),
+          expense_date: toDateStr(),
           category: "Inventory",
           subcategory: "Bulk Purchase",
           amount: totalCost,
@@ -443,7 +443,7 @@ export default function Inventory() {
           supplier: vendors.find((v) => v.id === invBulk.vendor_id)?.vendor_name || null,
           invoice_ref: invBulk.invoice_ref || null,
           is_paid: invBulk.is_paid,
-          payment_date: invBulk.is_paid ? new Date().toISOString().slice(0, 10) : null,
+          payment_date: invBulk.is_paid ? toDateStr() : null,
           created_by: uid,
         });
       }

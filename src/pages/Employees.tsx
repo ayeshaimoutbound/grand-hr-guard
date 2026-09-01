@@ -312,7 +312,7 @@ export default function Employees() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Employees");
-    XLSX.writeFile(wb, `Employees_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `Employees_${toDateStr()}.xlsx`);
     toast.success("Employees exported");
   };
 

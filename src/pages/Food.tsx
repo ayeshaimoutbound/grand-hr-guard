@@ -33,7 +33,7 @@ export default function Food() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [companyId, setCompanyId] = useState("");
   const [location, setLocation] = useState("");
-  const [month, setMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [month, setMonth] = useState(toMonthStr());
   const [rate, setRate] = useState<Rate>({ breakfast_rate: 0, lunch_rate: 0, dinner_rate: 0 });
   const [rateId, setRateId] = useState<string | null>(null);
   const [vendorId, setVendorId] = useState<string>("");
