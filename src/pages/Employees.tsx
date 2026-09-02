@@ -396,13 +396,12 @@ export default function Employees() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="employee_id">Employee ID</Label>
+                  <Label htmlFor="employee_id">Employee No (optional)</Label>
                   <Input
                     id="employee_id"
                     value={formData.employee_id}
+                    placeholder="Can be added later"
                     onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-                    required
-                    disabled={isEditMode}
                   />
                 </div>
                 <div className="space-y-2">
