@@ -583,7 +583,7 @@ export default function Employees() {
                   }
                   return (
                     <TableRow key={employee.id}>
-                      <TableCell className="font-medium">{employee.employee_id}</TableCell>
+                      <TableCell className="font-medium">{employee.employee_id || "—"}</TableCell>
                       <TableCell>{employee.full_name}</TableCell>
                       <TableCell>{statusEl}</TableCell>
                       <TableCell>
