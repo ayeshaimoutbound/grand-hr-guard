@@ -615,6 +615,11 @@ export default function AttendanceCalendar({
         </div>
         <div className="flex gap-2">
           {canEdit && (
+            <Button onClick={() => setShowBulk(true)} variant="secondary">
+              Bulk Attendance
+            </Button>
+          )}
+          {canEdit && (
             <Button onClick={handleSaveAllAttendance} variant="default">
               <Save className="h-4 w-4 mr-2" />
               Save All Attendance
