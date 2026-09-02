@@ -149,6 +149,7 @@ export default function Employees() {
 
     const payload = {
       ...baseData,
+      employee_id: baseData.employee_id?.trim() ? baseData.employee_id.trim() : null,
       ot_hourly_rate: parseFloat(ot_hourly_rate) || 225,
       normal_ot_hours: parseFloat(normal_ot_hours) || 3,
       extended_ot_hours: parseFloat(extended_ot_hours) || 6,
