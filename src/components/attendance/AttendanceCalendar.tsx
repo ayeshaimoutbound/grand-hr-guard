@@ -17,6 +17,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recha
 import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "@/lib/pdfHeader";
 import OvertimeSection from "@/components/attendance/OvertimeSection";
 import { EmployeeCombobox } from "@/components/EmployeeCombobox";
+import BulkAttendanceDialog from "@/components/attendance/BulkAttendanceDialog";
 
 interface Employee {
   id: string;
