@@ -632,6 +632,30 @@ export default function AttendanceCalendar({
         </div>
       </div>
 
+      <BulkAttendanceDialog
+        open={showBulk}
+        onOpenChange={setShowBulk}
+        companyId={selectedCompany.id}
+        companyName={selectedCompany.company_name}
+        location={selectedCompany.location}
+        selectedMonth={selectedMonth}
+        employees={employees}
+        activeRanks={
+          ((selectedCompany as any).active_ranks?.length
+            ? (selectedCompany as any).active_ranks
+            : ["OIC", "SSO", "JSO", "LSO"]) as string[]
+        }
+        existingKeys={
+          new Set(
+            attendanceRecords.map(
+              (r) => `${r.employee_id}|${r.rank}|${r.attendance_date}|${r.shift_type}`
+            )
+          )
+        }
+        onDone={onRefresh}
+      />
+
+
       {/* Shift Report Summary */}
       <Card>
         <CardHeader>
