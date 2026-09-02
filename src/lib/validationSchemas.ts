@@ -2,11 +2,13 @@ import { z } from "zod";
 
 // Employee validation schema
 export const employeeSchema = z.object({
+  // Employee No is optional at onboarding and can be filled in later
   employee_id: z
     .string()
-    .min(1, "Employee ID is required")
     .max(50, "Employee ID must be less than 50 characters")
-    .regex(/^[A-Z0-9-]+$/, "Employee ID must contain only uppercase letters, numbers, and hyphens"),
+    .regex(/^[A-Z0-9-]*$/, "Employee ID must contain only uppercase letters, numbers, and hyphens")
+    .optional()
+    .or(z.literal("")),
   full_name: z
     .string()
     .min(2, "Full name must be at least 2 characters")
