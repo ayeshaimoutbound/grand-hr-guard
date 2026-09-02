@@ -79,7 +79,7 @@ export default function Employees() {
     const filtered = employees.filter(
       (emp) =>
         emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.employee_id.toLowerCase().includes(searchTerm.toLowerCase())
+        (emp.employee_id || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredEmployees(filtered);
   }, [searchTerm, employees]);
