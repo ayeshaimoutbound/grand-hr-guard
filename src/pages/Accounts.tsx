@@ -373,6 +373,8 @@ function ExpensesTab() {
       created_by: u.user?.id,
     } as any);
     if (error) { toast.error(error.message); return; }
+    // Mirror any free-typed vendor into the central Vendors module
+    await ensureVendor(form.vendor || form.supplier, form.category || "Other");
     toast.success("Expense logged");
     setOpen(false);
     setForm({ expense_date: format(new Date(), "yyyy-MM-dd"), category: "", subcategory: "", amount: "", description: "", vendor: "", supplier: "", invoice_ref: "", company_id: "", is_paid: true, payment_date: format(new Date(), "yyyy-MM-dd") });
