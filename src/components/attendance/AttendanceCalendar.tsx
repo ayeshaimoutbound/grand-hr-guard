@@ -17,6 +17,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recha
 import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "@/lib/pdfHeader";
 import OvertimeSection from "@/components/attendance/OvertimeSection";
 import { EmployeeCombobox } from "@/components/EmployeeCombobox";
+import BulkAttendanceDialog from "@/components/attendance/BulkAttendanceDialog";
 
 interface Employee {
   id: string;
@@ -68,6 +69,7 @@ export default function AttendanceCalendar({
 }: AttendanceCalendarProps) {
   const canEdit = isSuperAdmin || isAdmin;
   const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedRank, setSelectedRank] = useState<"OIC" | "SSO" | "JSO" | "LSO" | "">("");
   const [employeeSearch, setEmployeeSearch] = useState("");
@@ -613,6 +615,11 @@ export default function AttendanceCalendar({
         </div>
         <div className="flex gap-2">
           {canEdit && (
+            <Button onClick={() => setShowBulk(true)} variant="secondary">
+              Bulk Attendance
+            </Button>
+          )}
+          {canEdit && (
             <Button onClick={handleSaveAllAttendance} variant="default">
               <Save className="h-4 w-4 mr-2" />
               Save All Attendance
@@ -624,6 +631,30 @@ export default function AttendanceCalendar({
           </Button>
         </div>
       </div>
+
+      <BulkAttendanceDialog
+        open={showBulk}
+        onOpenChange={setShowBulk}
+        companyId={selectedCompany.id}
+        companyName={selectedCompany.company_name}
+        location={selectedCompany.location}
+        selectedMonth={selectedMonth}
+        employees={employees}
+        activeRanks={
+          ((selectedCompany as any).active_ranks?.length
+            ? (selectedCompany as any).active_ranks
+            : ["OIC", "SSO", "JSO", "LSO"]) as string[]
+        }
+        existingKeys={
+          new Set(
+            attendanceRecords.map(
+              (r) => `${r.employee_id}|${r.rank}|${r.attendance_date}|${r.shift_type}`
+            )
+          )
+        }
+        onDone={onRefresh}
+      />
+
 
       {/* Shift Report Summary */}
       <Card>

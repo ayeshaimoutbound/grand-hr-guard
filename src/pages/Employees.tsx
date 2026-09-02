@@ -79,7 +79,7 @@ export default function Employees() {
     const filtered = employees.filter(
       (emp) =>
         emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.employee_id.toLowerCase().includes(searchTerm.toLowerCase())
+        (emp.employee_id || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredEmployees(filtered);
   }, [searchTerm, employees]);
@@ -149,6 +149,7 @@ export default function Employees() {
 
     const payload = {
       ...baseData,
+      employee_id: baseData.employee_id?.trim() ? baseData.employee_id.trim() : null,
       ot_hourly_rate: parseFloat(ot_hourly_rate) || 225,
       normal_ot_hours: parseFloat(normal_ot_hours) || 3,
       extended_ot_hours: parseFloat(extended_ot_hours) || 6,
@@ -265,7 +266,8 @@ export default function Employees() {
           account_number: pick(row, ["accountno", "accountnumber", "acno", "account"]),
           epf_no: pick(row, ["epfno", "epf", "epfnumber"]),
         }))
-        .filter((r) => r.employee_id && r.full_name);
+        .map((r) => ({ ...r, employee_id: r.employee_id || null }))
+        .filter((r) => r.full_name);
 
       if (mapped.length === 0) {
         toast.error("No valid rows found. Required columns: Employee ID, Full name, NIC, Phone, Bank, Branch, Account no");
@@ -396,13 +398,12 @@ export default function Employees() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="employee_id">Employee ID</Label>
+                  <Label htmlFor="employee_id">Employee No (optional)</Label>
                   <Input
                     id="employee_id"
                     value={formData.employee_id}
+                    placeholder="Can be added later"
                     onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-                    required
-                    disabled={isEditMode}
                   />
                 </div>
                 <div className="space-y-2">
@@ -582,7 +583,7 @@ export default function Employees() {
                   }
                   return (
                     <TableRow key={employee.id}>
-                      <TableCell className="font-medium">{employee.employee_id}</TableCell>
+                      <TableCell className="font-medium">{employee.employee_id || "—"}</TableCell>
                       <TableCell>{employee.full_name}</TableCell>
                       <TableCell>{statusEl}</TableCell>
                       <TableCell>

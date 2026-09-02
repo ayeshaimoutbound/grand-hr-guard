@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Plus, Trash2, Wallet, Receipt, BarChart3, Settings, Banknote, UtensilsCrossed, Shirt, Landmark } from "lucide-react";
 import EmployerContributionsTab from "@/components/accounts/EmployerContributionsTab";
 import { fetchEmployerContributions, sumContributions } from "@/lib/employerContributions";
+import { ensureVendor } from "@/lib/vendorSync";
 
 
 import { supabase } from "@/integrations/supabase/client";
@@ -373,6 +374,8 @@ function ExpensesTab() {
       created_by: u.user?.id,
     } as any);
     if (error) { toast.error(error.message); return; }
+    // Mirror any free-typed vendor into the central Vendors module
+    await ensureVendor(form.vendor || form.supplier, form.category || "Other");
     toast.success("Expense logged");
     setOpen(false);
     setForm({ expense_date: format(new Date(), "yyyy-MM-dd"), category: "", subcategory: "", amount: "", description: "", vendor: "", supplier: "", invoice_ref: "", company_id: "", is_paid: true, payment_date: format(new Date(), "yyyy-MM-dd") });
