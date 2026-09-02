@@ -69,6 +69,7 @@ export default function AttendanceCalendar({
 }: AttendanceCalendarProps) {
   const canEdit = isSuperAdmin || isAdmin;
   const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedRank, setSelectedRank] = useState<"OIC" | "SSO" | "JSO" | "LSO" | "">("");
   const [employeeSearch, setEmployeeSearch] = useState("");
