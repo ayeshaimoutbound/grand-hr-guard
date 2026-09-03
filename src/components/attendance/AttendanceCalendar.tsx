@@ -662,6 +662,28 @@ export default function AttendanceCalendar({
         onDone={onRefresh}
       />
 
+      <MonthlySheetDialog
+        open={showSheet}
+        onOpenChange={setShowSheet}
+        companyId={selectedCompany.id}
+        companyName={selectedCompany.company_name}
+        selectedMonth={selectedMonth}
+        employees={employees}
+        activeRanks={
+          ((selectedCompany as any).active_ranks?.length
+            ? (selectedCompany as any).active_ranks
+            : ["OIC", "SSO", "JSO", "LSO"]) as string[]
+        }
+        existingKeys={
+          new Set(
+            attendanceRecords.map(
+              (r) => `${r.employee_id}|${r.rank}|${r.attendance_date}|${r.shift_type}`
+            )
+          )
+        }
+        onDone={onRefresh}
+      />
+
 
       {/* Shift Report Summary */}
       <Card>
