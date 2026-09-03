@@ -622,6 +622,11 @@ export default function AttendanceCalendar({
             </Button>
           )}
           {canEdit && (
+            <Button onClick={() => setShowSheet(true)} variant="secondary">
+              Monthly Sheet (Excel)
+            </Button>
+          )}
+          {canEdit && (
             <Button onClick={handleSaveAllAttendance} variant="default">
               <Save className="h-4 w-4 mr-2" />
               Save All Attendance
