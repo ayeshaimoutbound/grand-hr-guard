@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Download, Upload } from "lucide-react";
+import { Download, UserPlus } from "lucide-react";
+import { QuickAddEmployeeDialog } from "@/components/QuickAddEmployeeDialog";
 
 interface Employee { id: string; employee_id: string; full_name: string }
 
@@ -42,14 +43,22 @@ export default function MonthlySheetDialog({
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [ranks, setRanks] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  // Employees created from this dialog during the session, merged with the prop list.
+  const [extra, setExtra] = useState<Employee[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const allEmployees = useMemo(() => {
+    const ids = new Set(employees.map((e) => e.id));
+    return [...employees, ...extra.filter((e) => !ids.has(e.id))];
+  }, [employees, extra]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return employees;
-    return employees.filter((e) =>
+    if (!q) return allEmployees;
+    return allEmployees.filter((e) =>
       e.full_name.toLowerCase().includes(q) || (e.employee_id || "").toLowerCase().includes(q));
-  }, [employees, search]);
+  }, [allEmployees, search]);
 
   const pickedIds = Object.keys(picked).filter((k) => picked[k]);
   const defaultRank = activeRanks[0] || "LSO";
