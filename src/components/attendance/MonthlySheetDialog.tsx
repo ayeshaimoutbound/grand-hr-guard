@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Download, Upload } from "lucide-react";
+import { Download, UserPlus } from "lucide-react";
+import { QuickAddEmployeeDialog } from "@/components/QuickAddEmployeeDialog";
 
 interface Employee { id: string; employee_id: string; full_name: string }
 
