@@ -1,43 +1,42 @@
 import { z } from "zod";
 
 // Employee validation schema
+// Only the full name is required at onboarding — every other detail is optional
+// and validated only when the user actually enters something.
+const optional = (schema: z.ZodTypeAny) =>
+  z.union([z.literal(""), z.undefined(), z.null(), schema]).optional();
+
 export const employeeSchema = z.object({
-  // Employee No is optional at onboarding and can be filled in later
-  employee_id: z
-    .string()
-    .max(50, "Employee ID must be less than 50 characters")
-    .regex(/^[A-Z0-9-]*$/, "Employee ID must contain only uppercase letters, numbers, and hyphens")
-    .optional()
-    .or(z.literal("")),
+  employee_id: optional(
+    z
+      .string()
+      .max(50, "Employee ID must be less than 50 characters")
+      .regex(/^[A-Za-z0-9-]*$/, "Employee ID must contain only letters, numbers, and hyphens")
+  ),
   full_name: z
     .string()
     .min(2, "Full name must be at least 2 characters")
     .max(100, "Full name must be less than 100 characters")
     .trim(),
-  nic: z
-    .string()
-    .regex(
-      /^([0-9]{9}[vVxX]|[0-9]{12})$/,
-      "NIC must be 9 digits followed by V/X or 12 digits"
-    ),
-  phone_number: z
-    .string()
-    .regex(/^[0-9]{10}$/, "Phone number must be exactly 10 digits"),
-  bank_name: z
-    .string()
-    .min(2, "Bank name must be at least 2 characters")
-    .max(100, "Bank name must be less than 100 characters")
-    .trim(),
-  branch: z
-    .string()
-    .min(2, "Branch must be at least 2 characters")
-    .max(100, "Branch must be less than 100 characters")
-    .trim(),
-  account_number: z
-    .string()
-    .min(5, "Account number must be at least 5 characters")
-    .max(30, "Account number must be less than 30 characters")
-    .regex(/^[0-9]+$/, "Account number must contain only numbers"),
+  nic: optional(
+    z
+      .string()
+      .regex(
+        /^([0-9]{9}[vVxX]|[0-9]{12})$/,
+        "NIC must be 9 digits followed by V/X or 12 digits"
+      )
+  ),
+  phone_number: optional(
+    z.string().regex(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
+  ),
+  bank_name: optional(z.string().max(100, "Bank name must be less than 100 characters")),
+  branch: optional(z.string().max(100, "Branch must be less than 100 characters")),
+  account_number: optional(
+    z
+      .string()
+      .max(30, "Account number must be less than 30 characters")
+      .regex(/^[0-9]+$/, "Account number must contain only numbers")
+  ),
 });
 
 // Company validation schema
