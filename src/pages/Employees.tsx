@@ -147,8 +147,10 @@ export default function Employees() {
       }
     }
 
+    const blankToNull = (v: any) => (typeof v === "string" && !v.trim() ? null : v);
     const payload = {
-      ...baseData,
+      ...Object.fromEntries(Object.entries(baseData).map(([k, v]) => [k, blankToNull(v)])),
+      full_name: (baseData as any).full_name?.trim(),
       employee_id: baseData.employee_id?.trim() ? baseData.employee_id.trim() : null,
       ot_hourly_rate: parseFloat(ot_hourly_rate) || 225,
       normal_ot_hours: parseFloat(normal_ot_hours) || 3,
@@ -412,59 +414,53 @@ export default function Employees() {
                     id="full_name"
                     value={formData.full_name}
                     onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="nic">NIC</Label>
+                  <Label htmlFor="nic">NIC (optional)</Label>
                   <Input
                     id="nic"
                     value={formData.nic}
                     onChange={(e) => setFormData({ ...formData, nic: e.target.value })}
-                    required
                     placeholder="e.g., 123456789V or 199012345678"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone_number">Phone Number</Label>
+                  <Label htmlFor="phone_number">Phone Number (optional)</Label>
                   <Input
                     id="phone_number"
                     value={formData.phone_number}
                     onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                    required
                     placeholder="e.g., 0771234567"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="bank_name">Bank Name</Label>
+                  <Label htmlFor="bank_name">Bank Name (optional)</Label>
                   <Input
                     id="bank_name"
                     value={formData.bank_name}
                     onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="branch">Branch</Label>
+                  <Label htmlFor="branch">Branch (optional)</Label>
                   <Input
                     id="branch"
                     value={formData.branch}
                     onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-                    required
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label htmlFor="account_number">Account Number</Label>
+                  <Label htmlFor="account_number">Account Number (optional)</Label>
                   <Input
                     id="account_number"
                     value={formData.account_number}
                     onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                    required
                     placeholder="Digits only"
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label htmlFor="epf_no">EPF No</Label>
+                  <Label htmlFor="epf_no">EPF No (optional)</Label>
                   <Input
                     id="epf_no"
                     value={formData.epf_no}
