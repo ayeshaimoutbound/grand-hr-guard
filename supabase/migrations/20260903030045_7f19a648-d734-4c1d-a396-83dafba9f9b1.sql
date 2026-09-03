@@ -1,0 +1,6 @@
+ALTER TABLE public.employees
+  ALTER COLUMN nic DROP NOT NULL,
+  ALTER COLUMN bank_name DROP NOT NULL,
+  ALTER COLUMN branch DROP NOT NULL,
+  ALTER COLUMN account_number DROP NOT NULL,
+  ALTER COLUMN phone_number DROP NOT NULL;

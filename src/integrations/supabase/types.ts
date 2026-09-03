@@ -283,9 +283,9 @@ export type Database = {
       }
       employees: {
         Row: {
-          account_number: string
-          bank_name: string
-          branch: string
+          account_number: string | null
+          bank_name: string | null
+          branch: string | null
           created_at: string | null
           created_by: string | null
           employee_id: string | null
@@ -293,16 +293,16 @@ export type Database = {
           extended_ot_hours: number
           full_name: string
           id: string
-          nic: string
+          nic: string | null
           normal_ot_hours: number
           ot_hourly_rate: number
-          phone_number: string
+          phone_number: string | null
           updated_at: string | null
         }
         Insert: {
-          account_number: string
-          bank_name: string
-          branch: string
+          account_number?: string | null
+          bank_name?: string | null
+          branch?: string | null
           created_at?: string | null
           created_by?: string | null
           employee_id?: string | null
@@ -310,16 +310,16 @@ export type Database = {
           extended_ot_hours?: number
           full_name: string
           id?: string
-          nic: string
+          nic?: string | null
           normal_ot_hours?: number
           ot_hourly_rate?: number
-          phone_number: string
+          phone_number?: string | null
           updated_at?: string | null
         }
         Update: {
-          account_number?: string
-          bank_name?: string
-          branch?: string
+          account_number?: string | null
+          bank_name?: string | null
+          branch?: string | null
           created_at?: string | null
           created_by?: string | null
           employee_id?: string | null
@@ -327,10 +327,10 @@ export type Database = {
           extended_ot_hours?: number
           full_name?: string
           id?: string
-          nic?: string
+          nic?: string | null
           normal_ot_hours?: number
           ot_hourly_rate?: number
-          phone_number?: string
+          phone_number?: string | null
           updated_at?: string | null
         }
         Relationships: []
