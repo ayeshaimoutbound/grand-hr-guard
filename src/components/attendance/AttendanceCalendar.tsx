@@ -18,6 +18,7 @@ import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "@/lib/pdfHeader";
 import OvertimeSection from "@/components/attendance/OvertimeSection";
 import { EmployeeCombobox } from "@/components/EmployeeCombobox";
 import BulkAttendanceDialog from "@/components/attendance/BulkAttendanceDialog";
+import MonthlySheetDialog from "@/components/attendance/MonthlySheetDialog";
 
 interface Employee {
   id: string;
