@@ -268,9 +268,9 @@ export default function Employees() {
           account_number: pick(row, ["accountno", "accountnumber", "acno", "account"]),
           epf_no: pick(row, ["epfno", "epf", "epfnumber"]),
         }))
-        .map((r) =>
+        .map((r: any) =>
           // Blank optional fields must be null — empty strings violate format checks.
-          Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v === "" ? null : v]))
+          Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v === "" ? null : v])) as any
         )
         .filter((r: any) => r.full_name);
 
