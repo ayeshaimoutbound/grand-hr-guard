@@ -55,6 +55,8 @@ interface AttendanceCalendarProps {
   employees: Employee[];
   attendanceRecords: AttendanceRecord[];
   onRefresh: () => void;
+  /** Refetch the employees list after a new employee is created inline. */
+  onEmployeesChanged?: () => void;
   isSuperAdmin: boolean;
   isAdmin?: boolean;
 }
@@ -65,6 +67,7 @@ export default function AttendanceCalendar({
   employees,
   attendanceRecords,
   onRefresh,
+  onEmployeesChanged,
   isSuperAdmin,
   isAdmin = false,
 }: AttendanceCalendarProps) {
@@ -757,7 +760,8 @@ export default function AttendanceCalendar({
       <OvertimeSection
         companyId={selectedCompany.id}
         selectedMonth={selectedMonth}
-        employees={activeEmployees as any}
+        employees={employees as any}
+        onEmployeeCreated={() => onEmployeesChanged?.()}
       />
 
       {/* Add Employee Section */}
@@ -776,6 +780,7 @@ export default function AttendanceCalendar({
                   onChange={setSelectedEmployee}
                   employees={availableEmployees}
                   placeholder="Search & choose employee"
+                  onEmployeeCreated={() => onEmployeesChanged?.()}
                 />
               </div>
 
