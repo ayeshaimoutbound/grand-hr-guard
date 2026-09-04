@@ -399,14 +399,13 @@ export default function Food() {
           </DialogHeader>
           <div className="space-y-2">
             <Label>Employee</Label>
-            <Select value={manualEmp} onValueChange={setManualEmp}>
-              <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
-              <SelectContent>
-                {employees.filter(e => !rows.find(r => r.employee_id === e.id)).map(e => (
-                  <SelectItem key={e.id} value={e.id}>{e.employee_id} — {e.full_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <EmployeeCombobox
+              value={manualEmp}
+              onChange={setManualEmp}
+              employees={employees.filter(e => !rows.find(r => r.employee_id === e.id))}
+              placeholder="Search & select employee"
+              onEmployeeCreated={(emp) => setEmployees((prev) => [...prev, emp])}
+            />
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setManualOpen(false)}>Cancel</Button>
               <Button onClick={addManual}>Add</Button>
