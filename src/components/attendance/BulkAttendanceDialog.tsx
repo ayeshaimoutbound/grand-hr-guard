@@ -155,6 +155,9 @@ export default function BulkAttendanceDialog({
                 setPicked(next);
               }}>Select all shown</Button>
               <Button variant="outline" size="sm" onClick={() => setPicked({})}>Clear</Button>
+              <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-1" />Add new
+              </Button>
             </div>
           </div>
           <Input placeholder="Search employees by name or ID"
@@ -178,6 +181,15 @@ export default function BulkAttendanceDialog({
           <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Mark attendance"}</Button>
         </div>
       </DialogContent>
+      <QuickAddEmployeeDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        defaultName={search}
+        onCreated={(emp) => {
+          setExtra((x) => [...x, emp]);
+          setPicked((p) => ({ ...p, [emp.id]: true }));
+        }}
+      />
     </Dialog>
   );
 }
