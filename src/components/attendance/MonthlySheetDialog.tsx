@@ -267,6 +267,14 @@ export default function MonthlySheetDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <QuickAddEmployeeDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onCreated={(emp) => {
+          setExtra((x) => [...x, emp]);
+          setPicked((p) => ({ ...p, [emp.id]: true }));
+        }}
+      />
     </Dialog>
   );
 }
