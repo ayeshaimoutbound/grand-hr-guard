@@ -47,14 +47,15 @@ export function QuickAddEmployeeDialog({ open, onOpenChange, onCreated, defaultN
       .from("employees")
       .insert({
         // Employee No and EPF No are optional at onboarding and can be edited later.
+        // Blank optional fields must be null — empty strings violate format checks.
         employee_id: form.employee_id.trim() || null,
         epf_no: form.epf_no.trim() || null,
         full_name: form.full_name.trim(),
-        nic: form.nic.trim(),
-        phone_number: form.phone_number.trim(),
-        bank_name: form.bank_name.trim(),
-        branch: form.branch.trim(),
-        account_number: form.account_number.trim(),
+        nic: form.nic.trim() || null,
+        phone_number: form.phone_number.trim() || null,
+        bank_name: form.bank_name.trim() || null,
+        branch: form.branch.trim() || null,
+        account_number: form.account_number.trim() || null,
         created_by: u.user?.id,
       } as any)
       .select("id, employee_id, full_name")

@@ -268,8 +268,11 @@ export default function Employees() {
           account_number: pick(row, ["accountno", "accountnumber", "acno", "account"]),
           epf_no: pick(row, ["epfno", "epf", "epfnumber"]),
         }))
-        .map((r) => ({ ...r, employee_id: r.employee_id || null }))
-        .filter((r) => r.full_name);
+        .map((r: any) =>
+          // Blank optional fields must be null — empty strings violate format checks.
+          Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v === "" ? null : v])) as any
+        )
+        .filter((r: any) => r.full_name);
 
       if (mapped.length === 0) {
         toast.error("No valid rows found. Required columns: Employee ID, Full name, NIC, Phone, Bank, Branch, Account no");
