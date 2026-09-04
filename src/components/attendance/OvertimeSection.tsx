@@ -4,17 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, Pencil, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { calcOvertimeHours } from "@/lib/salaryEngine";
+import { EmployeeCombobox } from "@/components/EmployeeCombobox";
 
 interface Props {
   companyId: string;
   selectedMonth: Date;
   employees: { id: string; full_name: string; employee_id: string }[];
+  /** Called after an employee is created inline so the parent can refresh the list. */
+  onEmployeeCreated?: () => void;
 }
 
 interface OTEntry {
@@ -30,7 +33,7 @@ interface OTEntry {
   reason: string;
 }
 
-export default function OvertimeSection({ companyId, selectedMonth, employees }: Props) {
+export default function OvertimeSection({ companyId, selectedMonth, employees, onEmployeeCreated }: Props) {
   const [entries, setEntries] = useState<OTEntry[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<OTEntry | null>(null);
@@ -183,12 +186,13 @@ export default function OvertimeSection({ companyId, selectedMonth, employees }:
           <div className="space-y-3">
             <div className="space-y-2">
               <Label>Employee</Label>
-              <Select value={form.employee_id} onValueChange={(v) => setForm({ ...form, employee_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
-                <SelectContent>
-                  {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <EmployeeCombobox
+                value={form.employee_id}
+                onChange={(v) => setForm({ ...form, employee_id: v })}
+                employees={employees}
+                placeholder="Search & select employee"
+                onEmployeeCreated={() => onEmployeeCreated?.()}
+              />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">

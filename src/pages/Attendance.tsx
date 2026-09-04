@@ -173,6 +173,7 @@ export default function Attendance() {
           employees={employees}
           attendanceRecords={attendanceRecords}
           onRefresh={fetchAttendanceData}
+          onEmployeesChanged={fetchCompaniesAndEmployees}
           isSuperAdmin={isSuperAdmin}
           isAdmin={isAdmin}
         />

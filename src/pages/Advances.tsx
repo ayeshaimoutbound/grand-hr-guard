@@ -124,6 +124,7 @@ export default function Advances() {
                 onChange={setEmployeeId}
                 employees={employees}
                 placeholder="Search & select employee"
+                onEmployeeCreated={(emp) => setEmployees((prev) => [...prev, emp])}
               />
             </div>
 
