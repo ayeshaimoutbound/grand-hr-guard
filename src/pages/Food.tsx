@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Utensils, Plus, Save, Trash2 } from "lucide-react";
+import { EmployeeCombobox } from "@/components/EmployeeCombobox";
 import { useAuth } from "@/contexts/AuthContext";
 import { CompanyCombobox } from "@/components/CompanyCombobox";
 

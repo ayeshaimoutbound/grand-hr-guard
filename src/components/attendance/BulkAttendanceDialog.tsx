@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users } from "lucide-react";
+import { Users, UserPlus } from "lucide-react";
+import { QuickAddEmployeeDialog } from "@/components/QuickAddEmployeeDialog";
 
 interface Employee { id: string; employee_id: string; full_name: string; }
 
@@ -39,13 +40,21 @@ export default function BulkAttendanceDialog({
   const [fromDay, setFromDay] = useState(1);
   const [toDay, setToDay] = useState(daysInMonth);
   const [saving, setSaving] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  // Employees created inline during this session, merged with the prop list.
+  const [extra, setExtra] = useState<Employee[]>([]);
+
+  const allEmployees = useMemo(() => {
+    const ids = new Set(employees.map((e) => e.id));
+    return [...employees, ...extra.filter((e) => !ids.has(e.id))];
+  }, [employees, extra]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return employees;
-    return employees.filter((e) =>
+    if (!q) return allEmployees;
+    return allEmployees.filter((e) =>
       e.full_name.toLowerCase().includes(q) || (e.employee_id || "").toLowerCase().includes(q));
-  }, [employees, search]);
+  }, [allEmployees, search]);
 
   const pickedIds = Object.keys(picked).filter((k) => picked[k]);
 
