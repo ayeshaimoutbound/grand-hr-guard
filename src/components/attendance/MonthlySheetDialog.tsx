@@ -117,8 +117,8 @@ export default function MonthlySheetDialog({
         return;
       }
 
-      const byNo = new Map(employees.filter((e) => e.employee_id).map((e) => [String(e.employee_id).trim().toLowerCase(), e]));
-      const byName = new Map(employees.map((e) => [e.full_name.trim().toLowerCase(), e]));
+      const byNo = new Map(allEmployees.filter((e) => e.employee_id).map((e) => [String(e.employee_id).trim().toLowerCase(), e]));
+      const byName = new Map(allEmployees.map((e) => [e.full_name.trim().toLowerCase(), e]));
 
       const y = selectedMonth.getFullYear();
       const m = selectedMonth.getMonth() + 1;
@@ -211,6 +211,10 @@ export default function MonthlySheetDialog({
               }}
             >
               Select all
+            </Button>
+            <Button variant="outline" onClick={() => setAddOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-1" />
+              Add new
             </Button>
           </div>
 
