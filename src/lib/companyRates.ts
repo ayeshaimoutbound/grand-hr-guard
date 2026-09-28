@@ -34,7 +34,7 @@ export function applyMonthRates<T extends { id: string }>(companies: T[], histor
       .sort((a, b) => (a.effective_month < b.effective_month ? 1 : -1))[0];
     if (!row) return c;
     const out: any = { ...c };
-    RATE_FIELDS.forEach((f) => { if (f in out || f !== "client_ot_rate") out[f] = Number(row[f]) || 0; });
+    RATE_FIELDS.forEach((f) => { out[f] = Number(row[f]) || 0; });
     return out as T;
   });
 }
