@@ -1,4 +1,5 @@
-import { companiesForMonth } from "@/lib/companyRates";
+import { CompanyRatesDialog } from "@/components/CompanyRatesDialog";
+import { CalendarClock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toDateStr, toMonthStr } from "@/lib/dateUtils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -75,6 +76,7 @@ export default function Companies() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const { isSuperAdmin } = useAuth();
+  const [ratesCompany, setRatesCompany] = useState<Company | null>(null);
 
   const [formData, setFormData] = useState({ ...emptyForm });
   const [activeRanks, setActiveRanks] = useState<RankKey[]>([...RANKS]);
@@ -408,6 +410,9 @@ export default function Companies() {
                     <Button variant="ghost" size="icon" title={archivedView ? "Restore" : "Archive"} onClick={() => setArchived(company, !archivedView)}>
                       {archivedView ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                     </Button>
+                    <Button variant="ghost" size="icon" title="Monthly rates" onClick={() => setRatesCompany(company)}>
+                      <CalendarClock className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(company)}>
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -463,6 +468,8 @@ export default function Companies() {
           </Button>
         </div>
       </div>
+
+      <CompanyRatesDialog company={ratesCompany} onClose={() => setRatesCompany(null)} />
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
         setIsDialogOpen(open);
