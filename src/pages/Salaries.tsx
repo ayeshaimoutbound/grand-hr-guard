@@ -1,3 +1,4 @@
+import { companiesForMonth } from "@/lib/companyRates";
 import { useEffect, useState } from "react";
 import { toDateStr, toMonthStr } from "@/lib/dateUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
