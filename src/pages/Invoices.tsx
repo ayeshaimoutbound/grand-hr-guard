@@ -1,3 +1,4 @@
+import { companiesForMonth } from "@/lib/companyRates";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -212,8 +213,9 @@ export default function Invoices() {
       return;
     }
 
-    const company = companies.find(c => c.id === selectedCompany);
-    if (!company) return;
+    const baseCompany = companies.find(c => c.id === selectedCompany);
+    if (!baseCompany) return;
+    const [company] = await companiesForMonth([baseCompany], invoiceMonth);
 
     const selectedDate = new Date(invoiceMonth + "-01");
     const monthStart = startOfMonth(selectedDate);

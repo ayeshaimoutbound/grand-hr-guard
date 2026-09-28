@@ -1,3 +1,4 @@
+import { companiesForMonth } from "@/lib/companyRates";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -446,13 +447,15 @@ export default function AttendanceCalendar({
   };
 
   const updateEmployeeSalary = async (employeeId: string) => {
+    const monthKey = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
+    const [mc] = await companiesForMonth([selectedCompany], monthKey);
     // An employee may have worked several ranks this month — pay each rank at its own rate
     const rateFor = (rank: string) => {
       switch (rank) {
-        case "OIC": return selectedCompany.pay_oic;
-        case "SSO": return selectedCompany.pay_sso;
-        case "JSO": return selectedCompany.pay_jso;
-        case "LSO": return selectedCompany.pay_lso;
+        case "OIC": return mc.pay_oic;
+        case "SSO": return mc.pay_sso;
+        case "JSO": return mc.pay_jso;
+        case "LSO": return mc.pay_lso;
         default: return 0;
       }
     };
@@ -525,6 +528,7 @@ export default function AttendanceCalendar({
 
   const updateCompanyInvoice = async () => {
     const salaryMonth = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
+    const [mc] = await companiesForMonth([selectedCompany], salaryMonth);
     
     // Build line items for invoice based on attendance
     const lineItems: any[] = [];
@@ -537,10 +541,10 @@ export default function AttendanceCalendar({
       
       let chargePerShift = 0;
       switch (rank) {
-        case "OIC": chargePerShift = selectedCompany.charge_oic; break;
-        case "SSO": chargePerShift = selectedCompany.charge_sso; break;
-        case "JSO": chargePerShift = selectedCompany.charge_jso; break;
-        case "LSO": chargePerShift = selectedCompany.charge_lso; break;
+        case "OIC": chargePerShift = mc.charge_oic; break;
+        case "SSO": chargePerShift = mc.charge_sso; break;
+        case "JSO": chargePerShift = mc.charge_jso; break;
+        case "LSO": chargePerShift = mc.charge_lso; break;
       }
       
       // Add day shifts line item if exists

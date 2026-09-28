@@ -1,3 +1,4 @@
+import { companiesForMonth } from "@/lib/companyRates";
 import { useEffect, useState } from "react";
 import { toDateStr, toMonthStr } from "@/lib/dateUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,7 +95,7 @@ export default function Salaries() {
     setDailyMinWage(dmw);
 
     const employees = (employeesRes.data || []) as Employee[];
-    const companies = (companiesRes.data || []) as CompanyRateRow[];
+    const companies = await companiesForMonth((companiesRes.data || []) as CompanyRateRow[], selectedMonth);
     const attendance = (attendanceRes.data || []) as AttendanceRow[];
     const overtime = (otRes.data || []) as any[];
     const cash = (cashRes.data || []) as any[];

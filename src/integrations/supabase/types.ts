@@ -281,6 +281,68 @@ export type Database = {
         }
         Relationships: []
       }
+      company_rate_history: {
+        Row: {
+          charge_jso: number
+          charge_lso: number
+          charge_oic: number
+          charge_sso: number
+          client_ot_rate: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          effective_month: string
+          id: string
+          pay_jso: number
+          pay_lso: number
+          pay_oic: number
+          pay_sso: number
+          updated_at: string
+        }
+        Insert: {
+          charge_jso?: number
+          charge_lso?: number
+          charge_oic?: number
+          charge_sso?: number
+          client_ot_rate?: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          effective_month: string
+          id?: string
+          pay_jso?: number
+          pay_lso?: number
+          pay_oic?: number
+          pay_sso?: number
+          updated_at?: string
+        }
+        Update: {
+          charge_jso?: number
+          charge_lso?: number
+          charge_oic?: number
+          charge_sso?: number
+          client_ot_rate?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          effective_month?: string
+          id?: string
+          pay_jso?: number
+          pay_lso?: number
+          pay_oic?: number
+          pay_sso?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_rate_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           account_number: string | null
