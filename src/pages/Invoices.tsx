@@ -212,8 +212,9 @@ export default function Invoices() {
       return;
     }
 
-    const company = companies.find(c => c.id === selectedCompany);
-    if (!company) return;
+    const baseCompany = companies.find(c => c.id === selectedCompany);
+    if (!baseCompany) return;
+    const [company] = await companiesForMonth([baseCompany], invoiceMonth);
 
     const selectedDate = new Date(invoiceMonth + "-01");
     const monthStart = startOfMonth(selectedDate);

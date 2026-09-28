@@ -94,7 +94,7 @@ export default function Salaries() {
     setDailyMinWage(dmw);
 
     const employees = (employeesRes.data || []) as Employee[];
-    const companies = (companiesRes.data || []) as CompanyRateRow[];
+    const companies = await companiesForMonth((companiesRes.data || []) as CompanyRateRow[], selectedMonth);
     const attendance = (attendanceRes.data || []) as AttendanceRow[];
     const overtime = (otRes.data || []) as any[];
     const cash = (cashRes.data || []) as any[];
