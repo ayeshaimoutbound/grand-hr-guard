@@ -15,6 +15,8 @@ import {
   HandCoins,
   Settings as SettingsIcon,
   LogOut,
+  Landmark,
+  FolderOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -44,6 +46,8 @@ const menuItems = [
   { title: "Food", url: "/food", icon: Utensils, key: "food", roles: ["admin", "super_admin", "office"] },
   { title: "Vendors", url: "/vendors", icon: Store, key: "vendors", roles: ["admin", "super_admin", "office"] },
   { title: "Maintenance", url: "/maintenance", icon: Wrench, key: "maintenance", roles: ["admin", "super_admin", "office"] },
+  { title: "EPF & ETF", url: "/epf-etf", icon: Landmark, key: "epf_etf", roles: ["admin", "super_admin"] },
+  { title: "Documents", url: "/documents", icon: FolderOpen, key: "documents", roles: ["admin", "super_admin", "office"] },
   { title: "Settings", url: "/settings", icon: SettingsIcon, key: "settings", roles: ["super_admin"] },
 ];
 

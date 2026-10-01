@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +59,15 @@ export default function MonthlySheetDialog({
     return allEmployees.filter((e) =>
       e.full_name.toLowerCase().includes(q) || (e.employee_id || "").toLowerCase().includes(q));
   }, [allEmployees, search]);
+
+  // Employees already on this calendar are pre-selected so the template is ready to download.
+  useEffect(() => {
+    if (!open) return;
+    const p: Record<string, boolean> = {}; const r: Record<string, string> = {};
+    existingKeys.forEach((k) => { const [emp, rank] = k.split("|"); if (emp && rank && !p[emp]) { p[emp] = true; r[emp] = rank; } });
+    if (Object.keys(p).length) { setPicked((prev) => ({ ...p, ...prev })); setRanks((prev) => ({ ...r, ...prev })); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const pickedIds = Object.keys(picked).filter((k) => picked[k]);
   const defaultRank = activeRanks[0] || "LSO";

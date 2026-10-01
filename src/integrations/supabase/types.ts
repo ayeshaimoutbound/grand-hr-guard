@@ -343,6 +343,179 @@ export type Database = {
           },
         ]
       }
+      documents: {
+        Row: {
+          category: string
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          employee_id: string | null
+          entity_type: string
+          file_name: string | null
+          file_path: string
+          id: string
+          notes: string | null
+          title: string
+        }
+        Insert: {
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string | null
+          entity_type: string
+          file_name?: string | null
+          file_path: string
+          id?: string
+          notes?: string | null
+          title: string
+        }
+        Update: {
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string | null
+          entity_type?: string
+          file_name?: string | null
+          file_path?: string
+          id?: string
+          notes?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_limited"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_complaints: {
+        Row: {
+          complaint_at: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          employee_id: string
+          id: string
+          proof_name: string | null
+          proof_path: string | null
+          title: string
+        }
+        Insert: {
+          complaint_at?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          employee_id: string
+          id?: string
+          proof_name?: string | null
+          proof_path?: string | null
+          title: string
+        }
+        Update: {
+          complaint_at?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          employee_id?: string
+          id?: string
+          proof_name?: string | null
+          proof_path?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_complaints_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_complaints_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_limited"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_rate_overrides: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          notes: string | null
+          pay_rate: number
+          rank: Database["public"]["Enums"]["rank"]
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          pay_rate?: number
+          rank: Database["public"]["Enums"]["rank"]
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          pay_rate?: number
+          rank?: Database["public"]["Enums"]["rank"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_rate_overrides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_rate_overrides_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_rate_overrides_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_limited"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           account_number: string | null

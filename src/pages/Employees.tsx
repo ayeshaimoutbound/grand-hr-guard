@@ -4,12 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, Upload, Download, FileDown } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Upload, Download, FileDown, BadgeDollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import EmployeeRatesDialog from "@/components/EmployeeRatesDialog";
 import { employeeSchema } from "@/lib/validationSchemas";
 import { z } from "zod";
 import {
@@ -51,6 +52,7 @@ export default function Employees() {
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [ratesEmp, setRatesEmp] = useState<{ id: string; full_name: string } | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const { isSuperAdmin, isOffice } = useAuth();
@@ -279,16 +281,27 @@ export default function Employees() {
         return;
       }
 
-      const { error, count } = await supabase
-        .from("employees")
-        .insert(mapped, { count: "exact" });
+      // Skip rows whose Employee No is already used (in the system or earlier in the sheet).
+      const { data: existing } = await supabase.from("employees").select("employee_id").not("employee_id", "is", null);
+      const used = new Set(((existing || []) as any[]).map((e) => String(e.employee_id).trim().toLowerCase()));
+      const skipped: string[] = [];
+      const toInsert = mapped.filter((r: any) => {
+        if (!r.employee_id) return true;
+        const k = String(r.employee_id).trim().toLowerCase();
+        if (used.has(k)) { skipped.push(`${r.employee_id} (${r.full_name})`); return false; }
+        used.add(k);
+        return true;
+      });
 
-      if (error) {
-        toast.error("Bulk upload failed: " + error.message);
-      } else {
-        toast.success(`Imported ${count ?? mapped.length} employees`);
-        fetchEmployees();
+      if (toInsert.length) {
+        const { error } = await supabase.from("employees").insert(toInsert);
+        if (error) { toast.error("Bulk upload failed: " + error.message); return; }
       }
+      toast.success(`Imported ${toInsert.length} employees`, skipped.length ? {
+        description: `Skipped ${skipped.length} because the Employee No is already used: ${skipped.slice(0, 10).join(", ")}${skipped.length > 10 ? "…" : ""}`,
+        duration: 15000,
+      } : undefined);
+      fetchEmployees();
     } catch (err: any) {
       toast.error("Failed to parse file: " + err.message);
     } finally {
@@ -605,6 +618,9 @@ export default function Employees() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                            <Button variant="ghost" size="icon" title="Custom pay rates" onClick={() => setRatesEmp(employee)}>
+                              <BadgeDollarSign className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -623,6 +639,7 @@ export default function Employees() {
           </Table>
         </CardContent>
       </Card>
+      <EmployeeRatesDialog open={!!ratesEmp} onOpenChange={(v) => !v && setRatesEmp(null)} employee={ratesEmp} />
     </div>
   );
 }

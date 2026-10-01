@@ -105,9 +105,11 @@ export function computePayroll(args: {
   manualDeductions?: ManualDeductions;
   settings: EmployeeSettings;
   dailyMinWage: number;
+  /** Per-employee pay rate exceptions keyed `${employeeId}|${companyId}|${rank}`. */
+  rateOverrides?: Map<string, number>;
 }): PayrollLine {
   const { employeeId, attendance, companies, overtime,
-    cashAdvances, foodAdvances, uniformAdvances, manualDeductions, settings, dailyMinWage } = args;
+    cashAdvances, foodAdvances, uniformAdvances, manualDeductions, settings, dailyMinWage, rateOverrides } = args;
 
   // Group shifts by company+rank for this employee
   const buckets = new Map<string, CompanyBreakdown>();
@@ -118,7 +120,8 @@ export function computePayroll(args: {
     const key = `${a.company_id}|${a.rank}`;
     let b = buckets.get(key);
     if (!b) {
-      const rate = rankRate(co, a.rank);
+      const ov = rateOverrides?.get(`${employeeId}|${a.company_id}|${a.rank}`);
+      const rate = ov !== undefined ? ov : rankRate(co, a.rank);
       b = { company_id: a.company_id, company_name: co.company_name, rank: a.rank, shifts: 0, rate, amount: 0 };
       buckets.set(key, b);
     }

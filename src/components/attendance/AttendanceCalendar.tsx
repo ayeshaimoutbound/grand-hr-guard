@@ -19,6 +19,7 @@ import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "@/lib/pdfHeader";
 import OvertimeSection from "@/components/attendance/OvertimeSection";
 import { EmployeeCombobox } from "@/components/EmployeeCombobox";
 import BulkAttendanceDialog from "@/components/attendance/BulkAttendanceDialog";
+import { fetchOverrideMap, overrideKey } from "@/lib/employeeRates";
 import MonthlySheetDialog from "@/components/attendance/MonthlySheetDialog";
 
 interface Employee {
@@ -126,7 +127,7 @@ export default function AttendanceCalendar({
         .eq("id", existing.id);
 
       if (error) {
-        toast.error("Error updating attendance");
+        toast.error("Error updating attendance: " + error.message);
         return;
       }
     } else {
@@ -142,7 +143,7 @@ export default function AttendanceCalendar({
       ]);
 
       if (error) {
-        toast.error("Error marking attendance");
+        toast.error("Error marking attendance: " + error.message);
         return;
       }
     }
@@ -169,6 +170,18 @@ export default function AttendanceCalendar({
     const lastDay = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate();
     const end = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
     return { start, end };
+  };
+
+  const handleClearMonth = async () => {
+    const label = selectedMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    if (!confirm(`Clear ALL attendance for ${selectedCompany.company_name} in ${label}? Use this if a sheet was uploaded by mistake. This cannot be undone.`)) return;
+    if (!confirm("Are you sure? Every shift on this calendar will be deleted.")) return;
+    const { start, end } = monthDateRange();
+    const { error } = await supabase.from("attendance").delete()
+      .eq("company_id", selectedCompany.id).gte("attendance_date", start).lte("attendance_date", end);
+    if (error) { toast.error("Error clearing calendar: " + error.message); return; }
+    toast.success(`Attendance cleared for ${label}`);
+    onRefresh();
   };
 
   const handleRemoveEmployeeFromMonth = async (employeeId: string, rank: string, name: string) => {
@@ -407,7 +420,7 @@ export default function AttendanceCalendar({
     ]);
 
     if (error) {
-      toast.error("Error adding employee");
+      toast.error("Error adding employee: " + error.message);
       return;
     }
 
@@ -449,8 +462,11 @@ export default function AttendanceCalendar({
   const updateEmployeeSalary = async (employeeId: string) => {
     const monthKey = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
     const [mc] = await companiesForMonth([selectedCompany], monthKey);
+    const overrides = await fetchOverrideMap();
     // An employee may have worked several ranks this month — pay each rank at its own rate
     const rateFor = (rank: string) => {
+      const ov = overrides.get(overrideKey(employeeId, selectedCompany.id, rank));
+      if (ov !== undefined) return ov;
       switch (rank) {
         case "OIC": return mc.pay_oic;
         case "SSO": return mc.pay_sso;
@@ -637,6 +653,11 @@ export default function AttendanceCalendar({
             <Button onClick={handleSaveAllAttendance} variant="default">
               <Save className="h-4 w-4 mr-2" />
               Save All Attendance
+            </Button>
+          )}
+          {(isAdmin || isSuperAdmin) && (
+            <Button variant="destructive" size="sm" onClick={handleClearMonth}>
+              Clear All
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={handleExportPDF}>

@@ -20,6 +20,8 @@ import Inventory from "./pages/Inventory";
 import Food from "./pages/Food";
 import Vendors from "./pages/Vendors";
 import Maintenance from "./pages/Maintenance";
+import EpfEtf from "./pages/EpfEtf";
+import Documents from "./pages/Documents";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -55,6 +57,8 @@ const App = () => (
               <Route path="/food" element={<Food />} />
               <Route path="/vendors" element={<Vendors />} />
               <Route path="/maintenance" element={<Maintenance />} />
+              <Route path="/epf-etf" element={<EpfEtf />} />
+              <Route path="/documents" element={<Documents />} />
               <Route path="/settings" element={<ProtectedRoute requireSuperAdmin><Settings /></ProtectedRoute>} />
             </Route>
 
