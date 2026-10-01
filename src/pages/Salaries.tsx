@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileDown, Pencil } from "lucide-react";
+import { Printer, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileDown, Pencil, BadgeDollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import EmployeeRatesDialog from "@/components/EmployeeRatesDialog";
 import { fetchOverrideMap } from "@/lib/employeeRates";
 import { computePayroll, PayrollLine, type CompanyRateRow, type AttendanceRow, type ManualDeductions } from "@/lib/salaryEngine";
 
@@ -57,6 +58,7 @@ export default function Salaries() {
   const [editForm, setEditForm] = useState<ManualRow>({});
   const { isSuperAdmin, isAdmin } = useAuth();
   const canEditManual = isSuperAdmin || isAdmin;
+  const [ratesEmp, setRatesEmp] = useState<{ id: string; full_name: string } | null>(null);
 
   useEffect(() => { fetchData(); }, [selectedMonth]);
 
@@ -432,6 +434,11 @@ export default function Salaries() {
 
                         <div className="flex gap-1">
                           {canEditManual && (
+                            <Button variant="ghost" size="sm" title="Custom pay rates" onClick={() => setRatesEmp(e)}>
+                              <BadgeDollarSign className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {canEditManual && (
                             <Button variant="ghost" size="sm" title="Edit manual deductions" onClick={() => openEdit(e)}>
                               <Pencil className="h-3 w-3" />
                             </Button>
@@ -525,6 +532,7 @@ export default function Salaries() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <EmployeeRatesDialog open={!!ratesEmp} onOpenChange={(v) => !v && setRatesEmp(null)} employee={ratesEmp} onSaved={fetchData} />
     </div>
   );
 }

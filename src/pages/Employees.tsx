@@ -4,12 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, Upload, Download, FileDown } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Upload, Download, FileDown, BadgeDollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import EmployeeRatesDialog from "@/components/EmployeeRatesDialog";
 import { employeeSchema } from "@/lib/validationSchemas";
 import { z } from "zod";
 import {
@@ -51,6 +52,7 @@ export default function Employees() {
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [ratesEmp, setRatesEmp] = useState<{ id: string; full_name: string } | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const { isSuperAdmin, isOffice } = useAuth();
@@ -616,6 +618,9 @@ export default function Employees() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                            <Button variant="ghost" size="icon" title="Custom pay rates" onClick={() => setRatesEmp(employee)}>
+                              <BadgeDollarSign className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -634,6 +639,7 @@ export default function Employees() {
           </Table>
         </CardContent>
       </Card>
+      <EmployeeRatesDialog open={!!ratesEmp} onOpenChange={(v) => !v && setRatesEmp(null)} employee={ratesEmp} />
     </div>
   );
 }
