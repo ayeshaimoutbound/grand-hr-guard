@@ -279,16 +279,27 @@ export default function Employees() {
         return;
       }
 
-      const { error, count } = await supabase
-        .from("employees")
-        .insert(mapped, { count: "exact" });
+      // Skip rows whose Employee No is already used (in the system or earlier in the sheet).
+      const { data: existing } = await supabase.from("employees").select("employee_id").not("employee_id", "is", null);
+      const used = new Set(((existing || []) as any[]).map((e) => String(e.employee_id).trim().toLowerCase()));
+      const skipped: string[] = [];
+      const toInsert = mapped.filter((r: any) => {
+        if (!r.employee_id) return true;
+        const k = String(r.employee_id).trim().toLowerCase();
+        if (used.has(k)) { skipped.push(`${r.employee_id} (${r.full_name})`); return false; }
+        used.add(k);
+        return true;
+      });
 
-      if (error) {
-        toast.error("Bulk upload failed: " + error.message);
-      } else {
-        toast.success(`Imported ${count ?? mapped.length} employees`);
-        fetchEmployees();
+      if (toInsert.length) {
+        const { error } = await supabase.from("employees").insert(toInsert);
+        if (error) { toast.error("Bulk upload failed: " + error.message); return; }
       }
+      toast.success(`Imported ${toInsert.length} employees`, skipped.length ? {
+        description: `Skipped ${skipped.length} because the Employee No is already used: ${skipped.slice(0, 10).join(", ")}${skipped.length > 10 ? "…" : ""}`,
+        duration: 15000,
+      } : undefined);
+      fetchEmployees();
     } catch (err: any) {
       toast.error("Failed to parse file: " + err.message);
     } finally {

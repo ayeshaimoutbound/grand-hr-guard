@@ -28,6 +28,8 @@ const ALL_MODULES = [
   { key: "food", label: "Food" },
   { key: "vendors", label: "Vendors" },
   { key: "maintenance", label: "Maintenance" },
+  { key: "epf_etf", label: "EPF & ETF" },
+  { key: "documents", label: "Documents & Complaints" },
   { key: "settings", label: "Settings" },
 ];
 

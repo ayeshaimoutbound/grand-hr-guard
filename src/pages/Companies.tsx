@@ -75,7 +75,7 @@ export default function Companies() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isAdmin } = useAuth();
   const [ratesCompany, setRatesCompany] = useState<Company | null>(null);
 
   const [formData, setFormData] = useState({ ...emptyForm });
