@@ -106,15 +106,25 @@ export default function Companies() {
     const list = ((data as any) || []) as Company[];
     setCompanies(list);
 
-    // Auto-archive companies inactive for more than 2 months.
-    if (isSuperAdmin) {
+    // Auto-archive companies inactive for more than 2 months, and auto-restore
+    // archived companies that have new attendance in the last 2 months.
+    if (isSuperAdmin || isAdmin) {
       const stale = list.filter((c) => !c.archived && isInactive(c, activity));
+      const revived = list.filter((c) => c.archived && !isInactive(c, activity, true));
       if (stale.length) {
-        await supabase
-          .from("companies")
+        await supabase.from("companies")
           .update({ archived: true, archived_at: new Date().toISOString() } as any)
           .in("id", stale.map((c) => c.id));
-        setCompanies(list.map((c) => (stale.some((s) => s.id === c.id) ? { ...c, archived: true } : c)));
+      }
+      if (revived.length) {
+        await supabase.from("companies")
+          .update({ archived: false, archived_at: null } as any)
+          .in("id", revived.map((c) => c.id));
+      }
+      if (stale.length || revived.length) {
+        setCompanies(list.map((c) =>
+          stale.some((s) => s.id === c.id) ? { ...c, archived: true }
+          : revived.some((r) => r.id === c.id) ? { ...c, archived: false, archived_at: null } : c));
       }
     }
   };
@@ -125,9 +135,18 @@ export default function Companies() {
     return d;
   };
 
-  function isInactive(c: Company, activity: Record<string, string>) {
-    const last = activity[c.id];
-    const ref = last ? new Date(last) : c.created_at ? new Date(c.created_at) : new Date();
+  // Activity = latest attendance. A manual restore (updated_at) also counts, so a
+  // restored company isn't immediately archived again. For auto-restore we only
+  // look at real attendance.
+  function isInactive(c: Company, activity: Record<string, string>, attendanceOnly = false) {
+    const dates: Date[] = [];
+    if (activity[c.id]) dates.push(new Date(activity[c.id]));
+    if (!attendanceOnly) {
+      if (c.created_at) dates.push(new Date(c.created_at));
+      if ((c as any).updated_at) dates.push(new Date((c as any).updated_at));
+    }
+    if (!dates.length) return !attendanceOnly ? false : true;
+    const ref = new Date(Math.max(...dates.map((d) => d.getTime())));
     return ref < cutoff();
   }
 
@@ -246,8 +265,8 @@ export default function Companies() {
   };
 
   const setArchived = async (company: Company, archived: boolean) => {
-    if (!isSuperAdmin) {
-      toast.error("Only Super Admin can archive companies");
+    if (!isSuperAdmin && !isAdmin) {
+      toast.error("Only Admins can archive or restore companies");
       return;
     }
     const { error } = await supabase
