@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { fetchOverrideMap } from "@/lib/employeeRates";
 import { computePayroll, PayrollLine, type CompanyRateRow, type AttendanceRow, type ManualDeductions } from "@/lib/salaryEngine";
 
 interface ManualRow extends ManualDeductions {
@@ -95,6 +96,7 @@ export default function Salaries() {
     setDailyMinWage(dmw);
 
     const employees = (employeesRes.data || []) as Employee[];
+    const rateOverrides = await fetchOverrideMap();
     const companies = await companiesForMonth((companiesRes.data || []) as CompanyRateRow[], selectedMonth);
     const attendance = (attendanceRes.data || []) as AttendanceRow[];
     const overtime = (otRes.data || []) as any[];
@@ -142,6 +144,7 @@ export default function Salaries() {
           extended_ot_hours: Number(emp.extended_ot_hours ?? 6),
         },
         dailyMinWage: dmw,
+        rateOverrides,
       });
       return { employee: emp, payroll };
     }).filter(r => r.payroll.total_shifts > 0 || r.payroll.ot_pay > 0 || r.payroll.total_deductions > 0 || !!mMap[r.employee.id]);
