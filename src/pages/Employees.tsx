@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, Upload, Download, FileDown, BadgeDollarSign } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Upload, Download, FileDown, BadgeDollarSign, Smartphone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
@@ -309,6 +309,25 @@ export default function Employees() {
     }
   };
 
+  const handleSaveContacts = () => {
+    const withPhone = employees.filter((e) => (e.phone_number || "").trim());
+    if (!withPhone.length) { toast.error("No employees have a phone number yet"); return; }
+    const esc = (s: string) => s.replace(/[\\;,]/g, (m) => "\\" + m);
+    const vcf = withPhone.map((e) => [
+      "BEGIN:VCARD", "VERSION:3.0",
+      `FN:${esc(`${e.full_name}${e.employee_id ? ` (${e.employee_id})` : ""} - GSS`)}`,
+      `N:${esc(e.full_name)};;;;`,
+      "ORG:Grand Senaro Security",
+      `TEL;TYPE=CELL:${e.phone_number!.trim()}`,
+      "END:VCARD",
+    ].join("\r\n")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([vcf], { type: "text/vcard" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "GSS_Employee_Contacts.vcf"; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${withPhone.length} contacts saved — open the file on your phone to add them`);
+  };
+
   const handleBulkDownload = () => {
     if (!employees.length) {
       toast.error("No employees to export");
@@ -382,6 +401,10 @@ export default function Employees() {
             onChange={handleBulkUpload}
             className="hidden"
           />
+          <Button variant="outline" title="Download a contacts file you can open on your phone to save all employee numbers" onClick={handleSaveContacts}>
+            <Smartphone className="h-4 w-4 mr-2" />
+            Save Phones to Mobile
+          </Button>
           <Button variant="outline" onClick={handleDownloadTemplate}>
             <FileDown className="h-4 w-4 mr-2" />
             Download Format
@@ -603,7 +626,7 @@ export default function Employees() {
                           ? employee.nic
                           : (employee.nic || "").substring(0, 4) + "XXXX"}
                       </TableCell>
-                      <TableCell>{employee.phone_number}</TableCell>
+                      <TableCell>{employee.phone_number ? <a href={`tel:${employee.phone_number}`} className="hover:underline">{employee.phone_number}</a> : ""}</TableCell>
                       {isSuperAdmin && <TableCell>{employee.epf_no || "-"}</TableCell>}
                       {isSuperAdmin && <TableCell>{employee.bank_name}</TableCell>}
                       {isSuperAdmin && <TableCell>{employee.branch}</TableCell>}

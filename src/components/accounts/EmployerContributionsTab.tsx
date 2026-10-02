@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileDown, Printer } from "lucide-react";
+import MonthNav from "@/components/MonthNav";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { fetchEmployerContributions, sumContributions, type ContributionRow } from "@/lib/employerContributions";
@@ -96,7 +97,7 @@ export default function EmployerContributionsTab() {
         </div>
         <div className="flex items-center gap-2">
           <Input className="w-48" placeholder="Search employee / EPF no..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          <Input type="month" className="w-44" value={month} onChange={(e) => setMonth(e.target.value)} />
+          <MonthNav value={month} onChange={setMonth} />
           <Button variant="outline" onClick={exportExcel}><FileDown className="h-4 w-4 mr-1" /> Excel</Button>
           <Button variant="outline" onClick={printReport}><Printer className="h-4 w-4 mr-1" /> PDF</Button>
         </div>
