@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CompanyCombobox } from "@/components/CompanyCombobox";
 import { fetchRateOverrides, type RateOverride } from "@/lib/employeeRates";
+import MonthNav from "@/components/MonthNav";
+import { toMonthStr } from "@/lib/dateUtils";
 
 interface Props {
   open: boolean;
@@ -28,6 +30,9 @@ export default function EmployeeRatesDialog({ open, onOpenChange, employee, onSa
   const [rate, setRate] = useState("");
   const [notes, setNotes] = useState("");
 
+  const [month, setMonth] = useState(toMonthStr());
+  const [workedIds, setWorkedIds] = useState<Set<string>>(new Set());
+
   const load = async () => {
     if (!employee) return;
     setRows(await fetchRateOverrides(employee.id));
@@ -40,6 +45,21 @@ export default function EmployeeRatesDialog({ open, onOpenChange, employee, onSa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, employee?.id]);
 
+  // Only companies this employee actually worked at in the chosen month
+  useEffect(() => {
+    if (!open || !employee) return;
+    const [y, m] = month.split("-").map(Number);
+    const end = `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+    supabase.from("attendance").select("company_id").eq("employee_id", employee.id)
+      .gte("attendance_date", `${month}-01`).lte("attendance_date", end)
+      .then(({ data }) => {
+        const ids = new Set((data || []).map((r: any) => r.company_id as string));
+        setWorkedIds(ids);
+        setCompanyId((cur) => (ids.has(cur) ? cur : ""));
+      });
+  }, [open, employee?.id, month]);
+
+  const workedCompanies = companies.filter((c) => workedIds.has(c.id));
   const company = companies.find((c) => c.id === companyId);
   const standardRate = company ? Number(company[`pay_${rank.toLowerCase()}`]) || 0 : null;
 
@@ -81,8 +101,16 @@ export default function EmployeeRatesDialog({ open, onOpenChange, employee, onSa
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1 sm:col-span-2">
-            <Label>Company / location</Label>
-            <CompanyCombobox value={companyId} onChange={setCompanyId} companies={companies} placeholder="Select company" />
+            <Label>Month worked</Label>
+            <MonthNav value={month} onChange={setMonth} />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label>Company / location (worked this month)</Label>
+            {workedCompanies.length === 0 ? (
+              <p className="text-sm text-muted-foreground rounded-md border p-2">This employee has no attendance in the selected month, so there is no location to set a rate for.</p>
+            ) : (
+              <CompanyCombobox value={companyId} onChange={setCompanyId} companies={workedCompanies} placeholder="Select company" />
+            )}
           </div>
           <div className="space-y-1">
             <Label>Rank</Label>
