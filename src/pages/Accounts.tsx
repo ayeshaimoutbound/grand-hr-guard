@@ -13,6 +13,8 @@ import { Plus, Trash2, Wallet, Receipt, BarChart3, Settings, Banknote, UtensilsC
 import EmployerContributionsTab from "@/components/accounts/EmployerContributionsTab";
 import { fetchEmployerContributions, sumContributions } from "@/lib/employerContributions";
 import { ensureVendor } from "@/lib/vendorSync";
+import MonthNav, { shiftMonth } from "@/components/MonthNav";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
 
 
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +25,7 @@ interface Company { id: string; company_name: string; }
 interface Employee { id: string; full_name: string; employee_id: string; }
 
 export default function Accounts() {
-  const [tab, setTab] = useState("payments");
+  const [tab, setTab] = useState("overview");
 
   return (
     <div className="space-y-6">
@@ -580,30 +582,41 @@ function ExpensesTab() {
 }
 
 /* ============== OVERVIEW TAB ============== */
+async function loadMonthTotals(month: string) {
+  const start = `${month}-01`;
+  const [y, m] = month.split("-").map(Number);
+  const end = `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+  const [inv, pay, sal, exp, contrib] = await Promise.all([
+    supabase.from("invoices").select("amount_to_collect, amount_received").gte("month_period", start).lte("month_period", end),
+    supabase.from("invoice_payments").select("amount").gte("payment_date", start).lte("payment_date", end),
+    supabase.from("salaries").select("final_salary").gte("salary_month", start).lte("salary_month", end),
+    supabase.from("expenses").select("amount").gte("expense_date", start).lte("expense_date", end),
+    fetchEmployerContributions(month),
+  ]);
+  const invoiced = (inv.data || []).reduce((s, r) => s + Number(r.amount_to_collect || 0), 0);
+  const receivedFromInv = (inv.data || []).reduce((s, r) => s + Number(r.amount_received || 0), 0);
+  const received = (pay.data || []).reduce((s, r) => s + Number(r.amount || 0), 0);
+  const salaries = (sal.data || []).reduce((s, r) => s + Number(r.final_salary || 0), 0);
+  const expenses = (exp.data || []).reduce((s, r) => s + Number(r.amount || 0), 0);
+  const c = sumContributions(contrib);
+  return { invoiced, received, outstanding: invoiced - receivedFromInv, salaries, expenses, epf12: c.epf_12, etf3: c.etf_3 };
+}
+
 function OverviewTab() {
   const [month, setMonth] = useState(toMonthStr());
   const [data, setData] = useState({ invoiced: 0, received: 0, outstanding: 0, salaries: 0, expenses: 0, epf12: 0, etf3: 0 });
+  const [trend, setTrend] = useState<any[]>([]);
 
   useEffect(() => {
     (async () => {
-      const start = `${month}-01`;
-      const [y, m] = month.split("-").map(Number);
-      const end = `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
-      const [inv, pay, sal, exp, contrib] = await Promise.all([
-        supabase.from("invoices").select("amount_to_collect, amount_received").gte("month_period", start).lte("month_period", end),
-        supabase.from("invoice_payments").select("amount").gte("payment_date", start).lte("payment_date", end),
-        supabase.from("salaries").select("final_salary").gte("salary_month", start).lte("salary_month", end),
-        supabase.from("expenses").select("amount").gte("expense_date", start).lte("expense_date", end),
-        fetchEmployerContributions(month),
-      ]);
-      const invoiced = (inv.data || []).reduce((s, r) => s + Number(r.amount_to_collect || 0), 0);
-      const receivedFromInv = (inv.data || []).reduce((s, r) => s + Number(r.amount_received || 0), 0);
-      const receivedThisMonth = (pay.data || []).reduce((s, r) => s + Number(r.amount || 0), 0);
-      const outstanding = invoiced - receivedFromInv;
-      const salaries = (sal.data || []).reduce((s, r) => s + Number(r.final_salary || 0), 0);
-      const expenses = (exp.data || []).reduce((s, r) => s + Number(r.amount || 0), 0);
-      const c = sumContributions(contrib);
-      setData({ invoiced, received: receivedThisMonth, outstanding, salaries, expenses, epf12: c.epf_12, etf3: c.etf_3 });
+      const months = [-5, -4, -3, -2, -1, 0].map((n) => shiftMonth(month, n));
+      const all = await Promise.all(months.map(loadMonthTotals));
+      setData(all[5]);
+      setTrend(all.map((d, i) => ({
+        month: new Date(months[i] + "-01").toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+        Income: Math.round(d.received),
+        Costs: Math.round(d.salaries + d.expenses + d.epf12 + d.etf3),
+      })));
     })();
   }, [month]);
 
@@ -623,10 +636,10 @@ function OverviewTab() {
   return (
     <Card className="mt-4">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Monthly Overview</CardTitle>
-        <Input type="month" className="w-44" value={month} onChange={(e) => setMonth(e.target.value)} />
+        <CardTitle>Monthly Analytics</CardTitle>
+        <MonthNav value={month} onChange={setMonth} />
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {cards.map(c => (
             <div key={c.label} className="rounded-lg border p-4">
@@ -637,6 +650,22 @@ function OverviewTab() {
           <div className={`rounded-lg border-2 p-4 ${net >= 0 ? "border-emerald-500" : "border-destructive"}`}>
             <p className="text-xs text-muted-foreground">Net (Received − Salaries − Expenses − EPF/ETF)</p>
             <p className={`text-2xl font-bold ${net < 0 ? "text-destructive" : "text-emerald-600"}`}>LKR {net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium mb-2">Last 6 months — money in vs money out (LKR)</p>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={trend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+                <YAxis stroke="hsl(var(--muted-foreground))" />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                <Legend />
+                <Bar dataKey="Income" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Costs" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </CardContent>
