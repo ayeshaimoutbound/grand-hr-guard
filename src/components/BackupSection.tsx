@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download } from "lucide-react";
+import { Download, Upload } from "lucide-react";
+import { useRef } from "react";
 
 // table -> date column used for range filtering (null = full snapshot)
 const BACKUP_TABLES: { table: string; dateCol: string | null; sheet: string }[] = [
@@ -22,9 +23,9 @@ const BACKUP_TABLES: { table: string; dateCol: string | null; sheet: string }[] 
   { table: "expenses", dateCol: "expense_date", sheet: "Expenses" },
   { table: "cash_advances", dateCol: "advance_date", sheet: "CashAdvances" },
   { table: "food_advances", dateCol: "advance_date", sheet: "FoodAdvances" },
+  { table: "uniform_batches", dateCol: "upload_date", sheet: "UniformBatches" },
   { table: "uniform_advances", dateCol: "advance_date", sheet: "UniformAdvances" },
   { table: "food_charges", dateCol: "month", sheet: "FoodCharges" },
-  { table: "uniform_batches", dateCol: "upload_date", sheet: "UniformBatches" },
   { table: "inventory_items", dateCol: null, sheet: "Inventory" },
   { table: "inventory_movements", dateCol: "moved_at", sheet: "InventoryMoves" },
 ];
@@ -35,6 +36,46 @@ export default function BackupSection() {
   const [from, setFrom] = useState(firstOfYear);
   const [to, setTo] = useState(today);
   const [busy, setBusy] = useState(false);
+
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [restoring, setRestoring] = useState(false);
+
+  const restoreBackup = async (file: File) => {
+    if (!confirm("Restore this backup? Records in the file will be added back, and records with the same ID will be overwritten with the backup version. Nothing else is deleted.")) return;
+    setRestoring(true);
+    const summary: string[] = [];
+    try {
+      const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      for (const { table, sheet } of BACKUP_TABLES) {
+        const ws = wb.Sheets[sheet.slice(0, 31)];
+        if (!ws) continue;
+        const raw = XLSX.utils.sheet_to_json<any>(ws, { defval: null });
+        const rows = raw.filter((r) => r.id).map((r) => {
+          const o: any = {};
+          for (const [k, v] of Object.entries(r)) {
+            if (v === "") o[k] = null;
+            else if (typeof v === "string" && /^[\[{]/.test(v)) { try { o[k] = JSON.parse(v); } catch { o[k] = v; } }
+            else o[k] = v;
+          }
+          return o;
+        });
+        if (!rows.length) continue;
+        let ok = 0;
+        for (let i = 0; i < rows.length; i += 500) {
+          const { error } = await supabase.from(table as any).upsert(rows.slice(i, i + 500), { onConflict: "id" });
+          if (error) { summary.push(`${sheet}: ${error.message}`); break; }
+          ok += Math.min(500, rows.length - i);
+        }
+        if (ok) summary.push(`${sheet}: ${ok} restored`);
+      }
+      toast.success("Restore finished", { description: summary.join(" · ") || "No records found in the file" });
+    } catch (e: any) {
+      toast.error("Restore failed: " + e.message, { description: "Make sure you chose a backup file downloaded from this page." });
+    } finally {
+      setRestoring(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   const downloadBackup = async () => {
     if (!from || !to || from > to) {
@@ -90,7 +131,14 @@ export default function BackupSection() {
             <Download className="h-4 w-4 mr-2" />
             {busy ? "Preparing…" : "Download Backup (.xlsx)"}
           </Button>
+          <input ref={fileRef} type="file" accept=".xlsx" className="hidden"
+            onChange={(e) => e.target.files?.[0] && restoreBackup(e.target.files[0])} />
+          <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={restoring}>
+            <Upload className="h-4 w-4 mr-2" />
+            {restoring ? "Restoring…" : "Restore from Backup"}
+          </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-3">Restore puts back every record in a backup file. Records with the same ID are replaced by the backup version; nothing else is deleted.</p>
       </CardContent>
     </Card>
   );
