@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Building2, Calendar, DollarSign, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import WorkforceNetwork from "@/components/dashboard/WorkforceNetwork";
 
 interface LowStockItem {
   id: string;
@@ -184,6 +185,8 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      <WorkforceNetwork />
 
       <Card className="shadow-card">
         <CardHeader>
