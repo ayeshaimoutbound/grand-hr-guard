@@ -45,6 +45,7 @@ interface Employee {
 interface AttendanceStat {
   lastDate: string | null;
   lastMonthShifts: number;
+  lastLocation: string | null;
 }
 
 export default function Employees() {
@@ -113,7 +114,7 @@ export default function Employees() {
   const fetchAttendanceStats = async (list: Employee[]) => {
     const { data, error } = await supabase
       .from("attendance")
-      .select("employee_id, attendance_date, present")
+      .select("employee_id, attendance_date, present, companies(company_name, location)")
       .eq("present", true);
     if (error) return;
 
@@ -123,12 +124,16 @@ export default function Employees() {
 
     const stats: Record<string, AttendanceStat> = {};
     list.forEach((e) => {
-      stats[e.id] = { lastDate: null, lastMonthShifts: 0 };
+      stats[e.id] = { lastDate: null, lastMonthShifts: 0, lastLocation: null };
     });
     (data || []).forEach((row: any) => {
       const s = stats[row.employee_id];
       if (!s) return;
-      if (!s.lastDate || row.attendance_date > s.lastDate) s.lastDate = row.attendance_date;
+      if (!s.lastDate || row.attendance_date > s.lastDate) {
+        s.lastDate = row.attendance_date;
+        const c = row.companies;
+        s.lastLocation = c ? `${c.company_name}${c.location ? ` — ${c.location}` : ""}` : null;
+      }
       const d = new Date(row.attendance_date);
       if (d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear) s.lastMonthShifts += 1;
     });
@@ -348,6 +353,7 @@ export default function Employees() {
         const daysAgo = Math.floor((Date.now() - new Date(s.lastDate).getTime()) / 86400000);
         return daysAgo > 60 ? `Inactive (last worked ${daysAgo}d ago)` : `Active (${s.lastMonthShifts} shifts last month)`;
       })(),
+      "Last Worked Location": attendanceStats[e.id]?.lastLocation || "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -620,7 +626,12 @@ export default function Employees() {
                     <TableRow key={employee.id}>
                       <TableCell className="font-medium">{employee.employee_id || "—"}</TableCell>
                       <TableCell>{employee.full_name}</TableCell>
-                      <TableCell>{statusEl}</TableCell>
+                      <TableCell>
+                        {statusEl}
+                        {stat?.lastLocation && (
+                          <div className="text-xs text-muted-foreground mt-1">Last at: {stat.lastLocation}</div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {isSuperAdmin
                           ? employee.nic
