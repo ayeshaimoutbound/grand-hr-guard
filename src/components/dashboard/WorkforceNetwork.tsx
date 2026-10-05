@@ -240,7 +240,7 @@ export default function WorkforceNetwork() {
     <Card className="shadow-card">
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
         <div>
-          <CardTitle>Company Stars</CardTitle>
+          <CardTitle>Employee Map</CardTitle>
           <p className="text-sm text-muted-foreground">Each company is a hub; its branches are the employees who last worked there, with that date. Archived companies are greyed out.</p>
         </div>
         <div className="flex items-center gap-2">
