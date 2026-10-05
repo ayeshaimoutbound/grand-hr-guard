@@ -198,27 +198,8 @@ export default function WorkforceNetwork() {
   };
 
   return (
-    <Card className="shadow-card">
-      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
-        <div>
-          <CardTitle>Company Stars</CardTitle>
-          <p className="text-sm text-muted-foreground">Each company is a hub; its branches are the employees who last worked there, with that date. Archived companies are greyed out.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setAuto((v) => !v)}>
-            {auto ? <><Pause className="h-4 w-4 mr-1" /> Pause</> : <><Play className="h-4 w-4 mr-1" /> Auto-scroll</>}
-          </Button>
-          <Button size="sm" onClick={() => { setLookOpen(true); setPicked(null); }}>
-            <Search className="h-4 w-4 mr-1" /> Look up
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <p className="text-center text-muted-foreground py-12">Loading...</p>
-        ) : (
-          <>
-          <div className="mb-4 rounded-lg border bg-card">
+    <>
+          <Card className="shadow-card">
             <div className="flex items-center gap-2 px-3 py-2 border-b">
               <Bell className="h-4 w-4 text-primary" />
               <p className="font-semibold text-sm">Latest Updates</p>
@@ -255,7 +236,26 @@ export default function WorkforceNetwork() {
                 );
               })}
             </div>
-          </div>
+          </Card>
+    <Card className="shadow-card">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
+        <div>
+          <CardTitle>Company Stars</CardTitle>
+          <p className="text-sm text-muted-foreground">Each company is a hub; its branches are the employees who last worked there, with that date. Archived companies are greyed out.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setAuto((v) => !v)}>
+            {auto ? <><Pause className="h-4 w-4 mr-1" /> Pause</> : <><Play className="h-4 w-4 mr-1" /> Auto-scroll</>}
+          </Button>
+          <Button size="sm" onClick={() => { setLookOpen(true); setPicked(null); }}>
+            <Search className="h-4 w-4 mr-1" /> Look up
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <p className="text-center text-muted-foreground py-12">Loading...</p>
+        ) : (
           <div ref={scrollRef} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
             className="overflow-y-auto rounded-lg border bg-muted/20 p-4" style={{ height: 640 }}>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -277,7 +277,6 @@ export default function WorkforceNetwork() {
               ))}
             </div>
           </div>
-          </>
         )}
       </CardContent>
 
@@ -356,5 +355,6 @@ export default function WorkforceNetwork() {
         </DialogContent>
       </Dialog>
     </Card>
+    </>
   );
 }
