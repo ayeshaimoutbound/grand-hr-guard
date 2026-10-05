@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Pause, Play, Building2, User, Bell, ArrowRight } from "lucide-react";
+import { Search, Pause, Play, Building2, User, Bell, ArrowRight, X, Eye } from "lucide-react";
 import { toMonthStr } from "@/lib/dateUtils";
+import { toast } from "sonner";
 
 interface Co { id: string; company_name: string; location: string | null; archived: boolean }
 interface Emp { id: string; full_name: string; employee_id: string | null }
@@ -76,6 +77,14 @@ export default function WorkforceNetwork() {
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<{ type: "co" | "emp"; id: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Cleared notifications are remembered on this device; new ones still appear
+  const [cleared, setCleared] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("gss_cleared_updates") || "[]")); } catch { return new Set(); }
+  });
+  const saveCleared = (next: Set<string>) => {
+    setCleared(next);
+    localStorage.setItem("gss_cleared_updates", JSON.stringify([...next]));
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -110,8 +119,10 @@ export default function WorkforceNetwork() {
         prev = r.company_id;
       }
     });
-    return ev.sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 30);
+    return ev.sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 30)
+      .map((u) => ({ ...u, key: `${u.employee_id}|${u.to}|${u.date}` }));
   }, [att]);
+  const visibleUpdates = updates.filter((u) => !cleared.has(u.key));
 
   const last = useMemo(() => {
     const m = new Map<string, { company_id: string; date: string }>();
@@ -211,12 +222,24 @@ export default function WorkforceNetwork() {
             <div className="flex items-center gap-2 px-3 py-2 border-b">
               <Bell className="h-4 w-4 text-primary" />
               <p className="font-semibold text-sm">Latest Updates</p>
-              <span className="text-xs text-muted-foreground">guards moved or added to a location</span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">guards moved or added to a location</span>
+              <div className="ml-auto flex gap-1">
+                {visibleUpdates.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => { saveCleared(new Set([...cleared, ...updates.map((u) => u.key)])); toast.success("Notifications cleared"); }}>
+                    <X className="h-4 w-4 mr-1" /> Clear
+                  </Button>
+                )}
+                {cleared.size > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => { saveCleared(new Set()); toast.success("Notifications restored"); }}>
+                    <Eye className="h-4 w-4 mr-1" /> Show notifications
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="max-h-56 overflow-y-auto divide-y">
-              {updates.length === 0 ? (
-                <p className="text-sm text-muted-foreground px-3 py-3">No updates yet.</p>
-              ) : updates.map((u, i) => {
+              {visibleUpdates.length === 0 ? (
+                <p className="text-sm text-muted-foreground px-3 py-3">{cleared.size ? "Notifications cleared. New updates will appear here." : "No updates yet."}</p>
+              ) : visibleUpdates.map((u, i) => {
                 const e = employees.find((x) => x.id === u.employee_id);
                 const to = coById(u.to); const from = u.from ? coById(u.from) : undefined;
                 return (
