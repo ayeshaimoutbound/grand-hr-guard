@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Pause, Play, Building2, User } from "lucide-react";
+import { Search, Pause, Play, Building2, User, Bell, ArrowRight } from "lucide-react";
 import { toMonthStr } from "@/lib/dateUtils";
 
 interface Co { id: string; company_name: string; location: string | null; archived: boolean }
@@ -78,7 +78,7 @@ export default function WorkforceNetwork() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    (async () => {
+    const load = async () => {
       const [co, em, a] = await Promise.all([
         supabase.from("companies").select("id, company_name, location, archived").order("company_name"),
         supabase.from("employees").select("id, full_name, employee_id"),
@@ -88,8 +88,30 @@ export default function WorkforceNetwork() {
       setEmployees((em.data as any) || []);
       setAtt(a);
       setLoading(false);
-    })();
+    };
+    load();
+    const t = setInterval(load, 60000); // refresh every minute so new moves show up
+    return () => clearInterval(t);
   }, []);
+
+  // Latest updates: an employee placed at a location for the first time, or moved to a different one
+  const updates = useMemo(() => {
+    const per = new Map<string, Att[]>();
+    for (const a of att) {
+      if (!per.has(a.employee_id)) per.set(a.employee_id, []);
+      per.get(a.employee_id)!.push(a);
+    }
+    const ev: { employee_id: string; from: string | null; to: string; date: string }[] = [];
+    per.forEach((rows, empId) => {
+      rows.sort((a, b) => (a.attendance_date < b.attendance_date ? -1 : 1));
+      let prev: string | null = null;
+      for (const r of rows) {
+        if (r.company_id !== prev) ev.push({ employee_id: empId, from: prev, to: r.company_id, date: r.attendance_date });
+        prev = r.company_id;
+      }
+    });
+    return ev.sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 30);
+  }, [att]);
 
   const last = useMemo(() => {
     const m = new Map<string, { company_id: string; date: string }>();
@@ -184,6 +206,33 @@ export default function WorkforceNetwork() {
         {loading ? (
           <p className="text-center text-muted-foreground py-12">Loading...</p>
         ) : (
+          <>
+          <div className="mb-4 rounded-lg border bg-card">
+            <div className="flex items-center gap-2 px-3 py-2 border-b">
+              <Bell className="h-4 w-4 text-primary" />
+              <p className="font-semibold text-sm">Latest Updates</p>
+              <span className="text-xs text-muted-foreground">guards moved or added to a location</span>
+            </div>
+            <div className="max-h-56 overflow-y-auto divide-y">
+              {updates.length === 0 ? (
+                <p className="text-sm text-muted-foreground px-3 py-3">No updates yet.</p>
+              ) : updates.map((u, i) => {
+                const e = employees.find((x) => x.id === u.employee_id);
+                const to = coById(u.to); const from = u.from ? coById(u.from) : undefined;
+                return (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 text-sm">
+                    <Badge variant={u.from ? "default" : "secondary"} className="shrink-0">{u.from ? "Moved" : "Added"}</Badge>
+                    <span className="min-w-0 flex-1">
+                      <b>{e?.full_name || "Unknown"}</b>
+                      {u.from ? <> moved from <span className="text-muted-foreground">{from ? coLabel(from) : "—"}</span> <ArrowRight className="inline h-3 w-3" /> <b>{to ? coLabel(to) : "—"}</b></>
+                        : <> added to <b>{to ? coLabel(to) : "—"}</b></>}
+                    </span>
+                    <span className="text-xs text-muted-foreground shrink-0">{fmtDate(u.date)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           <div ref={scrollRef} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
             className="overflow-y-auto rounded-lg border bg-muted/20 p-4" style={{ height: 640 }}>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -205,6 +254,7 @@ export default function WorkforceNetwork() {
               ))}
             </div>
           </div>
+          </>
         )}
       </CardContent>
 
