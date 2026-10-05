@@ -186,8 +186,6 @@ export default function Dashboard() {
         })}
       </div>
 
-      <WorkforceNetwork />
-
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle>Welcome to Grand Senaro HR System</CardTitle>
@@ -199,6 +197,9 @@ export default function Dashboard() {
           </p>
         </CardContent>
       </Card>
+
+      <WorkforceNetwork />
+
     </div>
   );
 }
