@@ -17,6 +17,7 @@ import { EmployeeCombobox } from "@/components/EmployeeCombobox";
 const db = supabase as any;
 const BUCKET = "documents";
 const COMPANY_CATS = ["Quotation", "Proposal", "Contract", "Increment", "Other"];
+const GENERAL_CATS = ["Quotation", "Company registration", "Policy", "Letter", "Certificate", "Agreement", "Other"];
 const EMPLOYEE_CATS = ["NIC copy", "Certificate", "Police report", "Contract", "Other"];
 
 async function uploadFile(folder: string, file: File) {
@@ -73,16 +74,22 @@ export default function Documents() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Documents &amp; Complaints</h1>
-        <p className="text-muted-foreground">Company quotations, proposals, contracts and increments; employee files; complaints with proof.</p>
+        <h1 className="text-3xl font-bold">Files</h1>
+        <p className="text-muted-foreground">Upload and store our own company files and quotations, client company files, employee files and complaints.</p>
       </div>
-      <Tabs defaultValue="company">
-        <TabsList>
-          <TabsTrigger value="company">Company files</TabsTrigger>
+      <Tabs defaultValue="general">
+        <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="general">Our files &amp; quotations</TabsTrigger>
+          <TabsTrigger value="company">Client company files</TabsTrigger>
           <TabsTrigger value="employee">Employee files</TabsTrigger>
           <TabsTrigger value="complaints">Complaints</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="general">
+          <DocSection kind="general" categories={GENERAL_CATS} companies={companies} employees={employees}
+            docs={docs.filter((d) => d.entity_type === "general")} ownerName={(d) => (d.company_id ? companyName(d.company_id) : "Grand Senaro Security")}
+            onSaved={load} onDelete={canDelete ? removeDoc : undefined} />
+        </TabsContent>
         <TabsContent value="company">
           <DocSection kind="company" categories={COMPANY_CATS} companies={companies} employees={employees}
             docs={docs.filter((d) => d.entity_type === "company")} ownerName={(d) => companyName(d.company_id)}
@@ -103,7 +110,7 @@ export default function Documents() {
 }
 
 function DocSection({ kind, categories, companies, employees, docs, ownerName, onSaved, onDelete }: {
-  kind: "company" | "employee"; categories: string[]; companies: any[]; employees: any[]; docs: any[];
+  kind: "company" | "employee" | "general"; categories: string[]; companies: any[]; employees: any[]; docs: any[];
   ownerName: (d: any) => string; onSaved: () => void; onDelete?: (d: any) => void;
 }) {
   const [owner, setOwner] = useState("");
@@ -116,13 +123,13 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
   const [inputKey, setInputKey] = useState(0);
 
   const save = async () => {
-    if (!owner) { toast.error(`Please select ${kind === "company" ? "a company" : "an employee"}`); return; }
+    if (!owner && kind !== "general") { toast.error(`Please select ${kind === "company" ? "a company" : "an employee"}`); return; }
     if (!file) { toast.error("Please select a file to upload"); return; }
     setSaving(true);
     try {
-      const path = await uploadFile(`${kind}/${owner}`, file);
+      const path = await uploadFile(`${kind}/${owner || "gss"}`, file);
       const { error } = await db.from("documents").insert({
-        entity_type: kind, company_id: kind === "company" ? owner : null, employee_id: kind === "employee" ? owner : null,
+        entity_type: kind, company_id: kind !== "employee" ? owner || null : null, employee_id: kind === "employee" ? owner : null,
         category, title: title || file.name, file_path: path, file_name: file.name, notes: notes || null,
       });
       if (error) throw error;
@@ -140,12 +147,12 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
 
   return (
     <Card className="mt-4">
-      <CardHeader><CardTitle>{kind === "company" ? "Company documents" : "Employee documents"}</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{kind === "general" ? "Our company files & quotations" : kind === "company" ? "Client company documents" : "Employee documents"}</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
-            <Label>{kind === "company" ? "Company" : "Employee"}</Label>
-            {kind === "company"
+            <Label>{kind === "general" ? "Related client (optional — e.g. who a quotation is for)" : kind === "company" ? "Company" : "Employee"}</Label>
+            {kind !== "employee"
               ? <CompanyCombobox value={owner} onChange={setOwner} companies={companies} placeholder="Select company" />
               : <EmployeeCombobox value={owner} onChange={setOwner} employees={employees} />}
           </div>
@@ -165,7 +172,7 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
         <Input placeholder="Search files..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
         <Table>
           <TableHeader><TableRow>
-            <TableHead>{kind === "company" ? "Company" : "Employee"}</TableHead><TableHead>Type</TableHead>
+            <TableHead>{kind === "general" ? "For" : kind === "company" ? "Company" : "Employee"}</TableHead><TableHead>Type</TableHead>
             <TableHead>Title</TableHead><TableHead>Uploaded</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody>
