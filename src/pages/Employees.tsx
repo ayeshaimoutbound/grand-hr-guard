@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import EmployeeRatesDialog from "@/components/EmployeeRatesDialog";
+import { UNIFORM_SIZE_OPTIONS, UNIFORM_SIZE_KEYS } from "@/lib/uniformSizes";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { employeeSchema } from "@/lib/validationSchemas";
 import { z } from "zod";
 import {
@@ -57,6 +59,7 @@ export default function Employees() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const { isSuperAdmin, isOffice } = useAuth();
+  const [sizes, setSizes] = useState<Record<string, string>>({});
 
   const [attendanceStats, setAttendanceStats] = useState<Record<string, AttendanceStat>>({});
 
@@ -162,6 +165,7 @@ export default function Employees() {
       ot_hourly_rate: parseFloat(ot_hourly_rate) || 225,
       normal_ot_hours: parseFloat(normal_ot_hours) || 3,
       extended_ot_hours: parseFloat(extended_ot_hours) || 6,
+      uniform_sizes: Object.fromEntries(Object.entries(sizes).filter(([, v]) => v)),
     };
 
     if (isEditMode && currentEmployee) {
@@ -203,6 +207,7 @@ export default function Employees() {
       normal_ot_hours: String((employee as any).normal_ot_hours ?? 3),
       extended_ot_hours: String((employee as any).extended_ot_hours ?? 6),
     });
+    setSizes(((employee as any).uniform_sizes) || {});
     setIsEditMode(true);
     setIsDialogOpen(true);
   };
@@ -512,6 +517,24 @@ export default function Employees() {
                     onChange={(e) => setFormData({ ...formData, epf_no: e.target.value })}
                     placeholder="EPF number"
                   />
+                </div>
+                <div className="col-span-2 border-t pt-3 mt-1">
+                  <p className="text-sm font-medium mb-1">Uniform Sizes</p>
+                  <p className="text-xs text-muted-foreground mb-2">Filled in automatically when a uniform is issued. You can change them here.</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {UNIFORM_SIZE_KEYS.map((k) => (
+                      <div key={k} className="space-y-1">
+                        <Label className="text-xs">{k}</Label>
+                        <Select value={sizes[k] || "__none"} onValueChange={(v) => setSizes((s) => ({ ...s, [k]: v === "__none" ? "" : v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none">Not set</SelectItem>
+                            {UNIFORM_SIZE_OPTIONS[k].map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="col-span-2 border-t pt-3 mt-1">
                   <p className="text-sm font-medium mb-2">Overtime Pay Settings</p>

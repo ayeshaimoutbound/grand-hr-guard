@@ -14,10 +14,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Upload, Download, Trash2, Package, Minus, PlusCircle, UserCheck, AlertTriangle, TrendingUp, Sparkles } from "lucide-react";
+import { Plus, Upload, Download, Trash2, Package, Minus, PlusCircle, UserCheck, AlertTriangle, TrendingUp, Sparkles, FileText } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchUsageStats, applyAutoThresholds, suggestThreshold, UsageStat, WINDOW_DAYS } from "@/lib/inventoryInsights";
 import AssetsSection from "@/components/inventory/AssetsSection";
+import UniformRequestDialog from "@/components/inventory/UniformRequestDialog";
+import { UNIFORM_SIZE_OPTIONS } from "@/lib/uniformSizes";
 
 const CATEGORIES = [
   "Shirt (Men)",
@@ -89,6 +91,7 @@ export default function Inventory() {
   const [settingsForm, setSettingsForm] = useState({ inventory_type: "non_critical", low_stock_threshold: "3", auto_threshold: true });
 
   const [issueItem, setIssueItem] = useState<Item | null>(null);
+  const [requestOpen, setRequestOpen] = useState(false);
   const [issueQty, setIssueQty] = useState<string>("1");
   const [issueEmployeeId, setIssueEmployeeId] = useState<string>("");
   const [issueMonths, setIssueMonths] = useState<string>("3");
@@ -657,6 +660,12 @@ export default function Inventory() {
     }
     const { error: advErr } = await supabase.from("uniform_advances").insert(rowsToInsert as any);
     if (advErr) { toast.error("Advance error: " + advErr.message); return; }
+    // Record the employee's uniform size on their profile
+    if (issueItem.size && UNIFORM_SIZE_OPTIONS[issueItem.category]) {
+      const { data: emp } = await supabase.from("employees").select("uniform_sizes").eq("id", issueEmployeeId).maybeSingle();
+      const sizes = { ...(((emp as any)?.uniform_sizes) || {}), [issueItem.category]: issueItem.size };
+      await supabase.from("employees").update({ uniform_sizes: sizes } as any).eq("id", issueEmployeeId);
+    }
     toast.success(`Issued ${qty} × ${issueItem.item_name}. LKR ${total.toLocaleString()} split over ${months} months (LKR ${installment.toLocaleString()}/mo).`);
     setIssueItem(null); setIssueQty("1"); setIssueEmployeeId(""); setIssueMonths("3");
     load();
@@ -672,6 +681,7 @@ export default function Inventory() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={recalcThresholds}><Sparkles className="h-4 w-4 mr-2" />Recalculate Thresholds</Button>
+          <Button onClick={() => setRequestOpen(true)}><FileText className="h-4 w-4 mr-2" />Uniform Request Form</Button>
           <Button variant="outline" onClick={downloadUniformTemplate}><Download className="h-4 w-4 mr-2" />Bulk Upload Format</Button>
           <Button variant="outline" onClick={downloadExport}><Download className="h-4 w-4 mr-2" />Export (.xlsx)</Button>
           <Button variant="outline" onClick={() => setBulkOpen(true)}><Upload className="h-4 w-4 mr-2" />Bulk Upload Uniforms</Button>
@@ -1136,6 +1146,7 @@ export default function Inventory() {
       </Dialog>
 
       <AssetsSection />
+      <UniformRequestDialog open={requestOpen} onOpenChange={setRequestOpen} />
     </div>
   );
 }
