@@ -232,6 +232,7 @@ export default function Employees() {
   };
 
   const resetForm = () => {
+    setSizes({});
     setFormData({
       employee_id: "",
       full_name: "",
