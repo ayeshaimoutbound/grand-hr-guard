@@ -532,6 +532,7 @@ export type Database = {
           normal_ot_hours: number
           ot_hourly_rate: number
           phone_number: string | null
+          uniform_sizes: Json
           updated_at: string | null
         }
         Insert: {
@@ -549,6 +550,7 @@ export type Database = {
           normal_ot_hours?: number
           ot_hourly_rate?: number
           phone_number?: string | null
+          uniform_sizes?: Json
           updated_at?: string | null
         }
         Update: {
@@ -566,6 +568,7 @@ export type Database = {
           normal_ot_hours?: number
           ot_hourly_rate?: number
           phone_number?: string | null
+          uniform_sizes?: Json
           updated_at?: string | null
         }
         Relationships: []

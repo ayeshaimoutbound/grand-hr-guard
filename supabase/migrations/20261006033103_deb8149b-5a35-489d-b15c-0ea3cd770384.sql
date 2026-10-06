@@ -1,0 +1,1 @@
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS uniform_sizes jsonb NOT NULL DEFAULT '{}'::jsonb;
