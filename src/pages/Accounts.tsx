@@ -360,6 +360,9 @@ function ExpensesTab() {
   const save = async () => {
     if (!form.expense_date || !form.category || !form.amount) { toast.error("Date, category, amount required"); return; }
     const amt = parseFloat(form.amount); if (!amt || amt <= 0) { toast.error("Invalid amount"); return; }
+    if ((form.category === "Other" && !form.subcategory.trim()) || (form.category === "Transport" && form.subcategory === "Other")) {
+      toast.error("Please specify what the expense is for"); return;
+    }
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("expenses").insert({
       expense_date: form.expense_date,
@@ -520,22 +523,27 @@ function ExpensesTab() {
                   <SelectTrigger><SelectValue placeholder="Choose category" /></SelectTrigger>
                   <SelectContent>
                     {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                    {!categories.some((c: any) => c.name === "Other") && <SelectItem value="Other">Other</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
               {form.category === "Transport" ? (
                 <div className="space-y-2">
                   <Label>Transport Sub-category</Label>
-                  <Select value={form.subcategory} onValueChange={(v) => setForm({ ...form, subcategory: v })}>
+                  <Select value={TRANSPORT_SUBCATS.includes(form.subcategory) ? form.subcategory : (form.subcategory ? "Other" : "")} onValueChange={(v) => setForm({ ...form, subcategory: v })}>
                     <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                     <SelectContent>
                       {TRANSPORT_SUBCATS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {(form.subcategory === "Other" || (form.subcategory && !TRANSPORT_SUBCATS.includes(form.subcategory))) && (
+                    <Input placeholder="Please specify" value={form.subcategory === "Other" ? "" : form.subcategory}
+                      onChange={(e) => setForm({ ...form, subcategory: e.target.value || "Other" })} />
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label>Sub-category (optional)</Label>
+                  <Label>{form.category === "Other" ? "Please specify (required)" : "Sub-category (optional)"}</Label>
                   <Input value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })} />
                 </div>
               )}
