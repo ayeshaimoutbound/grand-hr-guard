@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Trash2, Upload } from "lucide-react";
+import { Download, Trash2, Upload, FolderSearch } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,7 +20,7 @@ const db = supabase as any;
 const BUCKET = "documents";
 const COMPANY_CATS = ["Quotation", "Proposal", "Contract", "Increment", "Other"];
 const GENERAL_CATS = ["Quotation", "Company registration", "Policy", "Letter", "Certificate", "Agreement", "Other"];
-const EMPLOYEE_CATS = ["NIC copy", "Certificate", "Police report", "Contract", "Other"];
+const EMPLOYEE_CATS: string[] = []; // employee files are kept together, no type needed
 
 async function uploadFile(folder: string, file: File) {
   const safe = file.name.replace(/[^\w.\-]+/g, "_");
@@ -82,7 +84,7 @@ export default function Documents() {
           <TabsTrigger value="general">Our files &amp; quotations</TabsTrigger>
           <TabsTrigger value="company">Client company files</TabsTrigger>
           <TabsTrigger value="employee">Employee files</TabsTrigger>
-          <TabsTrigger value="complaints">Complaints</TabsTrigger>
+          <TabsTrigger value="complaints">Complaints &amp; investigations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -101,7 +103,7 @@ export default function Documents() {
             onSaved={load} onDelete={canDelete ? removeDoc : undefined} />
         </TabsContent>
         <TabsContent value="complaints">
-          <ComplaintSection employees={employees} complaints={complaints} employeeName={employeeName}
+          <ComplaintSection employees={employees} companies={companies} complaints={complaints} employeeName={employeeName} companyName={companyName}
             onSaved={load} onDelete={canDelete ? removeComplaint : undefined} />
         </TabsContent>
       </Tabs>
@@ -114,27 +116,30 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
   ownerName: (d: any) => string; onSaved: () => void; onDelete?: (d: any) => void;
 }) {
   const [owner, setOwner] = useState("");
-  const [category, setCategory] = useState(categories[0]);
+  const [category, setCategory] = useState(categories[0] || "File");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [inputKey, setInputKey] = useState(0);
 
   const save = async () => {
     if (!owner && kind !== "general") { toast.error(`Please select ${kind === "company" ? "a company" : "an employee"}`); return; }
-    if (!file) { toast.error("Please select a file to upload"); return; }
+    if (!files.length) { toast.error("Please select at least one file to upload"); return; }
     setSaving(true);
     try {
-      const path = await uploadFile(`${kind}/${owner || "gss"}`, file);
-      const { error } = await db.from("documents").insert({
-        entity_type: kind, company_id: kind !== "employee" ? owner || null : null, employee_id: kind === "employee" ? owner : null,
-        category, title: title || file.name, file_path: path, file_name: file.name, notes: notes || null,
-      });
-      if (error) throw error;
-      toast.success("File uploaded");
-      setTitle(""); setNotes(""); setFile(null); setInputKey((k) => k + 1); onSaved();
+      for (const file of files) {
+        const path = await uploadFile(`${kind}/${owner || "gss"}`, file);
+        const { error } = await db.from("documents").insert({
+          entity_type: kind, company_id: kind !== "employee" ? owner || null : null, employee_id: kind === "employee" ? owner : null,
+          category, title: (files.length === 1 && title) ? title : (title ? `${title} — ${file.name}` : file.name),
+          file_path: path, file_name: file.name, notes: notes || null,
+        });
+        if (error) throw error;
+      }
+      toast.success(`${files.length} file${files.length > 1 ? "s" : ""} uploaded`);
+      setTitle(""); setNotes(""); setFiles([]); setInputKey((k) => k + 1); onSaved();
     } catch (e: any) {
       toast.error("Upload failed: " + (e?.message || e));
     } finally { setSaving(false); }
@@ -156,15 +161,15 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
               ? <CompanyCombobox value={owner} onChange={setOwner} companies={companies} placeholder="Select company" />
               : <EmployeeCombobox value={owner} onChange={setOwner} employees={employees} />}
           </div>
-          <div className="space-y-1">
+          {categories.length > 0 && <div className="space-y-1">
             <Label>Type</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
-          </div>
+          </div>}
           <div className="space-y-1"><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Defaults to file name" /></div>
-          <div className="space-y-1"><Label>File</Label><Input key={inputKey} type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} /></div>
+          <div className="space-y-1"><Label>Files (you can pick several at once)</Label><Input key={inputKey} type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files || []))} /></div>
           <div className="space-y-1 md:col-span-2"><Label>Notes</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
         </div>
         <Button onClick={save} disabled={saving}><Upload className="h-4 w-4 mr-1" />{saving ? "Uploading..." : "Upload"}</Button>
@@ -172,7 +177,7 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
         <Input placeholder="Search files..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
         <Table>
           <TableHeader><TableRow>
-            <TableHead>{kind === "general" ? "For" : kind === "company" ? "Company" : "Employee"}</TableHead><TableHead>Type</TableHead>
+            <TableHead>{kind === "general" ? "For" : kind === "company" ? "Company" : "Employee"}</TableHead>{categories.length > 0 && <TableHead>Type</TableHead>}
             <TableHead>Title</TableHead><TableHead>Uploaded</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody>
@@ -181,7 +186,7 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
             ) : visible.map((d) => (
               <TableRow key={d.id}>
                 <TableCell>{ownerName(d)}</TableCell>
-                <TableCell>{d.category}</TableCell>
+                {categories.length > 0 && <TableCell>{d.category}</TableCell>}
                 <TableCell><div className="font-medium">{d.title}</div>{d.notes && <div className="text-xs text-muted-foreground">{d.notes}</div>}</TableCell>
                 <TableCell>{new Date(d.created_at).toLocaleString()}</TableCell>
                 <TableCell className="text-right">
@@ -197,64 +202,95 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
   );
 }
 
-function ComplaintSection({ employees, complaints, employeeName, onSaved, onDelete }: {
-  employees: any[]; complaints: any[]; employeeName: (id: string) => string; onSaved: () => void; onDelete?: (c: any) => void;
+function ComplaintSection({ employees, companies, complaints, employeeName, companyName, onSaved, onDelete }: {
+  employees: any[]; companies: any[]; complaints: any[]; employeeName: (id: string) => string; companyName: (id: string) => string;
+  onSaved: () => void; onDelete?: (c: any) => void;
 }) {
   const nowLocal = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
-  const [employee, setEmployee] = useState("");
+  const [about, setAbout] = useState<"employee" | "company">("employee");
+  const [owner, setOwner] = useState("");
   const [when, setWhen] = useState(nowLocal());
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
-  const [filterEmp, setFilterEmp] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [inputKey, setInputKey] = useState(0);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const subject = (c: any) => (c.company_id ? companyName(c.company_id) : employeeName(c.employee_id));
 
   const save = async () => {
-    if (!employee) { toast.error("Please select an employee"); return; }
+    if (!owner) { toast.error(`Please select ${about === "employee" ? "an employee" : "a company"}`); return; }
     if (!title.trim()) { toast.error("Please enter a short title for the complaint (required field is empty)"); return; }
     setSaving(true);
     try {
-      let proof_path: string | null = null;
-      if (file) proof_path = await uploadFile(`complaints/${employee}`, file);
-      const { error } = await db.from("employee_complaints").insert({
-        employee_id: employee, complaint_at: new Date(when).toISOString(), title: title.trim(),
-        description: description || null, proof_path, proof_name: file?.name || null,
-      });
+      let proof_path: string | null = null, proof_name: string | null = null;
+      if (files[0]) { proof_path = await uploadFile(`complaints/${owner}`, files[0]); proof_name = files[0].name; }
+      const { data, error } = await db.from("employee_complaints").insert({
+        employee_id: about === "employee" ? owner : null, company_id: about === "company" ? owner : null,
+        complaint_at: new Date(when).toISOString(), title: title.trim(),
+        description: description || null, proof_path, proof_name, status: "ongoing",
+      }).select("id").single();
       if (error) throw error;
-      toast.success("Complaint recorded");
-      setTitle(""); setDescription(""); setFile(null); setWhen(nowLocal()); setInputKey((k) => k + 1); onSaved();
+      for (const f of files.slice(1)) {
+        const p = await uploadFile(`complaints/${owner}`, f);
+        await db.from("complaint_updates").insert({ complaint_id: data.id, file_path: p, file_name: f.name });
+      }
+      toast.success("Complaint recorded — investigation is ongoing");
+      setTitle(""); setDescription(""); setFiles([]); setWhen(nowLocal()); setInputKey((k) => k + 1); setOwner(""); onSaved();
     } catch (e: any) {
       toast.error("Could not save complaint: " + (e?.message || e));
     } finally { setSaving(false); }
   };
 
-  const visible = filterEmp ? complaints.filter((c) => c.employee_id === filterEmp) : complaints;
+  const visible = complaints.filter((c) => {
+    if (statusFilter !== "all" && (c.status || "ongoing") !== statusFilter) return false;
+    const q = search.trim().toLowerCase();
+    return !q || `${c.title} ${c.description || ""} ${subject(c)}`.toLowerCase().includes(q);
+  });
 
   return (
     <Card className="mt-4">
-      <CardHeader><CardTitle>Employee complaints</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Complaints &amp; investigations</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-1"><Label>Employee</Label><EmployeeCombobox value={employee} onChange={setEmployee} employees={employees} /></div>
+          <div className="space-y-1">
+            <Label>Complaint about</Label>
+            <Select value={about} onValueChange={(v: any) => { setAbout(v); setOwner(""); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="employee">An employee</SelectItem><SelectItem value="company">A company</SelectItem></SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>{about === "employee" ? "Employee" : "Company"}</Label>
+            {about === "employee"
+              ? <EmployeeCombobox value={owner} onChange={setOwner} employees={employees} />
+              : <CompanyCombobox value={owner} onChange={setOwner} companies={companies} placeholder="Select company" />}
+          </div>
           <div className="space-y-1"><Label>Date &amp; time</Label><Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /></div>
-          <div className="space-y-1 md:col-span-2"><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Late for duty" /></div>
+          <div className="space-y-1"><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Late for duty" /></div>
           <div className="space-y-1 md:col-span-2"><Label>Details</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} /></div>
-          <div className="space-y-1 md:col-span-2"><Label>Proof document (optional)</Label><Input key={inputKey} type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} /></div>
+          <div className="space-y-1 md:col-span-2"><Label>Proof files (optional, several allowed)</Label><Input key={inputKey} type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files || []))} /></div>
         </div>
         <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Add complaint"}</Button>
 
-        <div className="max-w-sm space-y-1">
-          <Label>Filter by employee</Label>
-          <div className="flex gap-2">
-            <div className="flex-1"><EmployeeCombobox value={filterEmp} onChange={setFilterEmp} employees={employees} /></div>
-            {filterEmp && <Button variant="outline" onClick={() => setFilterEmp("")}>All</Button>}
-          </div>
+        <div className="flex flex-wrap gap-2 items-center">
+          <Input placeholder="Search complaints..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="ongoing">Ongoing</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <Table>
           <TableHeader><TableRow>
-            <TableHead>When</TableHead><TableHead>Employee</TableHead><TableHead>Complaint</TableHead>
-            <TableHead>Recorded</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>When</TableHead><TableHead>About</TableHead><TableHead>Complaint</TableHead>
+            <TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {visible.length === 0 ? (
@@ -262,11 +298,11 @@ function ComplaintSection({ employees, complaints, employeeName, onSaved, onDele
             ) : visible.map((c) => (
               <TableRow key={c.id}>
                 <TableCell>{new Date(c.complaint_at).toLocaleString()}</TableCell>
-                <TableCell>{employeeName(c.employee_id)}</TableCell>
-                <TableCell><div className="font-medium">{c.title}</div>{c.description && <div className="text-xs text-muted-foreground whitespace-pre-wrap">{c.description}</div>}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleString()}</TableCell>
-                <TableCell className="text-right">
-                  {c.proof_path && <Button variant="ghost" size="icon" title="Open proof" onClick={() => openFile(c.proof_path)}><Download className="h-4 w-4" /></Button>}
+                <TableCell><div>{subject(c)}</div><div className="text-xs text-muted-foreground">{c.company_id ? "Company" : "Employee"}</div></TableCell>
+                <TableCell><div className="font-medium">{c.title}</div>{c.description && <div className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-2">{c.description}</div>}</TableCell>
+                <TableCell><Badge variant={(c.status || "ongoing") === "closed" ? "secondary" : "default"}>{(c.status || "ongoing") === "closed" ? "Closed" : "Ongoing"}</Badge></TableCell>
+                <TableCell className="text-right whitespace-nowrap">
+                  <Button variant="outline" size="sm" onClick={() => setOpenId(c.id)}><FolderSearch className="h-4 w-4 mr-1" />Investigation</Button>
                   {onDelete && <Button variant="ghost" size="icon" title="Delete" onClick={() => onDelete(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                 </TableCell>
               </TableRow>
@@ -274,6 +310,103 @@ function ComplaintSection({ employees, complaints, employeeName, onSaved, onDele
           </TableBody>
         </Table>
       </CardContent>
+      <InvestigationDialog complaint={complaints.find((c) => c.id === openId) || null} subject={subject}
+        onClose={() => setOpenId(null)} onChanged={onSaved} />
     </Card>
+  );
+}
+
+function InvestigationDialog({ complaint, subject, onClose, onChanged }: {
+  complaint: any | null; subject: (c: any) => string; onClose: () => void; onChanged: () => void;
+}) {
+  const [updates, setUpdates] = useState<any[]>([]);
+  const [note, setNote] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [inputKey, setInputKey] = useState(0);
+
+  const load = async () => {
+    if (!complaint) return;
+    const { data } = await db.from("complaint_updates").select("*").eq("complaint_id", complaint.id).order("created_at", { ascending: false });
+    setUpdates(data || []);
+  };
+  useEffect(() => { load(); setNote(""); setFiles([]); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [complaint?.id]);
+
+  const addUpdate = async () => {
+    if (!note.trim() && !files.length) { toast.error("Write a note or choose a file to add"); return; }
+    setBusy(true);
+    try {
+      if (!files.length) {
+        const { error } = await db.from("complaint_updates").insert({ complaint_id: complaint.id, note: note.trim() });
+        if (error) throw error;
+      } else {
+        for (const [i, f] of files.entries()) {
+          const p = await uploadFile(`complaints/${complaint.employee_id || complaint.company_id}`, f);
+          const { error } = await db.from("complaint_updates").insert({ complaint_id: complaint.id, note: i === 0 ? note.trim() || null : null, file_path: p, file_name: f.name });
+          if (error) throw error;
+        }
+      }
+      toast.success("Update added");
+      setNote(""); setFiles([]); setInputKey((k) => k + 1); load();
+    } catch (e: any) {
+      toast.error("Could not add update: " + (e?.message || e));
+    } finally { setBusy(false); }
+  };
+
+  const setStatus = async (status: string) => {
+    const { error } = await db.from("employee_complaints").update({ status, closed_at: status === "closed" ? new Date().toISOString() : null }).eq("id", complaint.id);
+    if (error) { toast.error("Could not change status: " + error.message); return; }
+    await db.from("complaint_updates").insert({ complaint_id: complaint.id, note: status === "closed" ? "Investigation closed" : "Investigation re-opened" });
+    toast.success(status === "closed" ? "Investigation closed" : "Investigation re-opened");
+    onChanged(); load();
+  };
+
+  const status = complaint?.status || "ongoing";
+  return (
+    <Dialog open={!!complaint} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        {complaint && <>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">{complaint.title}
+              <Badge variant={status === "closed" ? "secondary" : "default"}>{status === "closed" ? "Closed" : "Ongoing"}</Badge>
+            </DialogTitle>
+            <DialogDescription>{subject(complaint)} · {new Date(complaint.complaint_at).toLocaleString()}</DialogDescription>
+          </DialogHeader>
+          {complaint.description && <p className="text-sm whitespace-pre-wrap rounded-md border p-3">{complaint.description}</p>}
+          {complaint.proof_path && (
+            <Button variant="outline" size="sm" className="w-fit" onClick={() => openFile(complaint.proof_path)}>
+              <Download className="h-4 w-4 mr-1" />{complaint.proof_name || "Original proof"}
+            </Button>
+          )}
+          <div className="flex gap-2">
+            {status === "closed"
+              ? <Button variant="outline" onClick={() => setStatus("ongoing")}>Re-open investigation</Button>
+              : <Button variant="secondary" onClick={() => setStatus("closed")}>Close investigation</Button>}
+          </div>
+
+          <div className="space-y-2 border-t pt-3">
+            <Label>Add a note or files</Label>
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was found, who was spoken to, next steps..." />
+            <Input key={inputKey} type="file" multiple onChange={(e) => setFiles(Array.from(e.target.files || []))} />
+            <Button onClick={addUpdate} disabled={busy}>{busy ? "Saving..." : "Add update"}</Button>
+          </div>
+
+          <div className="space-y-2 border-t pt-3">
+            <p className="text-sm font-medium">History</p>
+            {updates.length === 0 ? <p className="text-sm text-muted-foreground">No updates yet.</p> : updates.map((u) => (
+              <div key={u.id} className="rounded-md border p-2 text-sm">
+                <div className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleString()}</div>
+                {u.note && <div className="whitespace-pre-wrap">{u.note}</div>}
+                {u.file_path && (
+                  <Button variant="link" size="sm" className="px-0 h-auto" onClick={() => openFile(u.file_path)}>
+                    <Download className="h-3.5 w-3.5 mr-1" />{u.file_name || "File"}
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>}
+      </DialogContent>
+    </Dialog>
   );
 }
