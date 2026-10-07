@@ -343,6 +343,44 @@ export type Database = {
           },
         ]
       }
+      complaint_updates: {
+        Row: {
+          complaint_id: string
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          file_path: string | null
+          id: string
+          note: string | null
+        }
+        Insert: {
+          complaint_id: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          complaint_id?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complaint_updates_complaint_id_fkey"
+            columns: ["complaint_id"]
+            isOneToOne: false
+            referencedRelation: "employee_complaints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           category: string
@@ -409,39 +447,55 @@ export type Database = {
       }
       employee_complaints: {
         Row: {
+          closed_at: string | null
+          company_id: string | null
           complaint_at: string
           created_at: string
           created_by: string | null
           description: string | null
-          employee_id: string
+          employee_id: string | null
           id: string
           proof_name: string | null
           proof_path: string | null
+          status: string
           title: string
         }
         Insert: {
+          closed_at?: string | null
+          company_id?: string | null
           complaint_at?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
-          employee_id: string
+          employee_id?: string | null
           id?: string
           proof_name?: string | null
           proof_path?: string | null
+          status?: string
           title: string
         }
         Update: {
+          closed_at?: string | null
+          company_id?: string | null
           complaint_at?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
-          employee_id?: string
+          employee_id?: string | null
           id?: string
           proof_name?: string | null
           proof_path?: string | null
+          status?: string
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "employee_complaints_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "employee_complaints_employee_id_fkey"
             columns: ["employee_id"]
