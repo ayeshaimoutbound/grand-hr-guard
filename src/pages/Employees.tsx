@@ -12,6 +12,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import EmployeeRatesDialog from "@/components/EmployeeRatesDialog";
 import { UNIFORM_SIZE_OPTIONS, UNIFORM_SIZE_KEYS } from "@/lib/uniformSizes";
+import { Checkbox } from "@/components/ui/checkbox";
+import { newestPhoneContacts, selectedContactsVcf } from "@/lib/contactExport";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { employeeSchema } from "@/lib/validationSchemas";
 import { z } from "zod";
@@ -42,6 +44,7 @@ interface Employee {
   account_number?: string;
   phone_number?: string;
   epf_no?: string;
+  created_at?: string;
 }
 
 interface AttendanceStat {
@@ -60,6 +63,11 @@ export default function Employees() {
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const { isSuperAdmin, isOffice } = useAuth();
   const [sizes, setSizes] = useState<Record<string, string>>({});
+  const [contactsOpen, setContactsOpen] = useState(false);
+  const [contactSearch, setContactSearch] = useState("");
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
+  const phoneContacts = newestPhoneContacts(employees);
+  const visibleContacts = phoneContacts.filter((e) => `${e.full_name} ${e.employee_id || ""} ${e.phone_number}`.toLowerCase().includes(contactSearch.toLowerCase()));
 
   const [attendanceStats, setAttendanceStats] = useState<Record<string, AttendanceStat>>({});
 
@@ -321,22 +329,15 @@ export default function Employees() {
   };
 
   const handleSaveContacts = () => {
-    const withPhone = employees.filter((e) => (e.phone_number || "").trim());
-    if (!withPhone.length) { toast.error("No employees have a phone number yet"); return; }
-    const esc = (s: string) => s.replace(/[\\;,]/g, (m) => "\\" + m);
-    const vcf = withPhone.map((e) => [
-      "BEGIN:VCARD", "VERSION:3.0",
-      `FN:${esc(`${e.full_name}${e.employee_id ? ` (${e.employee_id})` : ""} - GSS`)}`,
-      `N:${esc(e.full_name)};;;;`,
-      "ORG:Grand Senaro Security",
-      `TEL;TYPE=CELL:${e.phone_number!.trim()}`,
-      "END:VCARD",
-    ].join("\r\n")).join("\r\n");
+    const withPhone = phoneContacts.filter((e) => selectedContacts.has(e.id));
+    if (!withPhone.length) { toast.error("Select at least one employee"); return; }
+    const vcf = selectedContactsVcf(employees, selectedContacts);
     const url = URL.createObjectURL(new Blob([vcf], { type: "text/vcard" }));
     const a = document.createElement("a");
     a.href = url; a.download = "GSS_Employee_Contacts.vcf"; a.click();
     URL.revokeObjectURL(url);
     toast.success(`${withPhone.length} contacts saved — open the file on your phone to add them`);
+    setContactsOpen(false);
   };
 
   const handleBulkDownload = () => {
@@ -400,12 +401,12 @@ export default function Employees() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap gap-4 justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Employees</h1>
           <p className="text-muted-foreground">Manage employee information</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -413,7 +414,7 @@ export default function Employees() {
             onChange={handleBulkUpload}
             className="hidden"
           />
-          <Button variant="outline" title="Download a contacts file you can open on your phone to save all employee numbers" onClick={handleSaveContacts}>
+          <Button variant="outline" onClick={() => { setContactSearch(""); setSelectedContacts(new Set()); setContactsOpen(true); }}>
             <Smartphone className="h-4 w-4 mr-2" />
             Save Phones to Mobile
           </Button>
@@ -698,6 +699,29 @@ export default function Employees() {
         </CardContent>
       </Card>
       <EmployeeRatesDialog open={!!ratesEmp} onOpenChange={(v) => !v && setRatesEmp(null)} employee={ratesEmp} />
+      <Dialog open={contactsOpen} onOpenChange={setContactsOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Select contacts for your phone</DialogTitle>
+            <DialogDescription>Newest employees first · {selectedContacts.size} selected</DialogDescription>
+          </DialogHeader>
+          <Input aria-label="Search contacts" placeholder="Search name, employee number or phone" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} />
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedContacts((prev) => new Set([...prev, ...visibleContacts.map((e) => e.id)]))}>Select shown</Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedContacts(new Set())}>Clear selection</Button>
+          </div>
+          <div className="max-h-[45vh] overflow-y-auto divide-y">
+            {visibleContacts.map((e) => <label key={e.id} className="flex items-center gap-3 py-3 cursor-pointer">
+              <Checkbox aria-label={`Select ${e.full_name}`} checked={selectedContacts.has(e.id)} onCheckedChange={(checked) => setSelectedContacts((prev) => {
+                const next = new Set(prev); if (checked === true) next.add(e.id); else next.delete(e.id); return next;
+              })} />
+              <div className="min-w-0"><p className="font-medium break-words">{e.full_name}{e.employee_id ? ` (${e.employee_id})` : ""}</p><p className="text-sm text-muted-foreground">{e.phone_number}</p></div>
+            </label>)}
+            {!visibleContacts.length && <p className="py-4 text-muted-foreground">No contacts found</p>}
+          </div>
+          <Button onClick={handleSaveContacts} disabled={!selectedContacts.size}><Download className="mr-2 h-4 w-4" />Download selected contacts</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
