@@ -1,5 +1,12 @@
 # Roadmap
 
+## Current request
+- [ ] Own company files: client selector only for quotations/proposals
+- [ ] Sync attendance OT with salaries, invoices and accounts
+- [ ] Select phone contacts newest first
+- [ ] Super-admin employee erase and individual module reset
+- [ ] Verify changes and existing outstanding tasks
+
 - [ ] Fix new-user sign in (profiles.email missing on created users)
 - [ ] Bulk attendance per location/month
 - [ ] Prev/next month arrows in Salaries
