@@ -15,11 +15,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { CompanyCombobox } from "@/components/CompanyCombobox";
 import { EmployeeCombobox } from "@/components/EmployeeCombobox";
+import { needsClientSelection } from "@/lib/documentRules";
 
 const db = supabase as any;
 const BUCKET = "documents";
 const COMPANY_CATS = ["Quotation", "Proposal", "Contract", "Increment", "Other"];
-const GENERAL_CATS = ["Quotation", "Company registration", "Policy", "Letter", "Certificate", "Agreement", "Other"];
+const GENERAL_CATS = ["Company registration", "Quotation", "Proposal", "Policy", "Letter", "Certificate", "Agreement", "Other"];
 const EMPLOYEE_CATS: string[] = []; // employee files are kept together, no type needed
 
 async function uploadFile(folder: string, file: File) {
@@ -124,6 +125,8 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
   const [search, setSearch] = useState("");
   const [inputKey, setInputKey] = useState(0);
 
+  const showClient = needsClientSelection(kind, category);
+
   const save = async () => {
     if (!owner && kind !== "general") { toast.error(`Please select ${kind === "company" ? "a company" : "an employee"}`); return; }
     if (!files.length) { toast.error("Please select at least one file to upload"); return; }
@@ -132,7 +135,7 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
       for (const file of files) {
         const path = await uploadFile(`${kind}/${owner || "gss"}`, file);
         const { error } = await db.from("documents").insert({
-          entity_type: kind, company_id: kind !== "employee" ? owner || null : null, employee_id: kind === "employee" ? owner : null,
+          entity_type: kind, company_id: showClient ? owner || null : null, employee_id: kind === "employee" ? owner : null,
           category, title: (files.length === 1 && title) ? title : (title ? `${title} — ${file.name}` : file.name),
           file_path: path, file_name: file.name, notes: notes || null,
         });
@@ -155,12 +158,12 @@ function DocSection({ kind, categories, companies, employees, docs, ownerName, o
       <CardHeader><CardTitle>{kind === "general" ? "Our company files & quotations" : kind === "company" ? "Client company documents" : "Employee documents"}</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-1">
-            <Label>{kind === "general" ? "Related client (optional — e.g. who a quotation is for)" : kind === "company" ? "Company" : "Employee"}</Label>
+          {(kind === "employee" || showClient) && <div className="space-y-1">
+            <Label>{kind === "general" ? "Related client (optional)" : kind === "company" ? "Company" : "Employee"}</Label>
             {kind !== "employee"
               ? <CompanyCombobox value={owner} onChange={setOwner} companies={companies} placeholder="Select company" />
               : <EmployeeCombobox value={owner} onChange={setOwner} employees={employees} />}
-          </div>
+          </div>}
           {categories.length > 0 && <div className="space-y-1">
             <Label>Type</Label>
             <Select value={category} onValueChange={setCategory}>
