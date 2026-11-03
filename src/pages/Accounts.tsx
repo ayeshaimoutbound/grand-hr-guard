@@ -13,6 +13,7 @@ import { Plus, Trash2, Wallet, Receipt, BarChart3, Settings, Banknote, UtensilsC
 import EmployerContributionsTab from "@/components/accounts/EmployerContributionsTab";
 import { fetchEmployerContributions, sumContributions } from "@/lib/employerContributions";
 import { ensureVendor } from "@/lib/vendorSync";
+import { fetchMonthPayroll } from "@/lib/monthPayroll";
 import MonthNav, { shiftMonth } from "@/components/MonthNav";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
 
@@ -597,14 +598,14 @@ async function loadMonthTotals(month: string) {
   const [inv, pay, sal, exp, contrib] = await Promise.all([
     supabase.from("invoices").select("amount_to_collect, amount_received").gte("month_period", start).lte("month_period", end),
     supabase.from("invoice_payments").select("amount").gte("payment_date", start).lte("payment_date", end),
-    supabase.from("salaries").select("final_salary").gte("salary_month", start).lte("salary_month", end),
+    fetchMonthPayroll(month),
     supabase.from("expenses").select("amount").gte("expense_date", start).lte("expense_date", end),
     fetchEmployerContributions(month),
   ]);
   const invoiced = (inv.data || []).reduce((s, r) => s + Number(r.amount_to_collect || 0), 0);
   const receivedFromInv = (inv.data || []).reduce((s, r) => s + Number(r.amount_received || 0), 0);
   const received = (pay.data || []).reduce((s, r) => s + Number(r.amount || 0), 0);
-  const salaries = (sal.data || []).reduce((s, r) => s + Number(r.final_salary || 0), 0);
+  const salaries = sal.reduce((s, r) => s + r.net_pay, 0);
   const expenses = (exp.data || []).reduce((s, r) => s + Number(r.amount || 0), 0);
   const c = sumContributions(contrib);
   return { invoiced, received, outstanding: invoiced - receivedFromInv, salaries, expenses, epf12: c.epf_12, etf3: c.etf_3 };
@@ -634,7 +635,7 @@ function OverviewTab() {
     { label: "Total Invoiced", value: data.invoiced },
     { label: "Total Received (this month)", value: data.received },
     { label: "Total Outstanding", value: data.outstanding },
-    { label: "Total Salaries Paid", value: data.salaries },
+    { label: "Total Net Salaries", value: data.salaries },
     { label: "Total Expenses", value: data.expenses },
     { label: "EPF 12% (Employer Cost)", value: data.epf12 },
     { label: "ETF 3% (Employer Cost)", value: data.etf3 },
