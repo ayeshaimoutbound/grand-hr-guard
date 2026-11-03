@@ -618,6 +618,7 @@ function OverviewTab() {
 
   useEffect(() => {
     (async () => {
+      try {
       const months = [-5, -4, -3, -2, -1, 0].map((n) => shiftMonth(month, n));
       const all = await Promise.all(months.map(loadMonthTotals));
       setData(all[5]);
@@ -626,6 +627,7 @@ function OverviewTab() {
         Income: Math.round(d.received),
         Costs: Math.round(d.salaries + d.expenses + d.epf12 + d.etf3),
       })));
+      } catch (e: any) { toast.error("Could not load monthly analytics: " + e.message); }
     })();
   }, [month]);
 

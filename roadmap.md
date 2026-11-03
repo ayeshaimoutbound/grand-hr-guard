@@ -1,19 +1,19 @@
 # Roadmap
 
 ## Current request
-- [ ] Own company files: client selector only for quotations/proposals
-- [ ] Sync attendance OT with salaries, invoices and accounts
-- [ ] Select phone contacts newest first
-- [ ] Super-admin employee erase and individual module reset
-- [ ] Verify changes and existing outstanding tasks
+- [x] Own company files: client selector only for quotations/proposals
+- [x] Sync attendance OT with salaries, invoices and accounts
+- [x] Select phone contacts newest first
+- [x] Super-admin employee erase and individual module reset
+- [x] Rule tests and server authorization checks
+- [ ] Authenticated end-to-end verification — blocked: requesting account cannot be signed in; demo login failed
 
-- [ ] Fix new-user sign in (profiles.email missing on created users)
-- [ ] Bulk attendance per location/month
-- [ ] Prev/next month arrows in Salaries
-- [ ] Vendors entered in other modules sync into Vendors module
-- [ ] Maintenance: Vehicle No -> Asset No, remove Next Service Date
-- [ ] Super admin can delete any record
-- [ ] Employee No + EPF No optional at onboarding, editable later
-- [ ] "Add employee" popup from employee pickers
-- [ ] Fix attendance marking on 31st (timezone date shift) + audit date math
-- [ ] Advances / food / uniforms calculated monthly in Accounts & elsewhere
+## Earlier requests reviewed
+- [x] New-user creation saves profiles.email
+- [x] Bulk attendance per location/month
+- [x] Prev/next month arrows in Salaries
+- [x] Vendor synchronization helper used in Accounts
+- [x] Maintenance uses Asset No
+- [x] Employee No and EPF No optional; employee picker quick-add available
+- [x] Attendance month boundaries use local calendar dates
+- [x] Monthly payroll analytics includes cash, food and uniform advances
