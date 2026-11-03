@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793689796300,
+      "tag": "0000_synchronize_attendance_overtime_and_protected_module_reset",
+      "breakpoints": true
+    }
+  ]
+}

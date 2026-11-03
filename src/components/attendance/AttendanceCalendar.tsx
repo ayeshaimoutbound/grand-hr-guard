@@ -1,4 +1,3 @@
-import { companiesForMonth } from "@/lib/companyRates";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,6 @@ import { PDF_HEADER_STYLES, getPdfHeaderHtml } from "@/lib/pdfHeader";
 import OvertimeSection from "@/components/attendance/OvertimeSection";
 import { EmployeeCombobox } from "@/components/EmployeeCombobox";
 import BulkAttendanceDialog from "@/components/attendance/BulkAttendanceDialog";
-import { fetchOverrideMap, overrideKey } from "@/lib/employeeRates";
 import MonthlySheetDialog from "@/components/attendance/MonthlySheetDialog";
 
 interface Employee {
@@ -436,195 +434,16 @@ export default function AttendanceCalendar({
 
 
   const handleSaveAllAttendance = async () => {
+    const loadingToast = toast.loading("Updating salaries and invoices...");
     try {
-      toast.loading("Saving attendance and updating salaries/invoices...");
-
-      // Update salaries for all active employees
-      for (const employee of activeEmployees) {
-        await updateEmployeeSalary(employee.id);
-      }
-
-      // Update invoice for this company and month
-      await updateCompanyInvoice();
-
-      toast.dismiss();
-      toast.success("Attendance saved! Salaries and invoices updated successfully.");
+      const month = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}-01`;
+      const { error } = await supabase.rpc("sync_attendance_month", { p_company: selectedCompany.id, p_month: month });
+      if (error) throw error;
+      toast.success("Attendance saved. Salaries and invoices synchronized.");
       onRefresh();
-    } catch (error) {
-      toast.dismiss();
-      if (import.meta.env.DEV) {
-        console.error("Error saving attendance:", error);
-      }
-      toast.error("Failed to save attendance");
-    }
-  };
-
-  const updateEmployeeSalary = async (employeeId: string) => {
-    const monthKey = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
-    const [mc] = await companiesForMonth([selectedCompany], monthKey);
-    const overrides = await fetchOverrideMap();
-    // An employee may have worked several ranks this month — pay each rank at its own rate
-    const rateFor = (rank: string) => {
-      const ov = overrides.get(overrideKey(employeeId, selectedCompany.id, rank));
-      if (ov !== undefined) return ov;
-      switch (rank) {
-        case "OIC": return mc.pay_oic;
-        case "SSO": return mc.pay_sso;
-        case "JSO": return mc.pay_jso;
-        case "LSO": return mc.pay_lso;
-        default: return 0;
-      }
-    };
-
-    const ranks = getEmployeeRanks(employeeId);
-    let totalShifts = 0;
-    let grossShiftTotal = 0;
-    ranks.forEach((rank) => {
-      const shifts = calculateEmployeeStats(employeeId, rank).totalShifts;
-      totalShifts += shifts;
-      grossShiftTotal += shifts * rateFor(rank);
-    });
-    const stats = { totalShifts };
-    const payPerShift = totalShifts > 0 ? grossShiftTotal / totalShifts : 0;
-
-    const salaryMonth = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
-
-    // Check if salary record exists
-    const { data: existing } = await supabase
-      .from("salaries")
-      .select("id, basic_salary, epf, salary_advance, transport, food, uniforms, other_deductions")
-      .eq("employee_id", employeeId)
-      .eq("company_id", selectedCompany.id)
-      .eq("salary_month", salaryMonth)
-      .single();
-
-    if (existing) {
-      // Update existing record - preserve deductions
-      // Auto-calculate EPF as 8% of Basic Salary
-      const epf = (existing.basic_salary || 0) * 0.08;
-      // Final Salary = Gross Shift Total - (EPF + All Deductions)
-      // Basic Salary is used only for EPF calculation
-      const finalSalary = grossShiftTotal - 
-        epf - (existing.salary_advance || 0) - 
-        (existing.transport || 0) - (existing.food || 0) - 
-        (existing.uniforms || 0) - (existing.other_deductions || 0);
-
-      await supabase
-        .from("salaries")
-        .update({ 
-          total_shifts: stats.totalShifts, 
-          pay_per_shift: payPerShift, 
-          gross_shift_total: grossShiftTotal,
-          epf: epf,
-          final_salary: finalSalary
-        })
-        .eq("id", existing.id);
-    } else {
-      // Create new record
-      const salaryData = {
-        employee_id: employeeId,
-        company_id: selectedCompany.id,
-        salary_month: salaryMonth,
-        total_shifts: stats.totalShifts,
-        pay_per_shift: payPerShift,
-        gross_shift_total: grossShiftTotal,
-        basic_salary: 0,
-        epf: 0,
-        salary_advance: 0,
-        transport: 0,
-        food: 0,
-        uniforms: 0,
-        other_deductions: 0,
-        final_salary: grossShiftTotal,
-      };
-
-      await supabase.from("salaries").insert(salaryData);
-    }
-  };
-
-  const updateCompanyInvoice = async () => {
-    const salaryMonth = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}-01`;
-    const [mc] = await companiesForMonth([selectedCompany], salaryMonth);
-    
-    // Build line items for invoice based on attendance
-    const lineItems: any[] = [];
-    let totalAmount = 0;
-    
-    const ranks: Array<"OIC" | "SSO" | "JSO" | "LSO"> = ["OIC", "SSO", "JSO", "LSO"];
-    ranks.forEach((rank) => {
-      const dayShifts = shiftReport[rank].day;
-      const nightShifts = shiftReport[rank].night;
-      
-      let chargePerShift = 0;
-      switch (rank) {
-        case "OIC": chargePerShift = mc.charge_oic; break;
-        case "SSO": chargePerShift = mc.charge_sso; break;
-        case "JSO": chargePerShift = mc.charge_jso; break;
-        case "LSO": chargePerShift = mc.charge_lso; break;
-      }
-      
-      // Add day shifts line item if exists
-      if (dayShifts > 0) {
-        const dayAmount = dayShifts * chargePerShift;
-        lineItems.push({
-          rank: rank,
-          shift_type: "Day",
-          shifts: dayShifts,
-          rate_per_shift: chargePerShift,
-          amount: dayAmount
-        });
-        totalAmount += dayAmount;
-      }
-      
-      // Add night shifts line item if exists
-      if (nightShifts > 0) {
-        const nightAmount = nightShifts * chargePerShift;
-        lineItems.push({
-          rank: rank,
-          shift_type: "Night",
-          shifts: nightShifts,
-          rate_per_shift: chargePerShift,
-          amount: nightAmount
-        });
-        totalAmount += nightAmount;
-      }
-    });
-
-    // Check if invoice exists - use maybeSingle to avoid errors
-    const { data: existing } = await supabase
-      .from("invoices")
-      .select("id, amount_received")
-      .eq("company_id", selectedCompany.id)
-      .eq("month_period", salaryMonth)
-      .maybeSingle();
-
-    const invoiceNumber = `INV-${selectedCompany.company_name.substring(0, 3).toUpperCase()}-${selectedMonth.getFullYear()}${String(selectedMonth.getMonth() + 1).padStart(2, '0')}`;
-
-    const invoiceData = {
-      amount_to_collect: totalAmount,
-      invoice_data: { lineItems }
-    };
-
-    if (existing) {
-      // Update existing invoice - preserve amount_received
-      await supabase
-        .from("invoices")
-        .update(invoiceData)
-        .eq("id", existing.id);
-    } else {
-      // Create new invoice
-      await supabase.from("invoices").insert({
-        company_id: selectedCompany.id,
-        month_period: salaryMonth,
-        invoice_date: new Date().toISOString().split("T")[0],
-        invoice_number: invoiceNumber,
-        amount_received: 0,
-        invoice_sent: false,
-        printed: false,
-        emailed: false,
-        ...invoiceData
-      });
-    }
+    } catch (e: any) {
+      toast.error("Could not synchronize attendance: " + e.message);
+    } finally { toast.dismiss(loadingToast); }
   };
 
   return (

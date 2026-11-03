@@ -90,7 +90,7 @@ export default function Salaries() {
       supabase.from("salary_manual_deductions").select("*").eq("salary_month", startDate),
     ]);
 
-    if (employeesRes.error || companiesRes.error || attendanceRes.error) {
+    if ([employeesRes, companiesRes, attendanceRes, otRes, cashRes, foodRes, uniRes, settingsRes, manualRes].some((r) => r.error)) {
       toast.error("Error fetching salary data");
       return;
     }
