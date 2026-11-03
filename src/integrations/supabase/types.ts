@@ -1865,6 +1865,18 @@ export type Database = {
     Functions: {
       get_email_by_username: { Args: { p_username: string }; Returns: string }
       next_uniform_batch_number: { Args: never; Returns: string }
+      reset_module_data: {
+        Args: { confirmation: string; modules: string[] }
+        Returns: undefined
+      }
+      sync_attendance_month: {
+        Args: { p_company: string; p_month: string }
+        Returns: undefined
+      }
+      sync_company_month: {
+        Args: { create_records?: boolean; p_company: string; p_month: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
