@@ -6,7 +6,9 @@
 - [x] Select phone contacts newest first
 - [x] Super-admin employee erase and individual module reset
 - [x] Rule tests and server authorization checks
-- [ ] Authenticated end-to-end verification — blocked: requesting account cannot be signed in; demo login failed
+- [x] Alternate name editable only from the employee edit form
+- [x] Alternate name shown and searchable only in attendance entry
+- [ ] Authenticated end-to-end verification — partly done: signed in as demo@example.com and verified the alternate name flow; other flows still unchecked
 
 ## Earlier requests reviewed
 - [x] New-user creation saves profiles.email
