@@ -29,6 +29,7 @@ interface Employee {
   id: string;
   employee_id: string;
   full_name: string;
+  alternate_name?: string | null;
 }
 
 interface Company {
@@ -64,7 +65,7 @@ export default function Attendance() {
 
   const fetchCompaniesAndEmployees = async () => {
     const [employeesRes, companiesRes] = await Promise.all([
-      supabase.from("employees").select("id, employee_id, full_name"),
+      supabase.from("employees").select("id, employee_id, full_name, alternate_name"),
       supabase.from("companies").select("*"),
     ]);
 

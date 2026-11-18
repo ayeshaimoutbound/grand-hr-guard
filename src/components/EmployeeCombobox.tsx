@@ -12,6 +12,7 @@ export interface EmployeeOption {
   id: string;
   employee_id: string;
   full_name: string;
+  alternate_name?: string | null;
 }
 
 interface Props {
@@ -25,11 +26,13 @@ interface Props {
   onEmployeeCreated?: (employee: EmployeeOption) => void;
   /** Set to false to hide the inline "Add new employee" action. */
   allowAdd?: boolean;
+  /** Show the alternate name (attendance entry only). */
+  showAlternate?: boolean;
 }
 
 export function EmployeeCombobox({
   value, onChange, employees, placeholder = "Select an employee", className, id,
-  onEmployeeCreated, allowAdd = true,
+  onEmployeeCreated, allowAdd = true, showAlternate = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -65,7 +68,7 @@ export function EmployeeCombobox({
               </CommandEmpty>
               <CommandGroup>
                 {employees.map((e) => {
-                  const label = `${e.full_name}${e.employee_id ? ` (${e.employee_id})` : ""}`;
+                  const label = `${e.full_name}${showAlternate && e.alternate_name ? ` / ${e.alternate_name}` : ""}${e.employee_id ? ` (${e.employee_id})` : ""}`;
                   return (
                     <CommandItem
                       key={e.id}

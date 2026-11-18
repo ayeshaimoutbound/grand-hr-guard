@@ -63,6 +63,7 @@ export default function Employees() {
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const { isSuperAdmin, isOffice } = useAuth();
   const [sizes, setSizes] = useState<Record<string, string>>({});
+  const [altName, setAltName] = useState("");
   const [contactsOpen, setContactsOpen] = useState(false);
   const [contactSearch, setContactSearch] = useState("");
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
@@ -173,6 +174,7 @@ export default function Employees() {
       ot_hourly_rate: parseFloat(ot_hourly_rate) || 225,
       normal_ot_hours: parseFloat(normal_ot_hours) || 3,
       extended_ot_hours: parseFloat(extended_ot_hours) || 6,
+      alternate_name: altName.trim() || null,
       uniform_sizes: Object.fromEntries(Object.entries(sizes).filter(([, v]) => v)),
     };
 
@@ -216,6 +218,7 @@ export default function Employees() {
       extended_ot_hours: String((employee as any).extended_ot_hours ?? 6),
     });
     setSizes(((employee as any).uniform_sizes) || {});
+    setAltName((employee as any).alternate_name || "");
     setIsEditMode(true);
     setIsDialogOpen(true);
   };
@@ -241,6 +244,7 @@ export default function Employees() {
 
   const resetForm = () => {
     setSizes({});
+    setAltName("");
     setFormData({
       employee_id: "",
       full_name: "",
@@ -475,6 +479,15 @@ export default function Employees() {
                     value={formData.nic}
                     onChange={(e) => setFormData({ ...formData, nic: e.target.value })}
                     placeholder="e.g., 123456789V or 199012345678"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="alternate_name">Alternate Name (optional)</Label>
+                  <Input
+                    id="alternate_name"
+                    value={altName}
+                    onChange={(e) => setAltName(e.target.value)}
+                    placeholder="Shown only when marking attendance"
                   />
                 </div>
                 <div className="space-y-2">

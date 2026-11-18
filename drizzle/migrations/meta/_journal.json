@@ -8,6 +8,13 @@
       "when": 1793689796300,
       "tag": "0000_synchronize_attendance_overtime_and_protected_module_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794991660428,
+      "tag": "0001_employee_alternate_name",
+      "breakpoints": true
     }
   ]
 }

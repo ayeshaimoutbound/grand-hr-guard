@@ -24,6 +24,7 @@ interface Employee {
   id: string;
   employee_id: string;
   full_name: string;
+  alternate_name?: string | null;
 }
 
 interface AttendanceRecord {
@@ -386,6 +387,7 @@ export default function AttendanceCalendar({
     const q = employeeSearch.trim().toLowerCase();
     if (!q) return true;
     return employee.full_name.toLowerCase().includes(q) ||
+      (employee.alternate_name || "").toLowerCase().includes(q) ||
       employee.employee_id.toLowerCase().includes(q) ||
       rank.toLowerCase().includes(q);
   });
@@ -623,6 +625,7 @@ export default function AttendanceCalendar({
                   value={selectedEmployee}
                   onChange={setSelectedEmployee}
                   employees={availableEmployees}
+                  showAlternate
                   placeholder="Search & choose employee"
                   onEmployeeCreated={() => onEmployeesChanged?.()}
                 />
@@ -731,7 +734,7 @@ export default function AttendanceCalendar({
                       </td>
                       <td className="bg-background p-2 font-medium border-r">
                         <div className="flex items-center gap-2">
-                          <span>{employee.full_name}</span>
+                          <span>{employee.full_name}{employee.alternate_name ? <span className="block text-xs text-muted-foreground">Alt: {employee.alternate_name}</span> : null}</span>
                           {canEdit && (
                             <Button
                               variant="ghost"
