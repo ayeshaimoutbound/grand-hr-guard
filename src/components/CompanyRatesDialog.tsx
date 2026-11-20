@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchRateHistory, RateHistoryRow, RATE_FIELDS } from "@/lib/companyRates";
 import { toMonthStr } from "@/lib/dateUtils";
 
-const RANKS = ["oic", "sso", "jso", "lso"] as const;
+const RANKS = ["oic", "sso", "jso", "lso", "special"] as const;
 
 interface Props {
   company: any | null;
@@ -42,7 +42,7 @@ export function CompanyRatesDialog({ company, onClose }: Props) {
 
   useEffect(() => { if (company) { setMonth(toMonthStr()); load(); } }, [company?.id]);
 
-  const active: string[] = company?.active_ranks || ["OIC", "SSO", "JSO", "LSO"];
+  const active: string[] = company?.active_ranks || ["OIC", "SSO", "JSO", "LSO", "Special"];
 
   const save = async () => {
     if (!company || !month) return;

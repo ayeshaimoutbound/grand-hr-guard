@@ -77,7 +77,7 @@ export default function AttendanceCalendar({
   const [showBulk, setShowBulk] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
-  const [selectedRank, setSelectedRank] = useState<"OIC" | "SSO" | "JSO" | "LSO" | "">("");
+  const [selectedRank, setSelectedRank] = useState<"OIC" | "SSO" | "JSO" | "LSO" | "Special" | "">("");
   const [employeeSearch, setEmployeeSearch] = useState("");
 
   const daysInMonth = new Date(
@@ -137,7 +137,7 @@ export default function AttendanceCalendar({
           attendance_date: dateStr,
           present: true,
           shift_type: shift,
-          rank: rank as "OIC" | "SSO" | "JSO" | "LSO",
+          rank: rank as "OIC" | "SSO" | "JSO" | "LSO" | "Special",
         },
       ]);
 
@@ -191,7 +191,7 @@ export default function AttendanceCalendar({
       .delete()
       .eq("company_id", selectedCompany.id)
       .eq("employee_id", employeeId)
-      .eq("rank", rank as "OIC" | "SSO" | "JSO" | "LSO")
+      .eq("rank", rank as "OIC" | "SSO" | "JSO" | "LSO" | "Special")
       .gte("attendance_date", start)
       .lte("attendance_date", end);
     if (error) { toast.error("Error removing employee: " + error.message); return; }
@@ -202,7 +202,7 @@ export default function AttendanceCalendar({
   const handleChangeRank = async (
     employeeId: string,
     oldRank: string,
-    newRank: "OIC" | "SSO" | "JSO" | "LSO"
+    newRank: "OIC" | "SSO" | "JSO" | "LSO" | "Special"
   ) => {
     if (oldRank === newRank) return;
     const { start, end } = monthDateRange();
@@ -211,7 +211,7 @@ export default function AttendanceCalendar({
       .update({ rank: newRank })
       .eq("company_id", selectedCompany.id)
       .eq("employee_id", employeeId)
-      .eq("rank", oldRank as "OIC" | "SSO" | "JSO" | "LSO")
+      .eq("rank", oldRank as "OIC" | "SSO" | "JSO" | "LSO" | "Special")
       .gte("attendance_date", start)
       .lte("attendance_date", end);
     if (error) { toast.error("Error updating rank: " + error.message); return; }
@@ -260,13 +260,14 @@ export default function AttendanceCalendar({
       SSO: { day: 0, night: 0, total: 0 },
       JSO: { day: 0, night: 0, total: 0 },
       LSO: { day: 0, night: 0, total: 0 },
+      Special: { day: 0, night: 0, total: 0 },
       totals: { day: 0, night: 0, total: 0 },
     };
 
     attendanceRecords
       .filter((record) => record.present)
       .forEach((record) => {
-        const rank = record.rank as "OIC" | "SSO" | "JSO" | "LSO";
+        const rank = record.rank as "OIC" | "SSO" | "JSO" | "LSO" | "Special";
         const isDay = record.shift_type === "Day";
 
         if (isDay) {
@@ -327,7 +328,7 @@ export default function AttendanceCalendar({
       <table class="summary">
         <thead><tr><th>Rank</th><th style="text-align:right">Day</th><th style="text-align:right">Night</th><th style="text-align:right">Total</th></tr></thead>
         <tbody>
-          ${(["OIC","SSO","JSO","LSO"] as const).filter(r => shiftReport[r].total > 0).map(r=>`<tr><td>${r}</td><td style="text-align:right">${shiftReport[r].day}</td><td style="text-align:right">${shiftReport[r].night}</td><td style="text-align:right">${shiftReport[r].total}</td></tr>`).join("")}
+          ${(["OIC","SSO","JSO","LSO","Special"] as const).filter(r => shiftReport[r].total > 0).map(r=>`<tr><td>${r}</td><td style="text-align:right">${shiftReport[r].day}</td><td style="text-align:right">${shiftReport[r].night}</td><td style="text-align:right">${shiftReport[r].total}</td></tr>`).join("")}
           <tr><td><strong>Totals</strong></td><td style="text-align:right"><strong>${shiftReport.totals.day}</strong></td><td style="text-align:right"><strong>${shiftReport.totals.night}</strong></td><td style="text-align:right"><strong>${shiftReport.totals.total}</strong></td></tr>
         </tbody>
       </table>
@@ -415,7 +416,7 @@ export default function AttendanceCalendar({
         attendance_date: dateStr,
         present: false,
         shift_type: "Day" as const,
-        rank: selectedRank as "OIC" | "SSO" | "JSO" | "LSO",
+        rank: selectedRank as "OIC" | "SSO" | "JSO" | "LSO" | "Special",
       },
     ]);
 
@@ -499,7 +500,7 @@ export default function AttendanceCalendar({
         activeRanks={
           ((selectedCompany as any).active_ranks?.length
             ? (selectedCompany as any).active_ranks
-            : ["OIC", "SSO", "JSO", "LSO"]) as string[]
+            : ["OIC", "SSO", "JSO", "LSO", "Special"]) as string[]
         }
         existingKeys={
           new Set(
@@ -521,7 +522,7 @@ export default function AttendanceCalendar({
         activeRanks={
           ((selectedCompany as any).active_ranks?.length
             ? (selectedCompany as any).active_ranks
-            : ["OIC", "SSO", "JSO", "LSO"]) as string[]
+            : ["OIC", "SSO", "JSO", "LSO", "Special"]) as string[]
         }
         existingKeys={
           new Set(
@@ -579,6 +580,7 @@ export default function AttendanceCalendar({
                       { name: "SSO", value: shiftReport.SSO.total },
                       { name: "JSO", value: shiftReport.JSO.total },
                       { name: "LSO", value: shiftReport.LSO.total },
+                      { name: "Special", value: shiftReport.Special.total },
                     ]}
                     cx="50%"
                     cy="50%"
@@ -633,12 +635,12 @@ export default function AttendanceCalendar({
 
               <div className="flex-1 space-y-2">
                 <label className="text-sm font-medium">Select Rank</label>
-                <Select value={selectedRank} onValueChange={(value) => setSelectedRank(value as "OIC" | "SSO" | "JSO" | "LSO")}>
+                <Select value={selectedRank} onValueChange={(value) => setSelectedRank(value as "OIC" | "SSO" | "JSO" | "LSO" | "Special")}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose rank" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(((selectedCompany as any).active_ranks?.length ? (selectedCompany as any).active_ranks : ["OIC", "SSO", "JSO", "LSO"]) as string[]).map((r) => (
+                    {(((selectedCompany as any).active_ranks?.length ? (selectedCompany as any).active_ranks : ["OIC", "SSO", "JSO", "LSO", "Special"]) as string[]).map((r) => (
                       <SelectItem key={r} value={r}>{r}</SelectItem>
                     ))}
                   </SelectContent>
@@ -758,7 +760,7 @@ export default function AttendanceCalendar({
                               <SelectValue placeholder="-" />
                             </SelectTrigger>
                             <SelectContent>
-                              {(((selectedCompany as any).active_ranks?.length ? (selectedCompany as any).active_ranks : ["OIC", "SSO", "JSO", "LSO"]) as string[]).map((r) => (
+                              {(((selectedCompany as any).active_ranks?.length ? (selectedCompany as any).active_ranks : ["OIC", "SSO", "JSO", "LSO", "Special"]) as string[]).map((r) => (
                                 <SelectItem key={r} value={r}>{r}</SelectItem>
                               ))}
                             </SelectContent>

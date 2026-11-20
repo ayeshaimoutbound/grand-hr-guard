@@ -241,6 +241,7 @@ export default function Invoices() {
       SSO: { day: 0, night: 0 },
       JSO: { day: 0, night: 0 },
       LSO: { day: 0, night: 0 },
+      Special: { day: 0, night: 0 },
     };
 
     attendanceData?.forEach((record) => {

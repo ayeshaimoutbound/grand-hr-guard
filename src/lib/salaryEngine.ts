@@ -1,12 +1,12 @@
 // Pure salary calculation engine.
 // Source of truth: attendance + company rank rates + per-employee OT settings + advances.
 
-export type Rank = "OIC" | "SSO" | "JSO" | "LSO";
+export type Rank = "OIC" | "SSO" | "JSO" | "LSO" | "Special";
 
 export interface CompanyRateRow {
   id: string;
   company_name: string;
-  pay_oic: number; pay_sso: number; pay_jso: number; pay_lso: number;
+  pay_oic: number; pay_sso: number; pay_jso: number; pay_lso: number; pay_special?: number;
 }
 
 export interface AttendanceRow {
@@ -90,6 +90,7 @@ const rankRate = (c: CompanyRateRow, rank: string): number => {
     case "SSO": return Number(c.pay_sso) || 0;
     case "JSO": return Number(c.pay_jso) || 0;
     case "LSO": return Number(c.pay_lso) || 0;
+    case "Special": return Number(c.pay_special) || 0;
     default: return 0;
   }
 };

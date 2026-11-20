@@ -223,6 +223,7 @@ export type Database = {
           charge_jso: number
           charge_lso: number
           charge_oic: number
+          charge_special: number
           charge_sso: number
           client_ot_rate: number
           company_name: string
@@ -234,6 +235,7 @@ export type Database = {
           pay_jso: number
           pay_lso: number
           pay_oic: number
+          pay_special: number
           pay_sso: number
           updated_at: string | null
         }
@@ -244,6 +246,7 @@ export type Database = {
           charge_jso?: number
           charge_lso?: number
           charge_oic?: number
+          charge_special?: number
           charge_sso?: number
           client_ot_rate?: number
           company_name: string
@@ -255,6 +258,7 @@ export type Database = {
           pay_jso: number
           pay_lso: number
           pay_oic: number
+          pay_special?: number
           pay_sso: number
           updated_at?: string | null
         }
@@ -265,6 +269,7 @@ export type Database = {
           charge_jso?: number
           charge_lso?: number
           charge_oic?: number
+          charge_special?: number
           charge_sso?: number
           client_ot_rate?: number
           company_name?: string
@@ -276,6 +281,7 @@ export type Database = {
           pay_jso?: number
           pay_lso?: number
           pay_oic?: number
+          pay_special?: number
           pay_sso?: number
           updated_at?: string | null
         }
@@ -286,6 +292,7 @@ export type Database = {
           charge_jso: number
           charge_lso: number
           charge_oic: number
+          charge_special: number
           charge_sso: number
           client_ot_rate: number
           company_id: string
@@ -296,6 +303,7 @@ export type Database = {
           pay_jso: number
           pay_lso: number
           pay_oic: number
+          pay_special: number
           pay_sso: number
           updated_at: string
         }
@@ -303,6 +311,7 @@ export type Database = {
           charge_jso?: number
           charge_lso?: number
           charge_oic?: number
+          charge_special?: number
           charge_sso?: number
           client_ot_rate?: number
           company_id: string
@@ -313,6 +322,7 @@ export type Database = {
           pay_jso?: number
           pay_lso?: number
           pay_oic?: number
+          pay_special?: number
           pay_sso?: number
           updated_at?: string
         }
@@ -320,6 +330,7 @@ export type Database = {
           charge_jso?: number
           charge_lso?: number
           charge_oic?: number
+          charge_special?: number
           charge_sso?: number
           client_ot_rate?: number
           company_id?: string
@@ -330,6 +341,7 @@ export type Database = {
           pay_jso?: number
           pay_lso?: number
           pay_oic?: number
+          pay_special?: number
           pay_sso?: number
           updated_at?: string
         }
@@ -1889,7 +1901,7 @@ export type Database = {
         | "moderator"
         | "viewer"
         | "office"
-      rank: "OIC" | "SSO" | "JSO" | "LSO"
+      rank: "OIC" | "SSO" | "JSO" | "LSO" | "Special"
       shift_type: "Day" | "Night"
     }
     CompositeTypes: {
@@ -2026,7 +2038,7 @@ export const Constants = {
         "viewer",
         "office",
       ],
-      rank: ["OIC", "SSO", "JSO", "LSO"],
+      rank: ["OIC", "SSO", "JSO", "LSO", "Special"],
       shift_type: ["Day", "Night"],
     },
   },

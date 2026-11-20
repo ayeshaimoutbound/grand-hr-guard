@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export const RATE_FIELDS = [
-  "pay_oic", "pay_sso", "pay_jso", "pay_lso",
-  "charge_oic", "charge_sso", "charge_jso", "charge_lso",
+  "pay_oic", "pay_sso", "pay_jso", "pay_lso", "pay_special",
+  "charge_oic", "charge_sso", "charge_jso", "charge_lso", "charge_special",
   "client_ot_rate",
 ] as const;
 

@@ -30,7 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const RANKS = ["OIC", "SSO", "JSO", "LSO"] as const;
+const RANKS = ["OIC", "SSO", "JSO", "LSO", "Special"] as const;
 type RankKey = (typeof RANKS)[number];
 
 interface Company {
@@ -42,10 +42,12 @@ interface Company {
   pay_sso: number;
   pay_jso: number;
   pay_lso: number;
+  pay_special: number;
   charge_oic: number;
   charge_sso: number;
   charge_jso: number;
   charge_lso: number;
+  charge_special: number;
   client_ot_rate?: number;
   active_ranks?: string[] | null;
   archived?: boolean;
@@ -61,10 +63,12 @@ const emptyForm = {
   pay_sso: "",
   pay_jso: "",
   pay_lso: "",
+  pay_special: "",
   charge_oic: "",
   charge_sso: "",
   charge_jso: "",
   charge_lso: "",
+  charge_special: "",
   client_ot_rate: "0",
 };
 
@@ -192,7 +196,7 @@ export default function Companies() {
 
     const num = (v: string) => parseFloat(v) || 0;
     for (const r of activeRanks) {
-      const key = r.toLowerCase() as "oic" | "sso" | "jso" | "lso";
+      const key = r.toLowerCase() as "oic" | "sso" | "jso" | "lso" | "special";
       if (num((formData as any)[`pay_${key}`]) <= 0 || num((formData as any)[`charge_${key}`]) <= 0) {
         toast.error(`${r} pay and charge must be greater than 0`);
         return;
@@ -249,10 +253,12 @@ export default function Companies() {
       pay_sso: company.pay_sso.toString(),
       pay_jso: company.pay_jso.toString(),
       pay_lso: company.pay_lso.toString(),
+      pay_special: (company.pay_special ?? 0).toString(),
       charge_oic: company.charge_oic.toString(),
       charge_sso: company.charge_sso.toString(),
       charge_jso: company.charge_jso.toString(),
       charge_lso: company.charge_lso.toString(),
+      charge_special: (company.charge_special ?? 0).toString(),
       client_ot_rate: (company.client_ot_rate ?? 0).toString(),
     });
     setActiveRanks(
@@ -322,10 +328,12 @@ export default function Companies() {
       "SSO Pay": c.pay_sso,
       "JSO Pay": c.pay_jso,
       "LSO Pay": c.pay_lso,
+      "Special Pay": c.pay_special,
       "OIC Charge": c.charge_oic,
       "SSO Charge": c.charge_sso,
       "JSO Charge": c.charge_jso,
       "LSO Charge": c.charge_lso,
+      "Special Charge": c.charge_special,
       "Client OT Rate": c.client_ot_rate || 0,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -340,9 +348,9 @@ export default function Companies() {
       "Company Name": "Sample Corp",
       "Company Number": "GS-001",
       Location: "Colombo",
-      "Active Ranks": "OIC, SSO, JSO, LSO",
-      "OIC Pay": 2000, "SSO Pay": 1800, "JSO Pay": 1600, "LSO Pay": 1500,
-      "OIC Charge": 2500, "SSO Charge": 2300, "JSO Charge": 2100, "LSO Charge": 2000,
+      "Active Ranks": "OIC, SSO, JSO, LSO, Special",
+      "OIC Pay": 2000, "SSO Pay": 1800, "JSO Pay": 1600, "LSO Pay": 1500, "Special Pay": 1700,
+      "OIC Charge": 2500, "SSO Charge": 2300, "JSO Charge": 2100, "LSO Charge": 2000, "Special Charge": 2200,
       "Client OT Rate": 250,
     }];
     const ws = XLSX.utils.json_to_sheet(sample);
@@ -373,10 +381,12 @@ export default function Companies() {
           pay_sso: parseFloat(r["SSO Pay"]) || 0,
           pay_jso: parseFloat(r["JSO Pay"]) || 0,
           pay_lso: parseFloat(r["LSO Pay"]) || 0,
+          pay_special: parseFloat(r["Special Pay"]) || 0,
           charge_oic: parseFloat(r["OIC Charge"]) || 0,
           charge_sso: parseFloat(r["SSO Charge"]) || 0,
           charge_jso: parseFloat(r["JSO Charge"]) || 0,
           charge_lso: parseFloat(r["LSO Charge"]) || 0,
+          charge_special: parseFloat(r["Special Charge"]) || 0,
           client_ot_rate: parseFloat(r["Client OT Rate"]) || 0,
         };
         if (!payload.company_name || !payload.location) { fail++; continue; }

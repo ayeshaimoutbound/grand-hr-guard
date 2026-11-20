@@ -15,6 +15,13 @@
       "when": 1794991660428,
       "tag": "0001_employee_alternate_name",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795157069640,
+      "tag": "0002_add_special_rank",
+      "breakpoints": true
     }
   ]
 }

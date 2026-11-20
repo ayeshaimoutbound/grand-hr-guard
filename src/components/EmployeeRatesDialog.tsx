@@ -20,7 +20,7 @@ interface Props {
   onSaved?: () => void;
 }
 
-const RANKS = ["OIC", "SSO", "JSO", "LSO"] as const;
+const RANKS = ["OIC", "SSO", "JSO", "LSO", "Special"] as const;
 
 export default function EmployeeRatesDialog({ open, onOpenChange, employee, onSaved }: Props) {
   const [companies, setCompanies] = useState<any[]>([]);
